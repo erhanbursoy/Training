@@ -48,17 +48,23 @@ olduğu için miktar gösterir; birim ürün kodunun yanındadır.
 
 ## Firma paneli
 
-Bölümler: **Panel**, **Talepler**, **Siparişler**, **Talep takibi**, **Ürünler**,
-**Bayiler**, **Raporlar**, **Entegrasyon günlüğü**. Talepler, Siparişler, Ürünler ve
-Bayiler liste + detay çalışır; talep ve sipariş detayında Ürünler / İşlemler / Geçmiş
-görünümleri vardır.
+Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler**.
 
-Talep detayındaki kalem sayıları: **talep edilen / siparişe alınan / sevk edilen /
-bekleyen / dönüştürülebilir**. Sipariş detayında ayrıca Logo’daki güncel miktar
-görünür; Logo tarafında değiştirilmişse satır işaretlenir.
+- **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, gönderim hatası,
+  gecikmiş sipariş. Karta tıklayınca ilgili ekrana gider.
+- **Talepler** ve **Siparişler** · tarih aralığı, arama ve durum filtresi olan liste;
+  satıra tıklayınca detay. Talep detayında Ürünler / İşlemler / Geçmiş görünümleri,
+  siparişe dönüştürme detayın içinde. Sipariş ekranında **Logo'dan sorgula** düğmesi
+  açık siparişlerin fiş ve fatura durumunu okur.
+- **Ürünler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekrandır: solda
+  salt okunur Logo alanları, sağda düzenlenebilir portal alanları (siparişe açıklık,
+  bayiye gösterilen birim, katalog sırası, teknik özellik, açıklama). Altta o üründe
+  sevk bekleyen bayiler listelenir.
+- **Bayiler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekran, üç sekme:
+  Bilgiler (Logo alanları salt okunur; siparişe açıklık, teslimat notu ve katalog
+  kısıtı düzenlenebilir), Talepler ve Siparişler geçmişi.
 
-**Talep takibi** bayi ve ürün bazında durumu, işlem geçmişini, elle düzeltmeyi ve
-talebe bağlanmamış faturaları taşır.
+Talep ve sipariş listeleri Excel'e kopyalanabilir.
 
 ### Havuz görünmez, birimler karışmaz
 
