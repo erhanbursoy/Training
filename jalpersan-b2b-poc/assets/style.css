@@ -139,8 +139,9 @@ a { color: var(--accent); }
   font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 999px;
   background: var(--sunk); color: var(--text-2);
 }
-.rail button[aria-current="true"] .count { background: var(--surface); }
+.rail button[aria-current="true"] .count { background: var(--surface); color: var(--text-2); }
 .rail .count.hot { background: var(--warn); color: #fff; }
+.rail button[aria-current="true"] .count.hot { background: var(--warn); color: #fff; }
 
 .main { flex: 1 1 auto; min-width: 0; padding: 20px 22px 64px; }
 .main > header { margin-bottom: 16px; }

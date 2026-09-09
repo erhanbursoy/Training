@@ -46,6 +46,30 @@ gösterir (kaç kalem tamamen, kısmen veya hiç sevk edilmedi). Miktarlar yaln�
 kalem satırında, o ürünün kendi biriminden yazar. Dashboard satırları tek ürün
 olduğu için miktar gösterir; birim ürün kodunun yanındadır.
 
+## Firma paneli
+
+Bölümler: **Panel**, **Talepler**, **Siparişler**, **Talep takibi**, **Ürünler**,
+**Bayiler**, **Raporlar**, **Entegrasyon günlüğü**. Talepler, Siparişler, Ürünler ve
+Bayiler liste + detay çalışır; talep ve sipariş detayında Ürünler / İşlemler / Geçmiş
+görünümleri vardır.
+
+Talep detayındaki kalem sayıları: **talep edilen / siparişe alınan / sevk edilen /
+bekleyen / dönüştürülebilir**. Sipariş detayında ayrıca Logo’daki güncel miktar
+görünür; Logo tarafında değiştirilmişse satır işaretlenir.
+
+**Talep takibi** bayi ve ürün bazında durumu, işlem geçmişini, elle düzeltmeyi ve
+talebe bağlanmamış faturaları taşır.
+
+### Havuz görünmez, birimler karışmaz
+
+Havuz, rezerv, tahsis ve hareket tipleri (`dTalep` / `dRezerv` / `dFatura`) hiçbir
+ekranda geçmez; iş dili kullanılır. Motor değişmedi, bakiyeler yine bu hareketlerden
+hesaplanır.
+
+Kalemler farklı birimlerde olabildiği için miktarlar belge düzeyinde **toplanmaz**.
+Talep, sipariş ve panel özetleri kalem ya da satır sayısı gösterir; miktarlar yalnızca
+tek ürüne ait satırlarda, o ürünün kendi biriminden yazar.
+
 ### Bayi tarafında havuz görünmez
 
 Havuz, rezerv, tahsis, eşleşme kademesi ve hareket tipleri (`dTalep` / `dRezerv` / `dFatura`)

@@ -528,6 +528,32 @@
     });
   };
 
+  /** Bir siparişin kalem kalem durumu. Kalemler farklı birimlerde olabilir,
+      bu yüzden sipariş düzeyinde miktar toplanmaz. */
+  JP.siparisKalemDurum = function (siparis) {
+    var db = JP.db;
+    return siparis.kalemler.map(function (k) {
+      var u = db.urunler.find(function (x) { return x.kod === k.urunKod; })
+        || { ad: k.urunKod, birim: '', doku: 'diger', renk: '#B9AE99', gosterimBirimi: '' };
+      return {
+        kalem: k, urun: u,
+        siparis: k.miktar, logoMiktar: k.logoMiktar, sevk: k.faturalanan,
+        kalan: r2(Math.max(0, k.logoMiktar - k.faturalanan)),
+        degisti: Math.abs(k.logoMiktar - k.miktar) > 0.001
+      };
+    });
+  };
+
+  /** Hareketin iş dilindeki adı. Ekranlarda dTalep/dRezerv/dFatura yerine bu kullanılır. */
+  JP.islemAdi = function (x) {
+    if (x.tip === 'dTalep') return x.miktar > 0 ? 'Talep oluşturuldu' : 'Talep azaltıldı';
+    if (x.tip === 'dRezerv') return x.miktar > 0 ? 'Siparişe alındı' : 'Sipariş miktarı düşürüldü';
+    return 'Sevk edildi';
+  };
+
+  /** Fatura eşleşme kademesinin okunur adı. */
+  JP.ESLESME_ADI = { baglantili: 'Sipariş bağlantılı', fifo: 'En eski talepten', elle: 'Elle bağlandı' };
+
   /** Bir talebe bağlı belgeler: siparişler ve faturalar. */
   JP.talepIslemleri = function (talepNo) {
     var db = JP.db;
@@ -822,6 +848,13 @@
     { kod: 'GECMIS', ad: 'Geçmiş dönem faturası' },
     { kod: 'DUZELTME', ad: 'Kayıt düzeltmesi' },
     { kod: 'MUTABAKAT', ad: 'Bayi mutabakatı' }
+  ];
+
+  /** Elle düzeltme tipleri — ekranda hareket tipi yerine ne yaptığı yazar. */
+  JP.ELLE_TIPLER = [
+    { tip: 'dFatura', ad: 'Sevkiyat kaydı (talebi kapatır)' },
+    { tip: 'dTalep', ad: 'Talep düzeltmesi' },
+    { tip: 'dRezerv', ad: 'Sipariş düzeltmesi' }
   ];
 
   JP.elleHareket = function (p) {

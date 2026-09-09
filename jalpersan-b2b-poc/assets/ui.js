@@ -159,17 +159,10 @@
   /* ------------------------------------------------------------ bakiye bandı */
   UI.bant = function (b) {
     var t = Math.max(b.talep, b.rezerv + b.fatura, 0.0001);
-    return h('div.bar', { title: 'Faturalanan ' + JP.fmt.miktar(b.fatura) + ' · Siparişte ' + JP.fmt.miktar(b.rezerv) + ' · Açık ' + JP.fmt.miktar(b.acik) }, [
+    return h('div.bar', { title: 'Sevk edilen ' + JP.fmt.miktar(b.fatura) + ' · Siparişte ' + JP.fmt.miktar(b.rezerv) + ' · Bekleyen ' + JP.fmt.miktar(b.acik) }, [
       h('i.b-fat', { style: { width: (b.fatura / t * 100) + '%' } }),
       h('i.b-rez', { style: { width: (b.rezerv / t * 100) + '%' } }),
       h('i.b-acik', { style: { width: (Math.max(0, b.acik) / t * 100) + '%' } })
-    ]);
-  };
-  UI.bantAciklama = function () {
-    return h('div.legend', {}, [
-      h('span', { html: '<i style="background:var(--ok)"></i>Faturalanan' }),
-      h('span', { html: '<i style="background:var(--info)"></i>Siparişte (rezerve)' }),
-      h('span', { html: '<i style="background:var(--warn)"></i>Açık talep' })
     ]);
   };
 

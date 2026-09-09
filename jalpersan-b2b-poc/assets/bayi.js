@@ -641,22 +641,15 @@
     ]);
   }
 
-  /* Talebin geçmişi — iç hareket tipleri (dTalep/dRezerv/dFatura) yerine
-     bayinin anlayacağı işlem adları. Faturayla birlikte yazılan rezerv
-     çözümü teknik bir kayıt olduğu için listelenmez. */
-  function islemAdi(x) {
-    if (x.tip === 'dTalep') return x.miktar > 0 ? 'Talep oluşturuldu' : 'Talep azaltıldı';
-    if (x.tip === 'dRezerv') return x.miktar > 0 ? 'Siparişe alındı' : 'Sipariş miktarı düşürüldü';
-    return 'Sevk edildi';
-  }
-
+  /* Talebin geçmişi — iç işlem tipleri yerine bayinin anlayacağı adlar (JP.islemAdi).
+     Faturayla birlikte yazılan teknik kayıt listelenmez. */
   function detayHareketler(t) {
     var hs = JP.db.havuz.filter(function (x) { return x.talepNo === t.no && !x.rezervKapanis; })
       .sort(function (a, b) { return b.ts.localeCompare(a.ts); });
     return UI.panel('Talep geçmişi', h('span.small.muted', { text: hs.length + ' kayıt' }),
       UI.tablo(['Tarih', 'Ürün', 'İşlem', { t: 'Miktar', num: true }, 'Belge'],
         hs.map(function (x) {
-          var ad = islemAdi(x);
+          var ad = JP.islemAdi(x);
           return h('tr', {}, [
             h('td.small.nowrap', { text: JP.fmt.saat(x.ts) }),
             h('td.mono.small', { text: x.urunKod }),
