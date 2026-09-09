@@ -279,6 +279,13 @@
   /* İki yerleşim: varsayılan sol ray (firma, Logo) ve ustMenu (bayi portalı,
      standart web uygulaması gibi üst gezinme + sağ üstte eylem ikonları).
      Bir bölüm yan() döndürürse içerik alanı yan panel + ana alan olarak bölünür. */
+  /* Liste/Kart tercihi bayi kataloğu ile firma ürün ekranı arasında ortaktır. */
+  UI.gorunumOku = function () {
+    try { return localStorage.getItem('jp.katalogGorunum') === 'kart' ? 'kart' : 'liste'; }
+    catch (e) { return 'liste'; }
+  };
+  UI.gorunumYaz = function (v) { try { localStorage.setItem('jp.katalogGorunum', v); } catch (e) {} };
+
   UI.kabuk = function (o) {
     document.title = (o.rolAdi || 'Portal') + ' · Jalpersan B2B';
     document.documentElement.classList.toggle('logo-world', !!o.karanlik);
@@ -335,6 +342,9 @@
       } else {
         gezCiz();
         kabukEl.appendChild(gezEl);
+        // Ray yerleşiminde de bölüm bir yan panel isteyebilir (firma ürün ağacı).
+        var yan2 = b.yan ? b.yan() : null;
+        if (yan2) kabukEl.appendChild(h('aside.yan', { 'aria-label': b.yanBaslik || 'Filtre' }, yan2));
       }
       kabukEl.appendChild(anaEl);
 

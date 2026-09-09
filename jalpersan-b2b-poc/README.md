@@ -82,10 +82,13 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   belirttiği tarihi gösterir (belirtilmemişse “—”). Talep detayında Ürünler / İşlemler /
   Geçmiş görünümleri, siparişe dönüştürme detayın içinde. Sipariş ekranında
   **Logo'dan sorgula** düğmesi açık siparişlerin fiş ve fatura durumunu okur.
-- **Ürünler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekrandır: solda
-  salt okunur Logo alanları ve altında **Görseller**, sağda düzenlenebilir portal
-  alanları (siparişe açıklık, bayiye gösterilen birim, katalog sırası, teknik özellik,
-  açıklama). Altta o üründe sevk bekleyen bayiler listelenir.
+- **Ürünler** · yerleşim bayi kataloğuyla aynıdır: solda ürün ağacı, üstte arama ve
+  Liste/Kart geçişi, satırlarda kırılım ürünün üzerinde, görselin üzerine gelince büyür.
+  Tek fark eylemdir — bayi sepete ekler, firma **Düzenle** ile ürün detayına girer.
+  Satırda ürünün bayi kataloğunda görünüp görünmediği ve Logo durumu rozet olarak yazar.
+  Detay ayrı ekrandır: solda salt okunur Logo alanları ve altında **Görseller**, sağda
+  düzenlenebilir portal alanları (siparişe açıklık, bayiye gösterilen birim, katalog
+  sırası, teknik özellik, açıklama). Altta o üründe sevk bekleyen bayiler listelenir.
 - **Bayiler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekran, üç sekme:
   Bilgiler (Logo alanları salt okunur; siparişe açıklık, teslimat notu ve katalog
   kısıtı düzenlenebilir), Talepler ve Siparişler geçmişi.

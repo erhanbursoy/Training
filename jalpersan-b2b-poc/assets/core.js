@@ -654,8 +654,9 @@
   };
 
   /** Katalog ağacı: kategori → seri → model kodu (HB-01, HB-02 …). */
-  JP.urunAgaci = function (bayiKod) {
-    var urunler = JP.bayiUrunleri(bayiKod);
+  /** Ağaç ve süzme hem bayi kataloğunda hem firma ürün yönetiminde kullanılır;
+      tek fark kaynak listedir: bayi kısıtlı katalogu, firma tüm stok kartlarını görür. */
+  JP.urunAgaciListe = function (urunler) {
     var gruplar = [];
     urunler.forEach(function (u) {
       var g = gruplar.find(function (x) { return x.ad === u.grup; });
@@ -669,16 +670,21 @@
     gruplar.forEach(function (g) { g.seriler.sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); }); });
     return { toplam: urunler.length, gruplar: gruplar };
   };
+  JP.urunAgaci = function (bayiKod) { return JP.urunAgaciListe(JP.bayiUrunleri(bayiKod)); };
 
   /** Ağaç düğümüne göre süzme: {grup, seri} */
-  JP.urunSuz = function (bayiKod, dugum, arama) {
+  JP.urunSuzListe = function (urunler, dugum, arama) {
     var q = (arama || '').trim().toLocaleLowerCase('tr');
-    return JP.bayiUrunleri(bayiKod).filter(function (u) {
+    return urunler.filter(function (u) {
       if (dugum && dugum.grup && u.grup !== dugum.grup) return false;
       if (dugum && dugum.seri && JP.seriBilgi(u).kod !== dugum.seri) return false;
       if (!q) return true;
-      return (u.ad + ' ' + u.kod + ' ' + (u.ozellik || '')).toLocaleLowerCase('tr').indexOf(q) >= 0;
+      var alan = u.ad + ' ' + u.kod + ' ' + (u.ozellik || '') + ' ' + u.grup + ' ' + (u.seri || '');
+      return alan.toLocaleLowerCase('tr').indexOf(q) >= 0;
     });
+  };
+  JP.urunSuz = function (bayiKod, dugum, arama) {
+    return JP.urunSuzListe(JP.bayiUrunleri(bayiKod), dugum, arama);
   };
 
   /* --------------------------------------------------- 3.4 satın alma talebi */

@@ -14,7 +14,8 @@
   var secBayi = null, bayiGorunum = 'bilgiler';
   var fTalep = { bas: '', bit: '', ara: '', durum: '' };
   var fSiparis = { bas: '', bit: '', ara: '', durum: '' };
-  var fUrun = { ara: '' };
+  var fUrun = { ara: '', dugum: null };
+  var urunAgacAcik = {};
   var fBayi = { ara: '' };
   var secKullanici = null;
   var fKullanici = { ara: '', bayiKod: '', durum: '' };
@@ -38,7 +39,8 @@
         { id: 'siparisler', ad: 'Siparişler',
           ciz: siparisler, sayi: function () { return JP.db.siparisler.length; } },
         { id: 'urunler', ad: 'Ürünler',
-          ciz: urunler, sayi: function () { return JP.db.urunler.length; } },
+          ciz: urunler, yan: urunAgacPaneli, yanBaslik: 'Ürün ağacı',
+          sayi: function () { return JP.db.urunler.length; } },
         { id: 'bayiler', ad: 'Bayiler',
           ciz: bayiler, sayi: function () { return JP.db.bayiler.length; } },
         { id: 'kullanicilar', ad: 'Kullanıcılar',
@@ -563,23 +565,112 @@
     ]);
   }
 
-  /* --------------------------------------------------- ürünler: liste + ekran */
+  /* --------------------------------------------------- ürünler: katalog + ekran
+   * Yerleşim bayi kataloğuyla aynıdır — sol yan panelde ürün ağacı, üstte arama
+   * ve Liste/Kart geçişi, satırlarda kırılım ürünün üzerinde. Tek fark eylemdir:
+   * bayi sepete ekler, firma ürün detayına girip portal alanlarını düzenler. */
   function urunAc(kod) { secUrun = kod; kabuk.git('urunler'); }
 
-  function urunSuz() {
-    var q = kucult(fUrun.ara).trim();
-    return JP.db.urunler.slice().sort(function (a, b) { return a.grup.localeCompare(b.grup, 'tr') || a.sira - b.sira; })
-      .filter(function (u) {
-        if (!q) return true;
-        return kucult(u.kod + ' ' + u.ad + ' ' + u.grup + ' ' + (u.seri || '') + ' ' + (u.ozellik || '')).indexOf(q) >= 0;
-      });
+  function urunKaynak() {
+    return JP.db.urunler.slice().sort(function (a, b) {
+      return a.grup.localeCompare(b.grup, 'tr') || a.sira - b.sira;
+    });
   }
+  function urunSuz() { return JP.urunSuzListe(urunKaynak(), fUrun.dugum, fUrun.ara); }
 
   function logoUrunCek() {
     UI.dene(function () {
       var r = JP.logoUrunleriCek();
       UI.toast('Ürünler güncellendi', r.toplam + ' kart okundu · ' + r.yeni + ' yeni, ' + r.guncel + ' değişti.', 'ok');
     });
+  }
+
+  /* --- sol yan panel: ürün ağacı (detay ekranındayken gizlenir) --- */
+  function urunAgacPaneli() {
+    if (secUrun) return null;
+    var agac = JP.urunAgaciListe(urunKaynak());
+
+    function dugum(ad, adet, secili, tikla) {
+      return h('button.dugum', { 'aria-current': String(secili), onclick: tikla },
+        [h('span.ad', { text: ad }), h('span.adet', { text: String(adet) })]);
+    }
+
+    var kok = h('div.agac');
+    kok.appendChild(h('div.dal', {}, [
+      h('span.kanca.bos'),
+      dugum('Tüm ürünler', agac.toplam, !fUrun.dugum, function () { fUrun.dugum = null; kabuk.ciz(); })
+    ]));
+
+    agac.gruplar.forEach(function (g) {
+      var acik = urunAgacAcik[g.ad] !== false && (urunAgacAcik[g.ad] || (fUrun.dugum && fUrun.dugum.grup === g.ad));
+      var secili = !!(fUrun.dugum && fUrun.dugum.grup === g.ad && !fUrun.dugum.seri);
+      kok.appendChild(h('div.dal', {}, [
+        g.seriler.length > 1 ? h('button.kanca', {
+          'aria-expanded': String(!!acik), 'aria-label': g.ad + ' alt kırılımı',
+          onclick: function () { urunAgacAcik[g.ad] = !acik; kabuk.ciz(); }
+        }, UI.ikon('ok', 13)) : h('span.kanca.bos'),
+        dugum(g.ad, g.adet, secili, function () { fUrun.dugum = { grup: g.ad }; urunAgacAcik[g.ad] = true; kabuk.ciz(); })
+      ]));
+      if (acik && g.seriler.length > 1) {
+        kok.appendChild(h('div.cocuk', {}, g.seriler.map(function (se) {
+          var s2 = !!(fUrun.dugum && fUrun.dugum.grup === g.ad && fUrun.dugum.seri === se.kod);
+          return h('div.dal', {}, [
+            h('span.kanca.bos'),
+            dugum(se.ad, se.adet, s2, function () { fUrun.dugum = { grup: g.ad, seri: se.kod }; kabuk.ciz(); })
+          ]);
+        })));
+      }
+    });
+
+    return [
+      h('div.eyebrow', { text: 'Ürün ağacı' }),
+      kok,
+      h('div.yan-alt', {}, h('div.small.muted', { text: 'Kırılım Logo ürün ağacından gelir: kategori → seri → model.' }))
+    ];
+  }
+
+  /* --- durum rozetleri: satırda ve kartta aynı --- */
+  function urunDurumu(u) {
+    /* Yeşil yalnızca "bayi görebiliyor" anlamına ayrıldı; Logo durumu sapma
+       olduğunda öne çıksın diye normalde sessiz bir etikettir. */
+    return h('span.row.tight', {}, [
+      u.siparieAcik ? UI.rozet('Siparişe açık', 'ok') : UI.rozet('Kapalı', ''),
+      u.logodaYok ? UI.rozet("Logo'da yok", 'bad')
+        : (u.logoAktif ? h('span.badge.plain', { text: 'Logo: aktif' }) : UI.rozet('Logo: pasif', 'warn'))
+    ]);
+  }
+
+  function urunSatiri(u) {
+    return h('div.urow' + (u.siparieAcik ? '' : '.kapali'), {}, [
+      h('button.uthumb', { type: 'button', 'aria-label': u.ad + ' — ürün detayı',
+        onclick: function () { urunAc(u.kod); } }, UI.kartela(u)),
+      h('div.ubilgi', {}, [
+        h('div.ukirilim', { text: JP.urunKirilim(u) }),
+        h('button.uad', { type: 'button', text: u.ad, title: u.ad, onclick: function () { urunAc(u.kod); } }),
+        h('div.umeta', {}, h('span.kod', { text: u.kod }))
+      ]),
+      h('span.ubirim', { text: u.gosterimBirimi }),
+      urunDurumu(u),
+      h('button.btn.sm', { text: 'Düzenle', onclick: function () { urunAc(u.kod); } })
+    ]);
+  }
+
+  function urunKarti(u) {
+    return h('div.prod' + (u.siparieAcik ? '' : '.kapali'), {}, [
+      h('button.gorsel', { type: 'button', 'aria-label': u.ad + ' — ürün detayı',
+        onclick: function () { urunAc(u.kod); } }, [
+        UI.kartela(u),
+        u.siparieAcik ? null : h('span.sepette-rozet', { text: 'Kapalı' }),
+        h('span.buyut', { text: 'Düzenle' })
+      ]),
+      h('div.pb', {}, [
+        h('div.ukirilim', { text: JP.urunKirilim(u) }),
+        h('button.pn', { type: 'button', text: u.ad, title: u.ad, onclick: function () { urunAc(u.kod); } }),
+        h('div.pc', { text: u.kod + ' · ' + u.gosterimBirimi }),
+        urunDurumu(u),
+        h('div.pf', {}, h('button.btn.sm', { text: 'Düzenle', onclick: function () { urunAc(u.kod); } }))
+      ])
+    ]);
   }
 
   function urunler() {
@@ -589,43 +680,69 @@
       if (u) return urunEkrani(u);
       secUrun = null;
     }
+    if (!db.urunler.length) {
+      return h('div.note.warn', { html: '<b>Ürün yok.</b> “Logo’dan güncelle” ile stok kartlarını çekin.' });
+    }
 
-    var liste = urunSuz();
-    var govde = h('div');
-    function tabloCiz() {
-      govde.textContent = '';
-      govde.appendChild(db.urunler.length
-        ? UI.panel(null, null, UI.tablo(['', 'Ürün', 'Kategori · seri', 'Birim', 'Logo', 'Siparişe', ''],
-            liste.map(function (u) {
-              return h('tr', { style: { cursor: 'pointer' }, onclick: function () { urunAc(u.kod); } }, [
-                h('td', { style: { width: '54px' } }, UI.kartela(u, '34px', '48px')),
-                h('td', {}, [h('div', { text: u.ad }), h('div.pc.mono', { text: u.kod })]),
-                h('td.small.muted', { text: JP.urunKirilim(u) }),
-                h('td.small.mono', { text: u.gosterimBirimi }),
-                h('td', {}, u.logodaYok ? UI.rozet("Logo'da yok", 'bad') : (u.logoAktif ? UI.rozet('Aktif', 'ok') : UI.rozet('Pasif', 'warn'))),
-                h('td', {}, u.siparieAcik ? UI.rozet('Açık', 'ok') : UI.rozet('Kapalı', '')),
-                h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); urunAc(u.kod); } }))
-              ]);
-            }), 'Aramaya uyan ürün yok.'), true)
-        : h('div.note.warn', { html: '<b>Ürün yok.</b> “Logo’dan güncelle” ile stok kartlarını çekin.' }));
+    var tumu = urunKaynak();
+    var gorunum = UI.gorunumOku();
+    var izgara = h('div.stack');
+    var sayimEl = h('span.small.muted.sayim');
+    var secEl = h('div.gorunum-sec', { role: 'group', 'aria-label': 'Görünüm' });
+
+    var araGirdi = h('input.ara', {
+      type: 'text', value: fUrun.ara, placeholder: 'Ürün adı, stok kodu, kategori veya özellik ara…',
+      'aria-label': 'Ürünlerde ara',
+      oninput: function (e) { fUrun.ara = e.target.value; izgaraCiz(); }
+    });
+
+    function secCiz() {
+      secEl.textContent = '';
+      [['liste', 'Liste'], ['kart', 'Kart']].forEach(function (o) {
+        secEl.appendChild(h('button', {
+          type: 'button', 'aria-pressed': String(gorunum === o[0]), title: o[1] + ' görünümü',
+          onclick: function () { gorunum = o[0]; UI.gorunumYaz(o[0]); secCiz(); izgaraCiz(); }
+        }, [UI.ikon(o[0], 14), h('span', { text: o[1] })]));
+      });
     }
-    function yenile() {
-      liste = urunSuz();
-      sayimEl.textContent = liste.length + ' / ' + db.urunler.length + ' ürün';
-      tabloCiz();
+
+    function izgaraCiz() {
+      var liste = urunSuz();
+      sayimEl.textContent = liste.length + ' / ' + tumu.length + ' ürün';
+      izgara.textContent = '';
+      if (!liste.length) { izgara.appendChild(h('div.empty', { text: 'Bu kırılımda ürün yok.' })); return; }
+      if (gorunum === 'kart') {
+        izgara.appendChild(h('div.cat', {}, liste.map(urunKarti)));
+      } else {
+        izgara.appendChild(h('div.ulist.yonetim', {}, [
+          h('div.ubas', {}, [
+            h('span', { text: 'Görsel' }), h('span', { text: 'Ürün' }),
+            h('span', { text: 'Birim' }), h('span', { text: 'Durum' }), h('span')
+          ])
+        ].concat(liste.map(urunSatiri))));
+      }
     }
-    var sayimEl = h('span.small.muted', { text: liste.length + ' / ' + db.urunler.length + ' ürün' });
-    tabloCiz();
+
+    secCiz();
+    izgaraCiz();
 
     return h('div.stack', {}, [
       h('div.cat-bar', {}, [
-        h('input.ara', { type: 'text', value: fUrun.ara, placeholder: 'Ürün adı, stok kodu, kategori veya özellik ara…',
-          'aria-label': 'Ürün ara', oninput: function (e) { fUrun.ara = e.target.value; yenile(); } }),
+        fUrun.dugum ? h('button.chip', {
+          'aria-pressed': 'true',
+          text: (fUrun.dugum.grup || '') + (fUrun.dugum.seri ? ' · ' + fUrun.dugum.seri : '') + '  ✕',
+          title: 'Kırılımı temizle',
+          onclick: function () { fUrun.dugum = null; kabuk.ciz(); }
+        }) : null,
+        araGirdi,
         sayimEl,
-        h('button.btn.primary.sm', { text: "Logo'dan güncelle", onclick: logoUrunCek }),
+        secEl
+      ]),
+      h('div.row', {}, [
+        h('button.btn.primary', { text: "Logo'dan güncelle", title: 'Stok kartlarını Logo’dan yeniden okur', onclick: logoUrunCek }),
         UI.senkronBilgi(db.senkron.urun)
       ]),
-      govde
+      izgara
     ]);
   }
 

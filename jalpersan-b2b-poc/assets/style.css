@@ -368,7 +368,24 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 }
 @media (prefers-reduced-motion: reduce) { .uthumb:hover .swatch { transform: scale(2.4); } }
 
+/* Firma ürün yönetimi: aynı liste, miktar sütunu yerine durum rozetleri. */
+.ulist.yonetim .ubas, .ulist.yonetim .urow { grid-template-columns: 58px minmax(0, 1fr) 92px 186px 96px; }
+.ulist.yonetim .urow .row.tight { gap: 5px; }
+.urow.kapali .uad, .prod.kapali .pn { color: var(--text-2); }
+.urow.kapali .uthumb .swatch, .prod.kapali .gorsel .swatch { opacity: .62; }
+.prod.kapali .sepette-rozet { background: var(--sunk); color: var(--text-2); }
+.prod .pb .badge { align-self: flex-start; }
+
+@media (max-width: 900px) {
+  /* Ray + yan panel + içerik üç sütun sığmıyor; ağaç içeriğin üstüne alınır. */
+  .rail + .yan { width: 100%; position: static; max-height: 208px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .shell:has(.rail + .yan) { flex-wrap: wrap; }
+  .shell:has(.rail + .yan) .rail { flex: none; }
+  .shell:has(.rail + .yan) .main { flex: 1 1 100%; }
+}
+
 @media (max-width: 780px) {
+  .ulist.yonetim .ubas, .ulist.yonetim .urow { grid-template-columns: 58px minmax(0, 1fr); }
   .ubas { display: none; }
   .urow { grid-template-columns: 58px minmax(0, 1fr); row-gap: 8px; padding-top: 12px; padding-bottom: 12px; }
   .urow > :nth-child(3), .urow > :nth-child(4), .urow > :nth-child(5) { grid-column: 2; justify-self: start; }

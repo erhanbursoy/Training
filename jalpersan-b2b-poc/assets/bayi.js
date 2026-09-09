@@ -258,11 +258,6 @@
      tercih tarayıcıda saklanır. İki görünüm de aynı şeyi verir: kırılım ürünün
      üzerinde, hızlı miktar girişi ve sepete ekleme. Açıklama ve teknik özellik
      kalabalık yapmasın diye yalnızca ürün detayında gösterilir. */
-  function gorunumOku() {
-    try { return localStorage.getItem('jp.katalogGorunum') === 'kart' ? 'kart' : 'liste'; }
-    catch (e) { return 'liste'; }
-  }
-  function gorunumYaz(v) { try { localStorage.setItem('jp.katalogGorunum', v); } catch (e) {} }
 
   function sepeteEkle(u, bayi, miktar) {
     UI.dene(function () {
@@ -295,7 +290,7 @@
 
     var tumu = JP.bayiUrunleri(bayi.kod);
     var kap = h('div.stack');
-    var gorunum = gorunumOku();
+    var gorunum = UI.gorunumOku();
 
     var yetki = JP.talepYetkisi(aktifKullanici());
     if (!yetki.olur) {
@@ -312,7 +307,7 @@
     var secEl = h('div.gorunum-sec', { role: 'group', 'aria-label': 'Görünüm' });
 
     var araGirdi = h('input.ara', {
-      type: 'text', value: filtre.ara, placeholder: 'Ürün adı, stok kodu veya özellik ara…',
+      type: 'text', value: filtre.ara, placeholder: 'Ürün adı, stok kodu, kategori veya özellik ara…',
       'aria-label': 'Katalogda ara',
       oninput: function (e) { filtre.ara = e.target.value; izgaraCiz(); }
     });
@@ -322,7 +317,7 @@
       [['liste', 'Liste'], ['kart', 'Kart']].forEach(function (o) {
         secEl.appendChild(h('button', {
           type: 'button', 'aria-pressed': String(gorunum === o[0]), title: o[1] + ' görünümü',
-          onclick: function () { gorunum = o[0]; gorunumYaz(o[0]); secCiz(); izgaraCiz(); }
+          onclick: function () { gorunum = o[0]; UI.gorunumYaz(o[0]); secCiz(); izgaraCiz(); }
         }, [UI.ikon(o[0], 14), h('span', { text: o[1] })]));
       });
     }
