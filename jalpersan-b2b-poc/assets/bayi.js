@@ -204,7 +204,7 @@
             return h('tr', {}, [
               h('td', {}, h('div.row.tight', {}, [UI.kartela(r.urun, '26px', '40px'), h('div', {}, [
                 h('div', { text: r.urun.ad }),
-                h('div.pc.mono', { text: r.kod })
+                h('div.pc.mono', { text: r.kod + ' · ' + r.urun.gosterimBirimi })
               ])])),
               h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
               h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
@@ -414,7 +414,6 @@
       ]);
     }
 
-    var toplam = satirlar.reduce(function (t, s) { return t + s.miktar; }, 0);
     var gecersiz = satirlar.filter(function (s) { return s.gecersiz; });
     var notAlan = h('textarea', { placeholder: bayi.teslimatNotu || 'Teslimat, ambalaj veya ton notu…' });
     var tarihAlan = h('input', { type: 'date' });
@@ -462,8 +461,8 @@
         h('div', {}, [
           h('div', {}, satirlar.map(function (s) { return sepetSatiri(bayi, s); })),
           h('div.sepet-ozet', {}, [
-            h('span.small.muted', { text: satirlar.length + ' kalem' }),
-            h('span.mono', { text: JP.fmt.miktar(toplam) + ' birim' }),
+            h('span.mono', { text: satirlar.length + ' kalem' }),
+            h('span.small.muted', { text: 'Miktarlar her ürünün kendi biriminden' }),
             h('div.spacer'),
             h('button.btn', { text: 'Alışverişe devam et', onclick: function () { kabuk.git('katalog'); } })
           ])
@@ -506,6 +505,30 @@
 
   function talepAc(no) { secilen = no; detayGorunum = 'urunler'; kabuk.git('talepler'); }
 
+  /* Bir talebin kalemleri farklı birimlerde olabilir (metre, adet, top…), bu yüzden
+     talep düzeyinde miktar toplanmaz. Özet kalem sayısıyla verilir. */
+  function sevkDurumu(k) {
+    if (k.fatura >= k.talep - 0.001) return 'tam';
+    return k.fatura > 0.001 ? 'kismi' : 'yok';
+  }
+
+  function sevkSayim(kalemler) {
+    var s = { tam: 0, kismi: 0, yok: 0, toplam: kalemler.length };
+    kalemler.forEach(function (k) { s[sevkDurumu(k)]++; });
+    return s;
+  }
+
+  function sevkBandi(s) {
+    var t = Math.max(s.toplam, 1);
+    return h('div.row.tight', { style: { width: '164px' } }, [
+      h('div.bar', { style: { flex: '1 1 auto' }, title: s.tam + ' kalem tamamlandı, ' + s.kismi + ' kalem kısmen sevk edildi' }, [
+        h('i', { style: { width: (s.tam / t * 100) + '%', background: 'var(--ok)' } }),
+        h('i', { style: { width: (s.kismi / t * 100) + '%', background: 'var(--warn)' } })
+      ]),
+      h('span.small.mono.muted', { text: s.tam + ' / ' + s.toplam })
+    ]);
+  }
+
   function talepler() {
     var db = JP.db, bayi = aktifBayi();
     if (!bayi) return h('div.empty', { text: 'Bayi seçilmedi.' });
@@ -525,18 +548,15 @@
     }
 
     return UI.panel('Talep listesi', h('span.small.muted', { text: liste.length + ' talep' }),
-      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, { t: 'Talep edilen', num: true }, { t: 'Sevk edilen', num: true }, ''],
+      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
         liste.map(function (t) {
-          var kalemler = JP.talepKalemDurum(t);
-          var talep = kalemler.reduce(function (a, k) { return a + k.talep; }, 0);
-          var sevk = kalemler.reduce(function (a, k) { return a + k.fatura; }, 0);
+          var s2 = sevkSayim(JP.talepKalemDurum(t));
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { talepAc(t.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
             h('td.mono', { text: t.no, style: { fontWeight: '600' } }),
             h('td', {}, UI.rozet(JP.talepDurumu(t))),
-            h('td.num.mono', { text: String(t.kalemler.length) }),
-            h('td.num.mono', { text: JP.fmt.miktar(talep) }),
-            h('td.num.mono', { text: JP.fmt.miktar(sevk), style: { color: sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
+            h('td.num.mono', { text: String(s2.toplam) }),
+            h('td', {}, sevkBandi(s2)),
             h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); talepAc(t.no); } }))
           ]);
         })), true);
@@ -545,9 +565,7 @@
   function talepDetay(t) {
     var kalemler = JP.talepKalemDurum(t);
     var islem = JP.talepIslemleri(t.no);
-    var toplam = kalemler.reduce(function (a, k) {
-      a.talep += k.talep; a.siparis += k.siparis; a.fatura += k.fatura; a.acik += k.acik; return a;
-    }, { talep: 0, siparis: 0, fatura: 0, acik: 0 });
+    var sayim = sevkSayim(kalemler);
 
     var govde = h('div.stack');
     function govdeCiz() {
@@ -572,10 +590,10 @@
         ]),
         t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null,
         h('div.grid.k4', {}, [
-          UI.kpi('Talep edilen', JP.fmt.miktar(toplam.talep), 'birim'),
-          UI.kpi('Sipariş oluşturulan', JP.fmt.miktar(toplam.siparis), 'birim'),
-          UI.kpi('Sevk edilen', JP.fmt.miktar(toplam.fatura), 'birim'),
-          UI.kpi('Bekleyen', JP.fmt.miktar(toplam.talep - toplam.fatura), 'birim', null, true)
+          UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
+          UI.kpi('Tamamı sevk edildi', String(sayim.tam), 'kalem'),
+          UI.kpi('Kısmen sevk edildi', String(sayim.kismi), 'kalem'),
+          UI.kpi('Sevk edilmedi', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
         ])
       ])),
       h('div.seg', {}, [

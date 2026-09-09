@@ -41,6 +41,14 @@ sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil 
   Detayda üç görünüm var: **Ürünler**, **İşlemler** (talepten doğan siparişler ve faturalar)
   ve **Hareketler** (talep geçmişi).
 
+### Birimler karışmaz
+
+Ürünler farklı birimlerde olabilir (metre, adet). Bu yüzden bir talebin kalemleri
+**hiçbir yerde toplanmaz**: talep listesi ve talep özeti miktar değil kalem sayısı
+gösterir (kaç kalem tamamen, kısmen veya hiç sevk edilmedi). Miktarlar yalnızca
+kalem satırında, o ürünün kendi biriminden yazar. Dashboard satırları tek ürün
+olduğu için miktar gösterir; birim ürün kodunun yanındadır.
+
 ### Bayi tarafında havuz görünmez
 
 Havuz, rezerv, tahsis, eşleşme kademesi ve hareket tipleri (`dTalep` / `dRezerv` / `dFatura`)
@@ -53,6 +61,8 @@ talebinin ne kadarının sevk edildiğini görür. Motor aynıdır; yalnızca su
 | Sipariş oluşturulan | Σ `dRezerv`, faturayla çözülen rezerv hariç (kümülatif) |
 | Sevk edilen | Σ `dFatura` — fatura kesildiğinde sevkiyat gerçekleşmiş sayılır |
 | Bekleyen | Talep edilen − sevk edilen |
+
+Bu dört sayı kalem düzeyindedir; farklı birimler karışmasın diye talep düzeyinde toplanmaz.
 
 Talep geçmişinde hareket tipleri iş diline çevrilir: *Talep oluşturuldu*, *Talep azaltıldı*,
 *Siparişe alındı*, *Sipariş miktarı düşürüldü*, *Sevk edildi*. Faturayla birlikte yazılan
@@ -103,6 +113,9 @@ assets/logo.js      Logo simülatörü ekranları
 build.mjs           tek dosya derleyici
 dist/               üretilen tek dosya sürümleri
 ```
+
+Portal ekranları her zaman açık renktir; tarayıcının koyu tema tercihini izlemez.
+Yalnızca Logo ERP simülatörü koyu terminal görünümündedir.
 
 Veri yalnızca tarayıcının `localStorage` alanında tutulur; sunucuya hiçbir şey gönderilmez.
 Sekmeler `BroadcastChannel` ve `storage` olayıyla senkronlanır.

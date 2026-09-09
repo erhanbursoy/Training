@@ -14,7 +14,7 @@
   'use strict';
   var JP = (window.JP = window.JP || {});
 
-  JP.KEY = 'jalpersan.poc.v4';
+  JP.KEY = 'jalpersan.poc.v5';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
 
   /* ---------------------------------------------------------------- yardımcı */
@@ -109,6 +109,7 @@
       ['SSC-0510-BEYAZ', 'Sun Screen %5 Açıklık · Beyaz', 'Sun Screen', 'MTR', '#DDD9D2', 'screen', '%5 açıklık · 280 cm en · PVC/cam elyaf'],
       ['PLS-0900-VIZON', 'Plise Perde Kumaşı 0900 · Vizon', 'Plise', 'MTR', '#B9A791', 'plise', '45 mm katlama · cam üstü montaj'],
       ['SNK-1800-SIYAH', 'Sineklik Tülü 1800 · Siyah', 'Sineklik', 'MTR', '#3C4145', 'sineklik', '180 cm en · 18×16 göz fiberglas'],
+      ['PLS-KASET-VIZON', 'Plise Kaset Profili · Vizon', 'Plise', 'ADET', '#B0A08B', 'diger', '45 mm kaset · 3 m boy'],
       ['ZEB-1200-KARTELA', 'Zebra Kartela Seti (12 renk)', 'Zebra', 'ADET', '#C2A87C', 'diger', '12 renk · sunum kutusu']
     ];
     return s.map(function (x, i) {
@@ -979,7 +980,8 @@
     JP.talepOlustur('BYI-0001', [
       { urunKod: 'ZEB-1200-KREM', miktar: 320 },
       { urunKod: 'STR-3000-BEYAZ', miktar: 150 },
-      { urunKod: 'TUL-0500-EKRU', miktar: 90 }
+      { urunKod: 'TUL-0500-EKRU', miktar: 90 },
+      { urunKod: 'PLS-KASET-VIZON', miktar: 24 }
     ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', null);
 
     _ts = gecmis(21);

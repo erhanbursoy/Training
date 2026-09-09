@@ -1,6 +1,8 @@
 /* Jalpersan B2B PoC — ortak tasarım sistemi
    Renk: ham pamuk zemin, çam-petrol mürekkep, teal aksan.
-   Logo simülatörü .logo-world sınıfıyla kendi koyu dünyasını kurar. */
+   Portal ekranları bilinçli olarak tek dünyaya bağlıdır: her zaman açık renk,
+   tarayıcının koyu tema tercihini izlemez. Yalnızca Logo ERP simülatörü
+   .logo-world sınıfıyla kendi koyu terminal dünyasını kurar. */
 
 :root {
   color-scheme: light;
@@ -31,33 +33,6 @@
   --font-display: Archivo, "Helvetica Neue", Arial, sans-serif;
   --font-body:    "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --paper:#101619; --surface:#161E22; --surface-2:#1B2429; --sunk:#0C1215;
-    --line:#28343A; --line-2:#3B4A51;
-    --text:#E4EAE7; --text-2:#9CA9A5; --text-3:#6E7C78;
-    --accent:#4FBFAE; --accent-2:#7FD6C7; --accent-soft:#123B36;
-    --ok:#77BB6B;  --ok-soft:#162A17;
-    --warn:#D8A748; --warn-soft:#2E2411;
-    --bad:#E28874;  --bad-soft:#341B16;
-    --info:#74B3D6; --info-soft:#12262F;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px -16px rgba(0,0,0,.8);
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --paper:#101619; --surface:#161E22; --surface-2:#1B2429; --sunk:#0C1215;
-  --line:#28343A; --line-2:#3B4A51;
-  --text:#E4EAE7; --text-2:#9CA9A5; --text-3:#6E7C78;
-  --accent:#4FBFAE; --accent-2:#7FD6C7; --accent-soft:#123B36;
-  --ok:#77BB6B;  --ok-soft:#162A17;
-  --warn:#D8A748; --warn-soft:#2E2411;
-  --bad:#E28874;  --bad-soft:#341B16;
-  --info:#74B3D6; --info-soft:#12262F;
-  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 26px -16px rgba(0,0,0,.8);
 }
 
 /* Logo ERP simülatörü — bilinçli olarak tek dünyaya bağlı koyu terminal görünümü */
