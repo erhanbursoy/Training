@@ -91,7 +91,7 @@
   JP.abone = function (fn) { dinleyiciler.push(fn); };
   JP.aboneSifirla = function () { dinleyiciler.length = 0; };   // rol değişiminde ölü kabuk yeniden çizilmesin
 
-  function disaridanDegisti() { mem = oku() || mem; yayinla(); }
+  function disaridanDegisti() { mem = oku() || mem; gCache = null; yayinla(); }
   if (kanal) kanal.onmessage = disaridanDegisti;
   window.addEventListener('storage', function (e) { if (e.key === JP.KEY) disaridanDegisti(); });
 
@@ -121,18 +121,30 @@
 
   function logoStok() {
     var kat = (window.JP && JP.KATALOG) || { cdn: '', gruplar: [] };
-    var out = [], sira = 0;
+    var out = [], sira = 0, kullanilan = {};
+
+    /* Logo'da stok kodu tekildir. Katalogda aynı model adı farklı
+       koleksiyonlarda geçebildiği için (ör. iki ayrı "Şehir" deseni)
+       çakışan kodlara sıra eki verilir. */
+    function tekilKod(model) {
+      var kod = model, n = 1;
+      while (kullanilan[kod]) { n++; kod = model + '-' + n; }
+      kullanilan[kod] = true;
+      return kod;
+    }
+
     kat.gruplar.forEach(function (g) {
       g.seriler.forEach(function (se) {
         se.m.forEach(function (model) {
+          var kod = tekilKod(model);
           out.push({
-            kod: model,
+            kod: kod,
             ad: model + ' ' + g.kisa,
             grup: g.ad, grupKisa: g.kisa, seri: se.ad, seriUri: se.uri,
             birim: g.birim, ozellik: g.ozellik, ozet: g.ozet,
             seriUri: se.uri,                       // görsel bu anahtarla JP.GORSEL'den çözülür
             gorselUzak: kat.cdn + se.g, gorselBuyukUzak: kat.cdn + se.b,
-            renk: kartelaRengi(model), doku: DOKU[g.ad] || 'diger',
+            renk: kartelaRengi(kod), doku: DOKU[g.ad] || 'diger',
             aktif: true, sira: sira++
           });
         });
@@ -254,7 +266,7 @@
             kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
             renk: s.renk, doku: s.doku, seriUri: s.seriUri,
             gorselUzak: s.gorselUzak, gorselBuyukUzak: s.gorselBuyukUzak,
-            logoAktif: s.aktif, logodaYok: false,
+            logoAktif: s.aktif, logodaYok: false, gorseller: [],
             siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: s.ozet || aciklamaOf(s.grup),
             gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
           });
@@ -430,6 +442,100 @@
     if (!b) return { olur: false, sebep: 'Bayi kartı bulunamadı.' };
     if (!b.siparisAcik) return { olur: false, sebep: 'Bayi hesabınız siparişe kapalı.' };
     return { olur: true, sebep: '' };
+  };
+
+  /* --------------------------------------------------------- ürün görselleri
+   * Teknik doküman 3.2: görsel bir portal ek alanıdır (kartela ve ürün fotoğrafı,
+   * birden fazla görsel, sıralama). Ürün kaydı yalnızca referans taşır:
+   *   { tip: 'yerel', id }  → baytlar ayrı bir depoda (veritabanı kotayı aşmasın)
+   *   { tip: 'adres', v }   → dış adres (kısa metin)
+   * Portal görseli yoksa katalogdan gelen seri görseli kullanılır.
+   */
+  var GKEY = function () { return JP.KEY + '.g'; };
+  var gCache = null;
+
+  function gOku() {
+    if (gCache) return gCache;
+    try { gCache = JSON.parse(localStorage.getItem(GKEY()) || '{}'); }
+    catch (e) { gCache = {}; }
+    return gCache;
+  }
+  function gYaz(harita) {
+    gCache = harita;
+    try { localStorage.setItem(GKEY(), JSON.stringify(harita)); }
+    catch (e) { throw new Error('Görsel kaydedilemedi: tarayıcı depolama alanı doldu. Daha küçük bir görsel deneyin veya kullanılmayan görselleri silin.'); }
+  }
+  JP.gorselDepoTazele = function () { gCache = null; };
+
+  JP.gorselBayt = function (id) { return gOku()[id] || null; };
+
+  /** Ürünün görsel listesi: portal görselleri, yoksa katalog seri görseli. */
+  JP.urunGorselListe = function (u) {
+    var out = (u.gorseller || []).map(function (g) {
+      return g.tip === 'yerel'
+        ? { tip: 'yerel', id: g.id, src: JP.gorselBayt(g.id), portal: true }
+        : { tip: 'adres', v: g.v, src: g.v, portal: true };
+    }).filter(function (x) { return !!x.src; });
+    if (out.length) return out;
+    var varsayilan = (JP.GORSEL || {})[u.seriUri] || u.gorselUzak || null;
+    return varsayilan ? [{ tip: 'katalog', src: varsayilan, portal: false }] : [];
+  };
+
+  /** Listelerde ve kartlarda gösterilecek görsel. */
+  JP.urunGorselSrc = function (u, buyuk) {
+    var liste = JP.urunGorselListe(u);
+    if (liste.length && liste[0].portal) return { src: liste[0].src, yedek: liste[0].src };
+    var gomulu = (JP.GORSEL || {})[u.seriUri] || null;
+    return {
+      src: buyuk ? (u.gorselBuyukUzak || gomulu) : (gomulu || u.gorselUzak),
+      yedek: gomulu
+    };
+  };
+
+  JP.urunGorselEkle = function (kod, veri, tip) {
+    var id = null;
+    if (tip === 'yerel') {
+      if (!veri || veri.slice(0, 5) !== 'data:') throw new Error('Görsel okunamadı.');
+      id = uid('g');
+      var harita = gOku();
+      harita[id] = veri;
+      gYaz(harita);                                  // kota hatası buradan yükselir
+    } else if (!/^https?:\/\//i.test(veri || '')) {
+      throw new Error('Geçerli bir görsel adresi girin (https ile başlamalı).');
+    }
+    return JP.tx(function (db) {
+      var u = db.urunler.find(function (x) { return x.kod === kod; });
+      if (!u) throw new Error('Ürün bulunamadı.');
+      u.gorseller = u.gorseller || [];
+      u.gorseller.push(tip === 'yerel' ? { tip: 'yerel', id: id } : { tip: 'adres', v: veri });
+      log(db, 'portal', 'Ürün görseli eklendi', kod + ' · ' + (tip === 'yerel' ? 'yüklenen dosya' : veri));
+      return u.gorseller.length;
+    });
+  };
+
+  JP.urunGorselSil = function (kod, i) {
+    return JP.tx(function (db) {
+      var u = db.urunler.find(function (x) { return x.kod === kod; });
+      if (!u || !u.gorseller || !u.gorseller[i]) throw new Error('Görsel bulunamadı.');
+      var g = u.gorseller.splice(i, 1)[0];
+      if (g.tip === 'yerel') {
+        var harita = gOku();
+        if (harita[g.id]) { delete harita[g.id]; try { gYaz(harita); } catch (e) {} }
+      }
+      log(db, 'portal', 'Ürün görseli silindi', kod);
+    });
+  };
+
+  /** Sıralama: yon -1 sola, +1 sağa. İlk görsel katalogda gösterilendir. */
+  JP.urunGorselTasi = function (kod, i, yon) {
+    return JP.tx(function (db) {
+      var u = db.urunler.find(function (x) { return x.kod === kod; });
+      if (!u || !u.gorseller) return;
+      var j = i + yon;
+      if (j < 0 || j >= u.gorseller.length) return;
+      var t = u.gorseller[i]; u.gorseller[i] = u.gorseller[j]; u.gorseller[j] = t;
+      log(db, 'portal', 'Ürün görselleri sıralandı', kod);
+    });
   };
 
   /* -------------------------------------------------------- bayi görünürlüğü */
@@ -1176,7 +1282,7 @@
         kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
         renk: s.renk, doku: s.doku, seriUri: s.seriUri,
         gorselUzak: s.gorselUzak, gorselBuyukUzak: s.gorselBuyukUzak,
-        logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, ozellik: s.ozellik,
+        logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, gorseller: [], ozellik: s.ozellik,
         aciklama: s.ozet, gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
       });
     });

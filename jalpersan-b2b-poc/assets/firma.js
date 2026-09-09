@@ -642,17 +642,19 @@
       ]),
       !u.logoAktif ? h('div.note.warn', { text: u.logodaYok ? "Bu kart Logo'da bulunamadı. Portal alanları korunuyor ancak ürün siparişe açılamaz." : "Bu kart Logo'da pasif. Ürün siparişe açılamaz." }) : null,
 
-      h('div.grid.k2', {}, [
-        UI.panel('Logo alanları', h('span.small.muted', { text: 'Salt okunur' }), h('div.stack', {}, [
-          UI.kartela(u, '210px', null, true),
-          h('dl.kv', {}, [
-            h('dt', { text: 'Stok kodu' }), h('dd.mono', { text: u.kod }),
-            h('dt', { text: 'Ad' }), h('dd', { text: u.ad }),
-            h('dt', { text: 'Kategori · seri' }), h('dd', { text: JP.urunKirilim(u) }),
-            h('dt', { text: 'Birim' }), h('dd.mono', { text: u.birim }),
-            h('dt', { text: 'Durum' }), h('dd', {}, u.logodaYok ? UI.rozet("Logo'da yok", 'bad') : (u.logoAktif ? UI.rozet('Aktif', 'ok') : UI.rozet('Pasif', 'warn')))
-          ])
-        ])),
+      h('div.grid.k2.ust', {}, [
+        h('div.stack', {}, [
+          UI.panel('Logo alanları', h('span.small.muted', { text: 'Salt okunur' }), h('div.stack', {}, [
+            h('dl.kv', {}, [
+              h('dt', { text: 'Stok kodu' }), h('dd.mono', { text: u.kod }),
+              h('dt', { text: 'Ad' }), h('dd', { text: u.ad }),
+              h('dt', { text: 'Kategori · seri' }), h('dd', { text: JP.urunKirilim(u) }),
+              h('dt', { text: 'Birim' }), h('dd.mono', { text: u.birim }),
+              h('dt', { text: 'Durum' }), h('dd', {}, u.logodaYok ? UI.rozet("Logo'da yok", 'bad') : (u.logoAktif ? UI.rozet('Aktif', 'ok') : UI.rozet('Pasif', 'warn')))
+            ])
+          ])),
+          gorselPaneli(u)
+        ]),
         UI.panel('Portal alanları', h('span.small.muted', { text: 'Düzenlenebilir' }), h('div.stack', {}, [
           h('label.chk', {}, [acik, h('span', { text: 'Siparişe açık — kapalı ürün bayi kataloğunda görünmez' })]),
           h('div.grid.k2', {}, [
@@ -1106,6 +1108,83 @@
           h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); secBayi = null; kullaniciAc(k.id); } }))
         ]);
       }), 'Bu bayiye henüz kullanıcı tanımlanmadı.'), true);
+  }
+
+  /* ------------------------------------------------------ ürün görselleri
+   * Görsel bir portal ek alanıdır (teknik doküman 3.2): birden fazla görsel ve
+   * sıralama. İlk sıradaki görsel katalogda ve listelerde gösterilir. Portal
+   * görseli yoksa Jalpersan kataloğundan gelen seri görseli kullanılır. */
+  function gorselPaneli(u) {
+    var liste = JP.urunGorselListe(u);
+    var portalVar = (u.gorseller || []).length > 0;
+
+    var dosya = h('input', {
+      type: 'file', accept: 'image/*', style: { display: 'none' },
+      onchange: function (e) {
+        var f = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!f) return;
+        UI.gorselKucult(f, 640, 0.72).then(function (veri) {
+          UI.dene(function () {
+            JP.urunGorselEkle(u.kod, veri, 'yerel');
+            UI.toast('Görsel eklendi', u.kod, 'ok');
+          });
+        }).catch(UI.hata);
+      }
+    });
+
+    function adresKip() {
+      var adres = h('input', { type: 'text', placeholder: 'https://…/gorsel.jpg' });
+      UI.modal({
+        baslik: 'Adres ile görsel ekle', etiket: u.kod,
+        icerik: h('div.stack', {}, [
+          h('label.f', {}, ['Görsel adresi', adres]),
+          h('div.small.muted', { text: 'Dış adresler bazı ortamlarda engellenebilir; kalıcı sonuç için dosya yüklemek daha güvenlidir.' })
+        ]),
+        aksiyonlar: function (kapat) {
+          return [
+            h('button.btn', { text: 'Vazgeç', onclick: kapat }),
+            h('button.btn.primary', { text: 'Ekle',
+              onclick: function () { UI.dene(function () { JP.urunGorselEkle(u.kod, adres.value.trim(), 'adres'); kapat(); UI.toast('Görsel eklendi', u.kod, 'ok'); }); } })
+          ];
+        }
+      });
+    }
+
+    var kartlar = liste.map(function (g, i) {
+      var kutu = h('div.swatch.sw-' + (u.doku || 'diger'), { style: { '--sw': u.renk || '#B9AE99' } });
+      var im = h('img.kartela-foto', {
+        src: g.src, alt: '', decoding: 'async',
+        onerror: function () { im.remove(); UI.tuvaleCiz(kutu, g.src); }   // CSP img-src'yi engellerse tuvale çiz
+      });
+      kutu.appendChild(im);
+      return h('div.gorsel-kart' + (i === 0 && g.portal ? '.ilk' : ''), {}, [
+        h('div.on', {}, [
+          kutu,
+          i === 0 && g.portal ? h('span.rozet', { text: 'Katalogda' }) : null,
+          g.tip === 'adres' ? h('span.rozet.dis', { text: 'Adres' }) : null
+        ]),
+        g.portal ? h('div.arac', {}, [
+          h('button', { text: '←', title: 'Sola al', disabled: i === 0, onclick: function () { UI.dene(function () { JP.urunGorselTasi(u.kod, i, -1); }); } }),
+          h('button', { text: '→', title: 'Sağa al', disabled: i === liste.length - 1, onclick: function () { UI.dene(function () { JP.urunGorselTasi(u.kod, i, 1); }); } }),
+          h('button.sil', { text: 'Sil', onclick: function () { UI.onay('Görseli sil', 'Bu görsel üründen kaldırılacak.', function () { JP.urunGorselSil(u.kod, i); }, true); } })
+        ]) : h('div.arac', {}, h('button', { text: 'Katalog görseli', disabled: true, title: 'Jalpersan kataloğundan gelir' }))
+      ]);
+    });
+
+    if (!kartlar.length) kartlar.push(h('div.gorsel-bos', { text: 'Bu ürün için görsel yok' }));
+
+    return UI.panel('Görseller', h('div.row.tight', {}, [
+      h('span.small.muted', { text: portalVar ? (u.gorseller.length + ' portal görseli') : 'Katalog görseli kullanılıyor' }),
+      h('button.btn.primary.sm', { text: 'Görsel yükle', onclick: function () { dosya.click(); } }),
+      h('button.btn.sm', { text: 'Adres ile ekle', onclick: adresKip })
+    ]), h('div.stack', {}, [
+      dosya,
+      h('div.gorsel-serit', {}, kartlar),
+      h('div.small.muted', { text: portalVar
+        ? 'İlk sıradaki görsel bayi kataloğunda ve listelerde gösterilir. Yüklenen dosyalar tarayıcıda 640 piksele küçültülür.'
+        : 'Henüz portal görseli eklenmedi; Jalpersan kataloğundan gelen seri görseli kullanılıyor. Yüklediğiniz görsel bunun yerine geçer.' })
+    ]));
   }
 
 })();

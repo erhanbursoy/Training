@@ -193,6 +193,7 @@ a { color: var(--accent); }
 
 .grid { display: grid; gap: 14px; }
 .grid.k2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.grid.k2.ust { align-items: start; }
 .grid.k3 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 .grid.k4 { grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); }
 
@@ -665,3 +666,33 @@ button.urun-link:hover .small { color: var(--accent); text-decoration: underline
 .giris-hesap .gh-alt { font-size: 11.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .giris-hesap .spacer { flex: 1 1 auto; }
 .giris-hesap > .small { white-space: nowrap; flex: none; }
+
+/* ---------- ürün görsel yönetimi ---------- */
+.gorsel-serit { display: flex; gap: 10px; flex-wrap: wrap; }
+.gorsel-kart {
+  width: 132px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); overflow: hidden; display: flex; flex-direction: column;
+}
+.gorsel-kart.ilk { border-color: var(--accent); }
+.gorsel-kart .on { position: relative; }
+.gorsel-kart .swatch { height: 84px; aspect-ratio: auto; border: 0; border-radius: 0; }
+.gorsel-kart .rozet {
+  position: absolute; left: 5px; top: 5px; background: var(--accent); color: #fff;
+  font-family: var(--font-display); font-size: 9.5px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px;
+}
+.gorsel-kart .rozet.dis { background: var(--info); }
+.gorsel-kart .arac { display: flex; border-top: 1px solid var(--line); }
+.gorsel-kart .arac button {
+  flex: 1 1 0; border: 0; background: var(--surface); color: var(--text-2);
+  font: inherit; font-size: 12px; padding: 5px 0; cursor: pointer;
+}
+.gorsel-kart .arac button + button { border-left: 1px solid var(--line); }
+.gorsel-kart .arac button:hover:not(:disabled) { background: var(--sunk); color: var(--text); }
+.gorsel-kart .arac button:disabled { opacity: .35; cursor: not-allowed; }
+.gorsel-kart .arac button.sil:hover { background: var(--bad-soft); color: var(--bad); }
+.gorsel-bos {
+  width: 132px; height: 116px; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 8px; border: 1px dashed var(--line-2); border-radius: var(--radius-sm);
+  color: var(--text-3); font-size: 11.5px;
+}

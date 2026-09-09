@@ -82,9 +82,9 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   siparişe dönüştürme detayın içinde. Sipariş ekranında **Logo'dan sorgula** düğmesi
   açık siparişlerin fiş ve fatura durumunu okur.
 - **Ürünler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekrandır: solda
-  salt okunur Logo alanları, sağda düzenlenebilir portal alanları (siparişe açıklık,
-  bayiye gösterilen birim, katalog sırası, teknik özellik, açıklama). Altta o üründe
-  sevk bekleyen bayiler listelenir.
+  salt okunur Logo alanları ve altında **Görseller**, sağda düzenlenebilir portal
+  alanları (siparişe açıklık, bayiye gösterilen birim, katalog sırası, teknik özellik,
+  açıklama). Altta o üründe sevk bekleyen bayiler listelenir.
 - **Bayiler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekran, üç sekme:
   Bilgiler (Logo alanları salt okunur; siparişe açıklık, teslimat notu ve katalog
   kısıtı düzenlenebilir), Talepler ve Siparişler geçmişi.
@@ -130,6 +130,10 @@ Katalog **jalpersan.com/urunler** adresinden derlenmiştir: 11 kategori, 178 ser
 `LG_XXX_ITEMS` sorgusu alır. Yeniden derlemek gerekirse veri kategori sayfalarının JSON çıktısından
 üretilir.
 
+Model kodları Türkçe harfler çevrilerek üretilir (`Şehir` → `SEHIR`, `Küçük Köy` → `KUCUK-KOY`).
+Aynı model adı farklı koleksiyonlarda geçebildiği için — iki ayrı *Şehir* deseni gibi — stok kodu
+üretimi çakışmaya sıra eki verir (`SEHIR`, `SEHIR-2`); Logo'da stok kodu tekildir.
+
 Ürün fotoğrafları (178 seri görseli) `assets/gorseller.js` içinde kaynak çözünürlükte
 (448 piksel) gömülüdür — toplam 3,1 MB. Böylece katalog hiç ağ isteği yapmadan,
 çevrimdışı ve dış görsele izin vermeyen ortamlarda da eksiksiz görünür.
@@ -144,6 +148,28 @@ kurala takılmaz. İkisi de olmazsa altındaki dokuma deseni kalır.
 
 Görselleri yenilemek için seri sayfalarının kapak görselleri şu kalıptan indirilir:
 `https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_m.jpeg?v1`
+
+### Ürün görsellerini yönetme
+
+Teknik dokümanda görsel bir **portal alanıdır** (3.2): kartela ve ürün fotoğrafı, birden
+fazla görsel, sıralama. Firma panelinde ürün detayının **Görseller** bölümünden yönetilir:
+
+- **Görsel yükle** · dosya seçilir, tarayıcıda en fazla 640 piksele küçültülüp JPEG'e
+  çevrilir. Sunucuya bir şey gitmez.
+- **Adres ile ekle** · dış bir görsel adresi (`https://…`) bağlanır. Bazı ortamlar dış
+  adresleri engellediği için kalıcı sonuç isteyen kurulumda dosya yüklemek daha güvenlidir.
+- **← / →** ile sıralanır; **ilk sıradaki görsel** bayi kataloğunda ve listelerde görünen
+  görseldir, üzerinde *Katalogda* rozeti taşır. **Sil** üründen kaldırır.
+- Portal görseli yoksa jalpersan.com kataloğundan gelen seri görseli kullanılır; bu kart
+  salt okunurdur. Yüklenen ilk görsel onun yerine geçer.
+
+Görsel baytları veritabanında **tutulmaz**. Ürün kaydı yalnızca referans taşır
+(`{ tip: 'yerel', id }` ya da `{ tip: 'adres', v }`), baytlar ayrı bir depo anahtarında
+(`jalpersan.poc.v7.g`) durur. Görseller kayıtların içine kopyalandığında veritabanı
+megabaytlara çıkıp tarayıcı kotasını aşıyor ve hiçbir yazma kalıcı olmuyordu.
+
+Yükleme, çözümlemeyi `createImageBitmap` ile yapar: dosya Blob olarak okunur, kaynak
+yüklemesi sayılmadığı için katı içerik güvenlik kuralı olan ortamlarda da çalışır.
 
 ## Tasarım
 
@@ -191,7 +217,7 @@ index.html          giriş — üç rol kartı ve demo senaryosu
 bayi.html           bayi portalı
 firma.html          firma paneli (muhasebe / yönetim)
 logo.html           Logo ERP simülatörü
-assets/style.css    ortak tasarım sistemi (açık/koyu tema; Logo koyu dünya)
+assets/style.css    ortak tasarım sistemi (açık tema; Logo simülatörü koyu)
 assets/core.js      veri modeli, havuz hareket defteri, iş kuralları, Logo simülatörü
 assets/ui.js        kabuk, tablo, kip, bildirim yardımcıları
 assets/bayi.js      bayi ekranları
@@ -209,9 +235,10 @@ yatay kayar ve ürün ağacı kısa bir kaydırılır kutuya iner. Sayfanın ken
 genişlikte yatay kaymaz.
 
 Veri yalnızca tarayıcının `localStorage` alanında tutulur; sunucuya hiçbir şey gönderilmez.
-Görsel baytları veritabanına değil `JP.GORSEL` haritasına yazılır; ürün kaydı yalnızca
-seri anahtarını taşır. Aksi halde veritabanı tarayıcı kotasını aşar ve hiçbir değişiklik
-kaydedilmez.
+Görsel baytları veritabanına yazılmaz: katalog görselleri `JP.GORSEL` haritasından gelir,
+yüklenen portal görselleri ayrı bir depo anahtarında (`jalpersan.poc.v7.g`) durur; ürün
+kaydı yalnızca anahtar taşır. Aksi halde veritabanı tarayıcı kotasını aşar ve hiçbir
+değişiklik kaydedilmez.
 Sekmeler `BroadcastChannel` ve `storage` olayıyla senkronlanır.
 
 Tek dosya sürümünü yeniden üretmek için: `node build.mjs`

@@ -193,15 +193,18 @@
     }).catch(function () {});
   }
 
+  /* Artifact gibi katı CSP'li ortamlarda img-src data: taşımaz; baytları
+     tuvale çizmek kaynak yüklemesi saymadığı için görsel yine de görünür. */
+  UI.tuvaleCiz = tuvaleCiz;
+
   UI.kartela = function (urun, yukseklik, genislik, buyuk) {
     var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
     if (genislik) { st.width = genislik; st.flex = 'none'; }
     var el = h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
-    // Görsel baytları veritabanında değil JP.GORSEL'de durur; kayıt yalnızca seri
-    // anahtarını taşır. Aksi halde veritabanı tarayıcı kotasını aşıyordu.
-    var gomulu = (JP.GORSEL || {})[urun.seriUri] || null;
-    var src = buyuk ? (urun.gorselBuyukUzak || gomulu) : (gomulu || urun.gorselUzak);
-    var yedek = gomulu;
+    // Görsel baytları veritabanında değil ayrı depoda durur; kayıt yalnızca
+    // referans taşır. Aksi halde veritabanı tarayıcı kotasını aşıyordu.
+    var secim = JP.urunGorselSrc ? JP.urunGorselSrc(urun, buyuk) : { src: null, yedek: null };
+    var src = secim.src, yedek = secim.yedek;
     if (src) {
       var im = h('img.kartela-foto', {
         src: src, alt: '', loading: 'lazy', decoding: 'async',
@@ -214,6 +217,51 @@
       el.appendChild(im);
     }
     return el;
+  };
+
+  /** Seçilen dosyayı tarayıcıda küçültüp JPEG veri URI'sine çevirir.
+      Depolama kotasını korumak için uzun kenar sınırlanır. */
+  /* Yüklenen dosyayı tarayıcıda küçültüp JPEG data URI'ye çevirir.
+     Çözümleme createImageBitmap ile yapılır: Blob'u doğrudan okur, kaynak
+     yüklemesi saymadığı için katı CSP'li ortamlarda da (artifact) çalışır.
+     Eski tarayıcılar için <img> yolu yedekte tutulur. */
+  UI.gorselKucult = function (dosya, enFazla, kalite) {
+    enFazla = enFazla || 640; kalite = kalite || 0.72;
+
+    function cizVeVer(kaynak, en, boy, coz, red) {
+      var o = Math.min(1, enFazla / Math.max(en, boy));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(en * o)); c.height = Math.max(1, Math.round(boy * o));
+      c.getContext('2d').drawImage(kaynak, 0, 0, c.width, c.height);
+      try { coz(c.toDataURL('image/jpeg', kalite)); }
+      catch (e) { red(new Error('Görsel dönüştürülemedi.')); }
+    }
+
+    return new Promise(function (coz, red) {
+      if (!dosya || !/^image\//.test(dosya.type)) return red(new Error('Yalnızca görsel dosyası yükleyebilirsiniz.'));
+      if (dosya.size > 12 * 1024 * 1024) return red(new Error('Dosya çok büyük (en fazla 12 MB).'));
+
+      if (typeof createImageBitmap === 'function') {
+        createImageBitmap(dosya).then(function (bm) {
+          cizVeVer(bm, bm.width, bm.height, coz, red);
+          if (bm.close) bm.close();
+        }).catch(function () { imYolu(); });
+        return;
+      }
+      imYolu();
+
+      function imYolu() {
+        var fr = new FileReader();
+        fr.onerror = function () { red(new Error('Dosya okunamadı.')); };
+        fr.onload = function () {
+          var im = new Image();
+          im.onerror = function () { red(new Error('Görsel çözümlenemedi.')); };
+          im.onload = function () { cizVeVer(im, im.width, im.height, coz, red); };
+          im.src = fr.result;
+        };
+        fr.readAsDataURL(dosya);
+      }
+    });
   };
 
   /* ------------------------------------------------------------------ tablo */
