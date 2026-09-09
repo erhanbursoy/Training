@@ -126,7 +126,9 @@
             ad: model + ' ' + g.kisa,
             grup: g.ad, grupKisa: g.kisa, seri: se.ad, seriUri: se.uri,
             birim: g.birim, ozellik: g.ozellik, ozet: g.ozet,
-            gorsel: kat.cdn + se.g, gorselBuyuk: kat.cdn + se.b,
+            gorsel: (JP.GORSEL || {})[se.uri] || (kat.cdn + se.g),
+            gorselBuyuk: kat.cdn + se.b,
+            gorselYedek: (JP.GORSEL || {})[se.uri] || null,
             renk: kartelaRengi(model), doku: DOKU[g.ad] || 'diger',
             aktif: true, sira: sira++
           });
@@ -247,7 +249,7 @@
         if (!p) {
           db.urunler.push({
             kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
-            renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk,
+            renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk, gorselYedek: s.gorselYedek,
             logoAktif: s.aktif, logodaYok: false,
             siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: s.ozet || aciklamaOf(s.grup),
             gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
@@ -256,7 +258,8 @@
         } else {
           if (p.ad !== s.ad || p.logoAktif !== s.aktif || p.grup !== s.grup) guncel++;
           p.ad = s.ad; p.grup = s.grup; p.grupKisa = s.grupKisa; p.seri = s.seri; p.birim = s.birim;
-          p.renk = s.renk; p.doku = s.doku; p.gorsel = s.gorsel; p.gorselBuyuk = s.gorselBuyuk;
+          p.renk = s.renk; p.doku = s.doku; p.gorsel = s.gorsel;
+          p.gorselBuyuk = s.gorselBuyuk; p.gorselYedek = s.gorselYedek;
           p.logoAktif = s.aktif; p.logodaYok = false;                 // portal ek alanları korunur
         }
       });
@@ -1002,7 +1005,7 @@
     db.logo.stok.forEach(function (s) {
       db.urunler.push({
         kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
-        renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk,
+        renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk, gorselYedek: s.gorselYedek,
         logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, ozellik: s.ozellik,
         aciklama: s.ozet, gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
       });

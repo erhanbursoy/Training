@@ -261,7 +261,7 @@
       h('div.eyebrow', { text: 'Ürün ağacı' }),
       kok,
       h('div.yan-alt', {}, [
-        h('div.small.muted', { text: 'Kırılım Logo stok kodundan türetilir: grup → seri → renk varyantı.' })
+        h('div.small.muted', { text: 'Kırılım Logo ürün ağacından gelir: kategori → seri → model.' })
       ])
     ];
   }

@@ -7,11 +7,11 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const oku = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
 const css = oku('assets/style.css');
-const js = ['katalog', 'core', 'ui', 'bayi', 'firma', 'logo'].map((f) => oku(`assets/${f}.js`)).join('\n');
+const js = ['katalog', 'gorseller', 'core', 'ui', 'bayi', 'firma', 'logo'].map((f) => oku(`assets/${f}.js`)).join('\n');
 
 const index = oku('index.html');
 const indexCss = index.match(/<style>([\s\S]*?)<\/style>/)[1];
-const girisHtml = index.match(/<div class="wrap">([\s\S]*?)<\/div>\s*<script src="assets\/(?:katalog|core)\.js">/)[1];
+const girisHtml = index.match(/<div class="wrap">([\s\S]*?)<\/div>\s*<script src="assets\/(?:katalog|gorseller|core)\.js">/)[1];
 
 const FONTS =
   '<link rel="preconnect" href="https://fonts.googleapis.com">' +

@@ -181,10 +181,14 @@
     if (genislik) { st.width = genislik; st.flex = 'none'; }
     var el = h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
     var src = buyuk ? (urun.gorselBuyuk || urun.gorsel) : urun.gorsel;
+    var yedek = buyuk ? (urun.gorselYedek || urun.gorsel) : urun.gorselYedek;
     if (src) {
       var im = h('img.kartela-foto', {
         src: src, alt: '', loading: 'lazy', decoding: 'async',
-        onerror: function () { im.remove(); }
+        onerror: function () {
+          if (yedek && im.getAttribute('src') !== yedek) { im.setAttribute('src', yedek); return; }
+          im.remove();                       // yedek de yoksa dokuma deseni kalır
+        }
       });
       el.appendChild(im);
     }

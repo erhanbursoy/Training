@@ -78,15 +78,15 @@ Katalog **jalpersan.com/urunler** adresinden derlenmiştir: 11 kategori, 178 ser
 `LG_XXX_ITEMS` sorgusu alır. Yeniden derlemek gerekirse veri kategori sayfalarının JSON çıktısından
 üretilir.
 
-Ürün fotoğrafları jalpersan.com üzerinden çağrılır, kopyalanmaz:
+Ürün fotoğrafları (178 seri görseli) `assets/gorseller.js` içinde kaynak çözünürlükte
+(448 piksel) gömülüdür — toplam 3,1 MB. Böylece katalog hiç ağ isteği yapmadan,
+çevrimdışı ve dış görsele izin vermeyen ortamlarda da eksiksiz görünür.
 
-```
-https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_m.jpeg?v1   (liste ve kart)
-https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_xl.jpeg?v1  (ürün detayı)
-```
+Ürün detayında önce jalpersan.com'daki büyük görsel (`_xl`, 1279 piksel) denenir;
+ulaşılamazsa gömülü görsele, o da yoksa dokuma desenine düşülür.
 
-Görsele ulaşılamazsa fotoğraf sessizce düşer ve altındaki dokuma deseni kalır. Bu, çevrimdışı açılan
-tek dosya sürümünde ve dış görsele izin vermeyen ortamlarda kataloğun boş görünmesini önler.
+Görselleri yenilemek için seri sayfalarının kapak görselleri şu kalıptan indirilir:
+`https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_m.jpeg?v1`
 
 ## Tasarım
 
