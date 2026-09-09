@@ -938,7 +938,6 @@
     tabloCiz();
 
     return h('div.stack', {}, [
-      h('div.note', { html: '<b>Kayıt formu yoktur.</b> Bayi kullanıcıları yalnızca bu ekrandan tanımlanır; hesap açılınca e-posta adresine davet bağlantısı gider ve kullanıcı yalnızca bağlı olduğu bayinin talep ve siparişlerini görür.' }),
       h('div.filtre', {}, [
         h('label.f.filtre-alan', {}, ['Ara', h('input.filtre-ara', {
           type: 'text', value: fKullanici.ara, placeholder: 'Ad, e-posta veya bayi ara…',
@@ -1106,7 +1105,7 @@
           h('td.small.muted.nowrap', { text: k.sonGiris ? JP.fmt.tarih(k.sonGiris) : '—' }),
           h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); secBayi = null; kullaniciAc(k.id); } }))
         ]);
-      }), 'Bu bayiye henüz kullanıcı tanımlanmadı. Kayıt formu olmadığı için hesabı buradan açmanız gerekir.'), true);
+      }), 'Bu bayiye henüz kullanıcı tanımlanmadı.'), true);
   }
 
 })();
