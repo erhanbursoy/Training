@@ -34,7 +34,8 @@ böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön**
 Standart web uygulaması düzeni: üstte **Dashboard**, **Ürün kataloğu**, **Taleplerim**;
 sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
 
-- **Dashboard** · dört bakiye, son talepler, havuz dağılımı ve hareket dökümü.
+- **Dashboard** · yalnızca iki şey: kaç talep açık ve açık taleplerde hangi üründen ne kadar
+  temin bekliyor. Talep numarasına tıklayınca o talebin detayı açılır.
 - **Ürün kataloğu** · e-ticaret kartları (küçük kartela görseli, stok kodu, teknik özellik, adet sayacı, sepete ekle).
   Sol yan panel **ürün ağacıdır**: grup → seri → renk varyantı. Kırılım Logo stok kodundan türetilir
   (`ZEB-1200-KREM` → Zebra / 1200 serisi / Krem).
@@ -42,6 +43,21 @@ sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil 
   Talep ancak sepet onaylandığında oluşur; o anda `dTalep` hareketleri yazılır.
 - Ürün kartına tıklayınca detay penceresi açılır: büyük kartela, teknik özellik ve uzun açıklama.
   Bu iki alan firma panelindeki ürün listesinden düzenlenir.
+- **Taleplerim** · liste (tarih, talep no, durum) ve talep detayı. Detayda üç görünüm var:
+  **Ürünler** (kalem bazında talep edilen / sipariş oluşturulan / tahsis edilen / temin bekleyen),
+  **İşlemler** (talepten doğan siparişler ve faturalar) ve **Hareketler** (havuz hareket defteri).
+
+### Kalem sayılarının anlamı
+
+| Sütun | Nasıl hesaplanır |
+| --- | --- |
+| Talep edilen | Σ `dTalep` |
+| Sipariş oluşturulan | Σ `dRezerv`, faturayla çözülen rezerv hariç — kümülatif, faturalanınca sıfırlanmaz |
+| Tahsis edilen | Σ `dFatura` |
+| Temin bekleyen | Talep edilen − açık rezerv − tahsis edilen |
+
+Sipariş oluşturulan kümülatif tutulur; aksi halde fatura kesildiğinde rezerv çözüldüğü için
+sayı sıfıra düşer ve bayi siparişinin oluştuğunu göremezdi.
 
 ## Havuz mantığı
 

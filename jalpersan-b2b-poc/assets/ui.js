@@ -172,11 +172,10 @@
   };
 
   /* ------------------------------------------------------------- kumaş kartı */
-  UI.kartela = function (urun, yukseklik) {
-    return h('div.swatch.sw-' + (urun.doku || 'diger'), {
-      style: { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' },
-      'aria-hidden': 'true'
-    });
+  UI.kartela = function (urun, yukseklik, genislik) {
+    var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
+    if (genislik) { st.width = genislik; st.flex = 'none'; }
+    return h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
   };
 
   /* ------------------------------------------------------------------ tablo */

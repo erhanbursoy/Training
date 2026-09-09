@@ -527,3 +527,7 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
   .ust-gez { margin-left: 0; }
   .topbar.ust-menu { height: auto; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* talep numarası çipi (dashboard'da tıklanabilir) */
+button.tag { font: inherit; font-family: var(--font-mono); font-size: 11px; cursor: pointer; background: var(--surface); }
+button.tag:hover { border-color: var(--accent); color: var(--accent-2); }

@@ -32,13 +32,13 @@
       ustMenu: true, ustSag: ustSag,
       bolumler: [
         { id: 'dashboard', ad: 'Dashboard', baslik: 'Dashboard',
-          aciklama: 'Talep havuzunuzun dört bakiyesi, açık talepleriniz ve hareket dökümü.',
+          aciklama: 'Kaç talebiniz açık ve açık taleplerde hangi üründen ne kadar temin bekliyor.',
           ciz: dashboard },
         { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu',
           aciklama: 'Ürünleri sepete ekleyin; sepeti onayladığınızda satın alma talebi oluşur. Fiyat ve stok gösterilmez.',
           ciz: katalog, yan: agacPaneli, yanBaslik: 'Ürün ağacı' },
         { id: 'talepler', ad: 'Taleplerim', baslik: 'Satın alma taleplerim',
-          aciklama: 'Her kalemin talep, siparişe dönen, faturalanan ve kalan miktarı.',
+          aciklama: 'Talep listesi; bir talebe girince ürünler, işlemler ve hareketler ayrı ayrı görünür.',
           ciz: talepler,
           sayi: function () { var b = aktifBayi(); return b ? JP.db.talepler.filter(function (t) { return t.bayiKod === b.kod; }).length : 0; } },
         { id: 'sepet', gizli: true, ad: 'Sepetim', baslik: 'Sepetim',
@@ -144,18 +144,42 @@
   }
 
   /* ------------------------------------------------------------- dashboard */
+  /* Yalnızca iki şey: kaç talep açık ve açık taleplerde hangi üründen
+     ne kadar temin bekliyor. */
+  function acikTalepler(bayiKod) {
+    return JP.db.talepler.filter(function (t) {
+      if (t.bayiKod !== bayiKod) return false;
+      var d = JP.talepDurumu(t);
+      return d === 'Açık' || d === 'Kısmen Karşılandı';
+    });
+  }
+
+  function beklenenUrunler(bayiKod) {
+    var kutu = {};
+    acikTalepler(bayiKod).forEach(function (t) {
+      JP.talepKalemDurum(t).forEach(function (k) {
+        if (k.acik <= 0.001 && k.rezerv <= 0.001) return;
+        var r = (kutu[k.kalem.urunKod] = kutu[k.kalem.urunKod] || {
+          urun: k.urun, kod: k.kalem.urunKod, bekleyen: 0, siparieste: 0, talepler: [], enEski: t.tarih
+        });
+        r.bekleyen += k.acik;
+        r.siparieste += k.rezerv;
+        if (r.talepler.indexOf(t.no) < 0) r.talepler.push(t.no);
+        if (t.tarih < r.enEski) r.enEski = t.tarih;
+      });
+    });
+    return Object.keys(kutu).map(function (x) { return kutu[x]; })
+      .sort(function (a, b) { return (b.bekleyen + b.siparieste) - (a.bekleyen + a.siparieste); });
+  }
+
   function dashboard() {
-    var db = JP.db, bayi = aktifBayi();
+    var bayi = aktifBayi();
     if (!bayi) return h('div.note.warn', { html: '<b>Bayi kartı yok.</b> Firma panelinden “Bayileri Logo’dan al” işlemini çalıştırın.' });
 
-    var satirlar = JP.havuzOzet({ bayiKod: bayi.kod });
-    var top = satirlar.reduce(function (t, r) {
-      t.talep += r.talep; t.rezerv += r.rezerv; t.fatura += r.fatura; t.acik += r.acik; return t;
-    }, { talep: 0, rezerv: 0, fatura: 0, acik: 0 });
-    var hs = db.havuz.filter(function (x) { return x.bayiKod === bayi.kod; })
-      .sort(function (a, b) { return b.ts.localeCompare(a.ts); });
-    var talepler = db.talepler.filter(function (t) { return t.bayiKod === bayi.kod; });
-    var yasli = satirlar.filter(function (r) { return r.acik > 0 && r.yas > 30; });
+    var acik = acikTalepler(bayi.kod);
+    var urunler = beklenenUrunler(bayi.kod);
+    var toplamBekleyen = urunler.reduce(function (t, r) { return t + r.bekleyen; }, 0);
+    var toplamSiparieste = urunler.reduce(function (t, r) { return t + r.siparieste; }, 0);
     var sepetAdet = JP.sepetSayisi(bayi.kod);
 
     return h('div.stack', {}, [
@@ -164,64 +188,40 @@
         h('span', { text: 'Onaylamadan talep oluşmaz. ' }),
         h('button.btn.sm', { text: 'Sepete git', onclick: function () { kabuk.git('sepet'); } })
       ]) : null,
-      yasli.length ? h('div.note.warn', {
-        html: '<b>' + yasli.length + ' üründe 30 günü aşan açık talep var.</b> Muhasebe henüz siparişe dönüştürmedi.'
-      }) : null,
 
-      h('div.grid.k4', {}, [
-        UI.kpi('Toplam talep', JP.fmt.miktar(top.talep), 'birim'),
-        UI.kpi('Siparişte', JP.fmt.miktar(top.rezerv), 'birim', 'Rezerve edildi'),
-        UI.kpi('Faturalanan', JP.fmt.miktar(top.fatura), 'birim', 'Süreci kapanan'),
-        UI.kpi('Açık', JP.fmt.miktar(top.acik), 'birim', 'Siparişe dönmeyi bekleyen', true)
+      h('div.grid.k3', {}, [
+        UI.kpi('Açık talep', String(acik.length), acik.length === 1 ? 'talep' : 'talep',
+          acik.length ? 'Tamamı karşılanmamış talepleriniz' : 'Bekleyen talebiniz yok', true),
+        UI.kpi('Temin bekleyen', JP.fmt.miktar(toplamBekleyen), 'birim', 'Henüz siparişe dönmedi'),
+        UI.kpi('Siparişi oluşturuldu', JP.fmt.miktar(toplamSiparieste), 'birim', 'Faturalanmayı bekliyor')
       ]),
 
-      h('div.grid.k2', {}, [
-        UI.panel('Son taleplerim', h('button.btn.ghost.sm', { text: 'Tümü', onclick: function () { kabuk.git('talepler'); } }),
-          talepler.length
-            ? UI.tablo(['Talep', 'Tarih', 'Durum', { t: 'Kalem', num: true }], talepler.slice(0, 6).map(function (t) {
-                return h('tr', {}, [
-                  h('td.mono.small', { text: t.no }),
-                  h('td.small.muted', { text: JP.fmt.tarih(t.tarih) }),
-                  h('td', {}, UI.rozet(JP.talepDurumu(t))),
-                  h('td.num.mono', { text: String(t.kalemler.length) })
-                ]);
-              }))
-            : h('div.stack', {}, [
-                h('div.empty', { text: 'Henüz talebiniz yok.' }),
-                h('div.row', {}, [h('div.spacer'), h('button.btn.primary', { text: 'Ürün kataloğuna git', onclick: function () { kabuk.git('katalog'); } }), h('div.spacer')])
-              ]), true),
-        UI.panel('Havuz dağılımı', UI.bantAciklama(),
-          satirlar.length
-            ? h('div.stack', { style: { gap: '10px' } }, satirlar.slice(0, 6).map(function (r) {
-                var u = JP.db.urunler.find(function (x) { return x.kod === r.urunKod; }) || { ad: r.urunKod };
-                return h('div', {}, [
-                  h('div.row', { style: { justifyContent: 'space-between' } }, [
-                    h('span.small', { text: u.ad }),
-                    h('span.small.mono.muted', { text: JP.fmt.miktar(r.acik) + ' açık' })
-                  ]),
-                  UI.bant(r)
-                ]);
-              }))
-            : h('div.empty', { text: 'Havuzda hareket yok.' }))
-      ]),
-
-      UI.panel('Ürün bazında bakiye', h('span.small.muted', { text: satirlar.length + ' ürün' }),
-        UI.tablo(['Ürün', { t: 'Talep', num: true }, { t: 'Siparişte', num: true }, { t: 'Faturalanan', num: true }, { t: 'Açık', num: true }, 'Dağılım', { t: 'Yaş', num: true }],
-          satirlar.map(function (r) {
-            var u = JP.db.urunler.find(function (x) { return x.kod === r.urunKod; }) || { ad: r.urunKod };
+      UI.panel('Açık taleplerde temin bekleyen ürünler',
+        h('div.row.tight', {}, [
+          h('span.small.muted', { text: urunler.length + ' ürün' }),
+          h('button.btn.ghost.sm', { text: 'Taleplerim', onclick: function () { kabuk.git('talepler'); } })
+        ]),
+        UI.tablo(['Ürün', { t: 'Temin bekleyen', num: true }, { t: 'Siparişi oluşturuldu', num: true }, 'Talepler', { t: 'En eski', num: true }],
+          urunler.map(function (r) {
             return h('tr', {}, [
-              h('td', {}, [h('div', { text: u.ad }), h('div.pc.mono', { text: r.urunKod })]),
-              h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.rezerv) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.fatura) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.acik) }),
-              h('td', { style: { width: '150px' } }, UI.bant(r)),
-              h('td.num.small.muted', { text: r.yas + ' g' })
+              h('td', {}, [
+                h('div.row.tight', {}, [UI.kartela(r.urun, '26px', '40px'), h('div', {}, [
+                  h('div', { text: r.urun.ad }),
+                  h('div.pc.mono', { text: r.kod })
+                ])])
+              ]),
+              h('td.num.mono', { text: JP.fmt.miktar(r.bekleyen) + ' ' + r.urun.birim,
+                style: { color: r.bekleyen > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } }),
+              h('td.num.mono', { text: JP.fmt.miktar(r.siparieste) }),
+              h('td.small.muted', {}, h('div.row.tight', {}, r.talepler.map(function (no) {
+                return h('button.tag', {
+                  style: { cursor: 'pointer' }, text: no,
+                  onclick: function () { talepAc(no); }
+                });
+              }))),
+              h('td.num.small.muted', { text: JP.gunFark(r.enEski) + ' g' })
             ]);
-          }), 'Havuzda hareket yok.'), true),
-
-      UI.panel('Hareket dökümü', h('span.small.muted', { text: hs.length + ' hareket · bakiye bu hareketlerden hesaplanır' }),
-        hareketTablosu(hs.slice(0, 40)), true)
+          }), 'Açık talebiniz yok. Ürün kataloğundan sepete ekleyip talep oluşturabilirsiniz.'), true)
     ]);
   }
 
@@ -509,9 +509,21 @@
   }
 
   /* ------------------------------------------------------------ taleplerim */
+  var secilen = null;                 // açık talep detayı (talep no)
+  var detayGorunum = 'urunler';       // urunler | islemler | hareketler
+
+  function talepAc(no) { secilen = no; detayGorunum = 'urunler'; kabuk.git('talepler'); }
+
   function talepler() {
     var db = JP.db, bayi = aktifBayi();
     if (!bayi) return h('div.empty', { text: 'Bayi seçilmedi.' });
+
+    if (secilen) {
+      var t = db.talepler.find(function (x) { return x.no === secilen && x.bayiKod === bayi.kod; });
+      if (t) return talepDetay(t);
+      secilen = null;
+    }
+
     var liste = db.talepler.filter(function (t) { return t.bayiKod === bayi.kod; });
     if (!liste.length) {
       return h('div.stack', {}, [
@@ -520,34 +532,128 @@
       ]);
     }
 
-    return h('div.stack', {}, liste.map(function (t) {
-      var kalemler = JP.talepKalemDurum(t);
-      return UI.panel(null, null, h('div.stack', {}, [
+    return UI.panel('Talep listesi', h('span.small.muted', { text: liste.length + ' talep' }),
+      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, { t: 'Temin bekleyen', num: true }, ''],
+        liste.map(function (t) {
+          var kalemler = JP.talepKalemDurum(t);
+          var bekleyen = kalemler.reduce(function (a, k) { return a + k.acik; }, 0);
+          return h('tr', { style: { cursor: 'pointer' }, onclick: function () { talepAc(t.no); } }, [
+            h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
+            h('td.mono', { text: t.no, style: { fontWeight: '600' } }),
+            h('td', {}, UI.rozet(JP.talepDurumu(t))),
+            h('td.num.mono', { text: String(t.kalemler.length) }),
+            h('td.num.mono', { text: JP.fmt.miktar(bekleyen), style: { color: bekleyen > 0 ? 'var(--warn)' : 'var(--text-3)' } }),
+            h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); talepAc(t.no); } }))
+          ]);
+        })), true);
+  }
+
+  function talepDetay(t) {
+    var kalemler = JP.talepKalemDurum(t);
+    var islem = JP.talepIslemleri(t.no);
+    var toplam = kalemler.reduce(function (a, k) {
+      a.talep += k.talep; a.siparis += k.siparis; a.fatura += k.fatura; a.acik += k.acik; return a;
+    }, { talep: 0, siparis: 0, fatura: 0, acik: 0 });
+
+    var govde = h('div.stack');
+    function govdeCiz() {
+      govde.textContent = '';
+      if (detayGorunum === 'urunler') govde.appendChild(detayUrunler(t, kalemler));
+      else if (detayGorunum === 'islemler') govde.appendChild(detayIslemler(t, islem));
+      else govde.appendChild(detayHareketler(t));
+    }
+    govdeCiz();
+
+    return h('div.stack', {}, [
+      h('div.row', {}, [
+        h('button.btn.ghost.sm', { text: '← Talep listesi', onclick: function () { secilen = null; kabuk.ciz(); } }),
+        h('div.spacer')
+      ]),
+      UI.panel(null, null, h('div.stack', {}, [
         h('div.row', {}, [
-          h('span.mono', { text: t.no, style: { fontWeight: '600' } }),
+          h('h2.mono', { text: t.no }),
           UI.rozet(JP.talepDurumu(t)),
           h('span.small.muted', { text: JP.fmt.tarih(t.tarih) + ' · ' + JP.gunFark(t.tarih) + ' gün önce' }),
-          t.teslimTarihi ? h('span.tag', { text: 'Teslim ' + JP.fmt.tarih(t.teslimTarihi) }) : null,
-          h('div.spacer'),
-          h('button.btn.ghost.sm', { text: 'Hareketler', onclick: function () { hareketKip(t.no); } })
+          t.teslimTarihi ? h('span.tag', { text: 'İstenen teslim ' + JP.fmt.tarih(t.teslimTarihi) }) : null
         ]),
         t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null,
-        UI.tablo(['Ürün', { t: 'Talep', num: true }, { t: 'Siparişte', num: true }, { t: 'Faturalanan', num: true }, { t: 'Kalan', num: true }, 'Dağılım', ''],
-          kalemler.map(function (k) {
+        h('div.grid.k4', {}, [
+          UI.kpi('Talep edilen', JP.fmt.miktar(toplam.talep), 'birim'),
+          UI.kpi('Sipariş oluşturulan', JP.fmt.miktar(toplam.siparis), 'birim'),
+          UI.kpi('Tahsis edilen', JP.fmt.miktar(toplam.fatura), 'birim'),
+          UI.kpi('Temin bekleyen', JP.fmt.miktar(toplam.acik), 'birim', null, true)
+        ])
+      ])),
+      h('div.seg', {}, [
+        ['urunler', 'Ürünler (' + t.kalemler.length + ')'],
+        ['islemler', 'İşlemler (' + (islem.siparisler.length + islem.faturalar.length) + ')'],
+        ['hareketler', 'Hareketler']
+      ].map(function (o) {
+        return h('button', {
+          'aria-pressed': String(detayGorunum === o[0]), text: o[1],
+          onclick: function () { detayGorunum = o[0]; kabuk.ciz(); }
+        });
+      })),
+      govde
+    ]);
+  }
+
+  function detayUrunler(t, kalemler) {
+    return UI.panel('Talep kalemleri', UI.bantAciklama(),
+      UI.tablo(['Ürün', { t: 'Talep edilen', num: true }, { t: 'Sipariş oluşturulan', num: true }, { t: 'Tahsis edilen', num: true }, { t: 'Temin bekleyen', num: true }, 'Dağılım', ''],
+        kalemler.map(function (k) {
+          return h('tr', {}, [
+            h('td', {}, h('div.row.tight', {}, [UI.kartela(k.urun, '26px', '40px'), h('div', {}, [
+              h('div', { text: k.urun.ad }),
+              h('div.pc.mono', { text: k.kalem.urunKod + ' · ' + k.urun.birim })
+            ])])),
+            h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
+            h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
+            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
+            h('td.num.mono', { text: JP.fmt.miktar(k.acik), style: { color: k.acik > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } }),
+            h('td', { style: { width: '150px' } }, UI.bant(k)),
+            h('td.right', {}, k.acik > 0.001
+              ? h('button.btn.ghost.sm', { text: 'Azalt / iptal', onclick: function () { azaltKip(t, k); } })
+              : h('span.small.muted', { text: '—' }))
+          ]);
+        })), true);
+  }
+
+  function detayIslemler(t, islem) {
+    return h('div.stack', {}, [
+      UI.panel('Oluşturulan siparişler', h('span.small.muted', { text: 'Siparişi muhasebe oluşturur' }),
+        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Miktar', num: true }, { t: 'Faturalanan', num: true }],
+          islem.siparisler.map(function (s) {
             return h('tr', {}, [
-              h('td', {}, [h('div', { text: k.urun.ad }), h('div.pc.mono', { text: k.kalem.urunKod })]),
-              h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
-              h('td.num.mono', { text: JP.fmt.miktar(k.rezerv) }),
-              h('td.num.mono', { text: JP.fmt.miktar(k.fatura) }),
-              h('td.num.mono', { text: JP.fmt.miktar(k.acik), style: { color: k.acik > 0 ? 'var(--warn)' : 'var(--text-3)' } }),
-              h('td', { style: { width: '150px' } }, UI.bant(k)),
-              h('td.right', {}, k.acik > 0.001 ? h('button.btn.ghost.sm', {
-                text: 'Azalt / iptal', onclick: function () { azaltKip(t, k); }
-              }) : h('span.small.muted', { text: '—' }))
+              h('td.mono', { text: s.no }),
+              h('td.small.muted', { text: JP.fmt.tarih(s.tarih) }),
+              h('td', {}, UI.rozet(s.durum)),
+              h('td.mono.small', { text: s.logoFisNo || '—' }),
+              h('td.num.mono', { text: JP.fmt.miktar(s.miktar) }),
+              h('td.num.mono', { text: JP.fmt.miktar(s.faturalanan) })
             ]);
-          }))
-      ]));
-    }));
+          }), 'Bu talepten henüz sipariş oluşturulmadı.'), true),
+      UI.panel('Tahsisler ve faturalar', h('span.small.muted', { text: 'Eşleşme kademesiyle birlikte' }),
+        UI.tablo(['Belge', 'Tarih', 'Tip', 'Eşleşme', 'GİB', { t: 'Miktar', num: true }],
+          islem.faturalar.map(function (f) {
+            return h('tr', {}, [
+              h('td.mono', { text: f.no }),
+              h('td.small.muted', { text: JP.fmt.tarih(f.ts) }),
+              h('td.small', { text: f.tur }),
+              h('td', {}, h('span.tag', { text: f.eslesme || '—' })),
+              h('td', {}, f.gib === '—' ? h('span.small.muted', { text: '—' }) : UI.rozet(f.gib)),
+              h('td.num.mono', { text: JP.fmt.miktar(f.miktar) })
+            ]);
+          }), 'Bu talebe henüz tahsis yapılmadı.'), true)
+    ]);
+  }
+
+  function detayHareketler(t) {
+    var hs = JP.db.havuz.filter(function (x) { return x.talepNo === t.no; })
+      .sort(function (a, b) { return b.ts.localeCompare(a.ts); });
+    return UI.panel('Havuz hareketleri',
+      h('span.small.muted', { text: hs.length + ' hareket · bakiye bu hareketlerden hesaplanır' }),
+      hareketTablosu(hs), true);
   }
 
   function azaltKip(t, k) {
@@ -557,7 +663,7 @@
       baslik: 'Talep miktarını azalt', etiket: t.no,
       icerik: h('div.stack', {}, [
         h('p', { text: k.urun.ad + ' (' + k.kalem.urunKod + ')' }),
-        taban > 0 ? h('div.note.warn', { text: JP.fmt.miktar(taban) + ' birim siparişe dönmüş veya faturalanmış; bu miktarın altına inilemez.' }) : null,
+        taban > 0 ? h('div.note.warn', { text: JP.fmt.miktar(taban) + ' birim siparişe dönmüş veya tahsis edilmiş; bu miktarın altına inilemez.' }) : null,
         h('label.f', {}, ['Yeni talep miktarı', girdi]),
         h('div.small.muted', { text: 'Fark, havuza ters hareket olarak yazılır. Mevcut kayıt değiştirilmez.' })
       ]),
@@ -578,12 +684,6 @@
         ];
       }
     });
-  }
-
-  function hareketKip(talepNo) {
-    var hs = JP.db.havuz.filter(function (x) { return x.talepNo === talepNo; })
-      .sort(function (a, b) { return b.ts.localeCompare(a.ts); });
-    UI.modal({ baslik: 'Havuz hareketleri', etiket: talepNo, genis: true, icerik: hareketTablosu(hs) });
   }
 
   function hareketTablosu(hs) {

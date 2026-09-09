@@ -153,6 +153,7 @@
       kaynak: h.kaynak || 'portal',     // portal | logo | elle
       ref: h.ref || null,
       talepNo: h.talepNo || null, talepKalemId: h.talepKalemId || null,
+      rezervKapanis: !!h.rezervKapanis,   // fatura ile birlikte çözülen rezerv
       siparisNo: h.siparisNo || null, belge: h.belge || null,
       eslesme: h.eslesme || null,       // baglantili | fifo | elle
       sebep: h.sebep || null,
@@ -460,17 +461,61 @@
     return 'Açık';
   };
 
-  /** Muhasebe ekranı: bir talebin kalem kalem dönüştürülebilir miktarları. */
+  /** Bir talebin kalem kalem durumu.
+   *  talep    → talep edilen  (Σ dTalep)
+   *  siparis  → sipariş oluşturulan, kümülatif (rezerv hareketleri; fatura ile
+   *             çözülen rezerv hariç, yoksa faturalanınca sıfıra düşerdi)
+   *  fatura   → tahsis edilen  (Σ dFatura)
+   *  acik     → bekleyen = talep − açık rezerv − tahsis
+   */
   JP.talepKalemDurum = function (talep) {
     var db = JP.db;
     return talep.kalemler.map(function (k) {
-      var b = bakiye(db.havuz.filter(function (h) { return h.talepKalemId === k.id; }));
+      var hs = db.havuz.filter(function (h) { return h.talepKalemId === k.id; });
+      var b = bakiye(hs);
+      var siparis = r2(hs.reduce(function (t, h) {
+        return (h.tip === 'dRezerv' && !h.rezervKapanis) ? t + h.miktar : t;
+      }, 0));
       var u = db.urunler.find(function (x) { return x.kod === k.urunKod; }) || { ad: k.urunKod, birim: '', doku: 'diger', renk: '#B9AE99' };
       return {
-        kalem: k, urun: u, talep: b.talep, rezerv: b.rezerv, fatura: b.fatura,
-        acik: b.acik, donusturulebilir: Math.max(0, b.acik)
+        kalem: k, urun: u,
+        talep: b.talep, rezerv: b.rezerv, fatura: b.fatura, acik: b.acik,
+        siparis: siparis, donusturulebilir: Math.max(0, b.acik)
       };
     });
+  };
+
+  /** Bir talebe bağlı belgeler: siparişler ve faturalar. */
+  JP.talepIslemleri = function (talepNo) {
+    var db = JP.db;
+    var siparisler = db.siparisler.filter(function (s) {
+      return s.kalemler.some(function (k) { return k.talepNo === talepNo; });
+    }).map(function (s) {
+      var kalemler = s.kalemler.filter(function (k) { return k.talepNo === talepNo; });
+      return {
+        no: s.no, tarih: s.tarih, durum: s.durum, logoFisNo: s.logoFisNo,
+        miktar: r2(kalemler.reduce(function (t, k) { return t + k.logoMiktar; }, 0)),
+        faturalanan: r2(kalemler.reduce(function (t, k) { return t + k.faturalanan; }, 0)),
+        kalemler: kalemler
+      };
+    });
+
+    var fatura = {};
+    db.havuz.forEach(function (h) {
+      if (h.talepNo !== talepNo || h.tip !== 'dFatura' || !h.belge) return;
+      var f = (fatura[h.belge] = fatura[h.belge] || { no: h.belge, miktar: 0, ts: h.ts, eslesme: h.eslesme, kaynak: h.kaynak });
+      f.miktar = r2(f.miktar + h.miktar);
+      if (h.ts < f.ts) f.ts = h.ts;
+    });
+    var faturalar = Object.keys(fatura).map(function (n) {
+      var f = fatura[n];
+      var lf = db.logo.faturalar.find(function (x) { return x.no === n; });
+      f.gib = lf ? lf.gib : '—';
+      f.tur = lf ? lf.tur : 'elle tahsis';
+      return f;
+    }).sort(function (a, b) { return b.ts.localeCompare(a.ts); });
+
+    return { siparisler: siparisler, faturalar: faturalar };
   };
 
   /* ------------------------------------------- 3.5 talep → sipariş dönüşümü */
@@ -648,7 +693,8 @@
             hareket(db, {
               bayiKod: s.bayiKod, urunKod: k.urunKod, tip: 'dRezerv', miktar: -fr.miktar,
               kaynak: 'logo', ref: ref + ':rez', siparisNo: s.no, talepNo: k.talepNo, talepKalemId: k.talepKalemId,
-              belge: f.no, kullanici: 'logo', aciklama: 'Faturalanan miktarın rezervi çözüldü'
+              belge: f.no, kullanici: 'logo', rezervKapanis: true,
+              aciklama: 'Faturalanan miktarın rezervi çözüldü'
             });
             k.faturalanan = r2(k.faturalanan + fr.miktar);
             sonuc.faturaHareketi++;
