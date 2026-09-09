@@ -197,8 +197,11 @@
     var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
     if (genislik) { st.width = genislik; st.flex = 'none'; }
     var el = h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
-    var src = buyuk ? (urun.gorselBuyuk || urun.gorsel) : urun.gorsel;
-    var yedek = buyuk ? (urun.gorselYedek || urun.gorsel) : urun.gorselYedek;
+    // Görsel baytları veritabanında değil JP.GORSEL'de durur; kayıt yalnızca seri
+    // anahtarını taşır. Aksi halde veritabanı tarayıcı kotasını aşıyordu.
+    var gomulu = (JP.GORSEL || {})[urun.seriUri] || null;
+    var src = buyuk ? (urun.gorselBuyukUzak || gomulu) : (gomulu || urun.gorselUzak);
+    var yedek = gomulu;
     if (src) {
       var im = h('img.kartela-foto', {
         src: src, alt: '', loading: 'lazy', decoding: 'async',

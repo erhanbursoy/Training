@@ -14,7 +14,7 @@
   'use strict';
   var JP = (window.JP = window.JP || {});
 
-  JP.KEY = 'jalpersan.poc.v6';
+  JP.KEY = 'jalpersan.poc.v7';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
 
   /* ---------------------------------------------------------------- yardımcı */
@@ -60,8 +60,12 @@
   }
   function yaz(db) {
     mem = db;
-    try { localStorage.setItem(JP.KEY, JSON.stringify(db)); }
-    catch (e) { JP.depoEngeli = true; }
+    try { localStorage.setItem(JP.KEY, JSON.stringify(db)); JP.depoEngeli = false; }
+    catch (e) {
+      // Kota aşımı veya depolama kapalı: veri sekmeler arasında paylaşılamaz.
+      JP.depoEngeli = true;
+      if (!JP._depoUyari) { JP._depoUyari = true; console.warn('Veri kaydedilemedi:', e && e.message); }
+    }
   }
 
   Object.defineProperty(JP, 'db', {
@@ -126,9 +130,8 @@
             ad: model + ' ' + g.kisa,
             grup: g.ad, grupKisa: g.kisa, seri: se.ad, seriUri: se.uri,
             birim: g.birim, ozellik: g.ozellik, ozet: g.ozet,
-            gorsel: (JP.GORSEL || {})[se.uri] || (kat.cdn + se.g),
-            gorselBuyuk: kat.cdn + se.b,
-            gorselYedek: (JP.GORSEL || {})[se.uri] || null,
+            seriUri: se.uri,                       // görsel bu anahtarla JP.GORSEL'den çözülür
+            gorselUzak: kat.cdn + se.g, gorselBuyukUzak: kat.cdn + se.b,
             renk: kartelaRengi(model), doku: DOKU[g.ad] || 'diger',
             aktif: true, sira: sira++
           });
@@ -154,7 +157,7 @@
     return {
       meta: { rev: 0, kuruldu: now(), sonYazma: now() },
       sayac: { talep: 0, siparis: 0, logoFis: 0, fatura: 0 },
-      urunler: [], bayiler: [], talepler: [], siparisler: [], sepet: {},
+      urunler: [], bayiler: [], kullanicilar: [], talepler: [], siparisler: [], sepet: {},
       havuz: [], talepDisi: [], log: [], bildirim: [],
       senkron: { urun: null, cari: null, siparis: null, fatura: null },
       logo: { stok: logoStok(), cari: logoCari(), fisler: [], faturalar: [] }
@@ -249,7 +252,8 @@
         if (!p) {
           db.urunler.push({
             kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
-            renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk, gorselYedek: s.gorselYedek,
+            renk: s.renk, doku: s.doku, seriUri: s.seriUri,
+            gorselUzak: s.gorselUzak, gorselBuyukUzak: s.gorselBuyukUzak,
             logoAktif: s.aktif, logodaYok: false,
             siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: s.ozet || aciklamaOf(s.grup),
             gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
@@ -258,8 +262,8 @@
         } else {
           if (p.ad !== s.ad || p.logoAktif !== s.aktif || p.grup !== s.grup) guncel++;
           p.ad = s.ad; p.grup = s.grup; p.grupKisa = s.grupKisa; p.seri = s.seri; p.birim = s.birim;
-          p.renk = s.renk; p.doku = s.doku; p.gorsel = s.gorsel;
-          p.gorselBuyuk = s.gorselBuyuk; p.gorselYedek = s.gorselYedek;
+          p.renk = s.renk; p.doku = s.doku; p.seriUri = s.seriUri;
+          p.gorselUzak = s.gorselUzak; p.gorselBuyukUzak = s.gorselBuyukUzak;
           p.logoAktif = s.aktif; p.logodaYok = false;                 // portal ek alanları korunur
         }
       });
@@ -296,6 +300,136 @@
       log(db, 'logo', 'Cari kartı okuma', 'LG_025_CLCARD · ' + db.logo.cari.length + ' kart okundu, ' + yeni + ' yeni, ' + guncel + ' güncellendi');
       return db.senkron.cari;
     });
+  };
+
+  /* ------------------------------------------------------- bayi kullanıcıları
+   * Hesaplar yalnızca firma tarafından oluşturulur; portalda kayıt formu yoktur.
+   * Her kullanıcı bir cari karta (bayiye) bağlıdır ve yalnızca o bayinin
+   * taleplerini ve siparişlerini görür. (Teknik doküman 3.3 ve 4.4)
+   */
+  JP.ROLLER = [
+    { kod: 'yetkili', ad: 'Sipariş yetkilisi', aciklama: 'Katalogdan sepete ekler ve satın alma talebi gönderir.' },
+    { kod: 'izleyici', ad: 'Görüntüleyici', aciklama: 'Talepleri ve sevkiyatı görür, talep oluşturamaz.' }
+  ];
+  JP.KULLANICI_DURUM = ['Davet gönderildi', 'Aktif', 'Pasif'];
+
+  JP.rolAdi = function (kod) {
+    var r = JP.ROLLER.find(function (x) { return x.kod === kod; });
+    return r ? r.ad : kod;
+  };
+
+  JP.kullanicilar = function (bayiKod) {
+    return (JP.db.kullanicilar || []).filter(function (k) { return !bayiKod || k.bayiKod === bayiKod; });
+  };
+  JP.kullanici = function (id) {
+    return (JP.db.kullanicilar || []).find(function (k) { return k.id === id; }) || null;
+  };
+
+  function epostaGecerli(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e || ''); }
+
+  JP.kullaniciEkle = function (p) {
+    return JP.tx(function (db) {
+      db.kullanicilar = db.kullanicilar || [];
+      var eposta = (p.eposta || '').trim().toLowerCase();
+      if (!(p.ad || '').trim()) throw new Error('Ad soyad girin.');
+      if (!epostaGecerli(eposta)) throw new Error('Geçerli bir e-posta girin.');
+      if (db.kullanicilar.some(function (k) { return k.eposta === eposta; })) throw new Error('Bu e-posta ile tanımlı bir kullanıcı zaten var.');
+      if (!db.bayiler.some(function (b) { return b.kod === p.bayiKod; })) throw new Error('Bayi seçin.');
+      var k = {
+        id: uid('u'), bayiKod: p.bayiKod, ad: p.ad.trim(), eposta: eposta,
+        dil: p.dil || 'tr', rol: p.rol || 'yetkili',
+        durum: 'Davet gönderildi', olusturuldu: now(), davetTs: now(), sonGiris: null
+      };
+      db.kullanicilar.push(k);
+      log(db, 'portal', 'Kullanıcı oluşturuldu', k.ad + ' <' + k.eposta + '> · ' + k.bayiKod);
+      bildir(db, k.bayiKod, 'Portal daveti gönderildi', k.ad + ' için ' + k.eposta + ' adresine davet bağlantısı gönderildi.');
+      return k;
+    });
+  };
+
+  JP.kullaniciGuncelle = function (id, alanlar) {
+    return JP.tx(function (db) {
+      var k = (db.kullanicilar || []).find(function (x) { return x.id === id; });
+      if (!k) throw new Error('Kullanıcı bulunamadı.');
+      if (alanlar.ad !== undefined) {
+        if (!alanlar.ad.trim()) throw new Error('Ad soyad boş olamaz.');
+        k.ad = alanlar.ad.trim();
+      }
+      if (alanlar.eposta !== undefined) {
+        var e = alanlar.eposta.trim().toLowerCase();
+        if (!epostaGecerli(e)) throw new Error('Geçerli bir e-posta girin.');
+        if (db.kullanicilar.some(function (x) { return x.eposta === e && x.id !== id; })) throw new Error('Bu e-posta başka bir kullanıcıda kayıtlı.');
+        k.eposta = e;
+      }
+      if (alanlar.bayiKod !== undefined && alanlar.bayiKod !== k.bayiKod) {
+        if (!db.bayiler.some(function (b) { return b.kod === alanlar.bayiKod; })) throw new Error('Bayi bulunamadı.');
+        log(db, 'portal', 'Kullanıcı bayisi değişti', k.ad + ' · ' + k.bayiKod + ' → ' + alanlar.bayiKod);
+        k.bayiKod = alanlar.bayiKod;
+      }
+      if (alanlar.rol !== undefined) k.rol = alanlar.rol;
+      if (alanlar.dil !== undefined) k.dil = alanlar.dil;
+      log(db, 'portal', 'Kullanıcı güncellendi', k.ad + ' <' + k.eposta + '>');
+      return k;
+    });
+  };
+
+  JP.kullaniciDurum = function (id, durum) {
+    return JP.tx(function (db) {
+      var k = (db.kullanicilar || []).find(function (x) { return x.id === id; });
+      if (!k) throw new Error('Kullanıcı bulunamadı.');
+      k.durum = durum;
+      log(db, 'portal', 'Kullanıcı durumu', k.ad + ' → ' + durum);
+      return k;
+    });
+  };
+
+  JP.kullaniciSil = function (id) {
+    return JP.tx(function (db) {
+      var i = (db.kullanicilar || []).findIndex(function (x) { return x.id === id; });
+      if (i < 0) throw new Error('Kullanıcı bulunamadı.');
+      var k = db.kullanicilar[i];
+      db.kullanicilar.splice(i, 1);
+      log(db, 'portal', 'Kullanıcı silindi', k.ad + ' <' + k.eposta + '>');
+    });
+  };
+
+  /** Davet veya şifre sıfırlama bağlantısı (prototipte e-posta simüle edilir). */
+  JP.kullaniciDavet = function (id, tur) {
+    return JP.tx(function (db) {
+      var k = (db.kullanicilar || []).find(function (x) { return x.id === id; });
+      if (!k) throw new Error('Kullanıcı bulunamadı.');
+      k.davetTs = now();
+      if (tur !== 'sifre' && k.durum === 'Pasif') k.durum = 'Davet gönderildi';
+      var baslik = tur === 'sifre' ? 'Şifre sıfırlama bağlantısı' : 'Portal daveti';
+      log(db, 'portal', baslik, k.eposta + ' adresine gönderildi (simülasyon)');
+      bildir(db, k.bayiKod, baslik + ' gönderildi', k.ad + ' · ' + k.eposta);
+      return k;
+    });
+  };
+
+  /** Prototip girişi: e-posta ile. Kayıt formu yoktur; hesap firma tarafından açılır. */
+  JP.kullaniciGiris = function (eposta) {
+    return JP.tx(function (db) {
+      var e = (eposta || '').trim().toLowerCase();
+      var k = (db.kullanicilar || []).find(function (x) { return x.eposta === e; });
+      if (!k) throw new Error('Bu e-posta ile tanımlı bir kullanıcı yok. Hesaplar firma tarafından oluşturulur.');
+      if (k.durum === 'Pasif') throw new Error('Bu hesap pasif durumda. Firma ile iletişime geçin.');
+      k.durum = 'Aktif';
+      k.sonGiris = now();
+      log(db, 'portal', 'Bayi girişi', k.ad + ' <' + k.eposta + '> · ' + k.bayiKod);
+      return k;
+    });
+  };
+
+  /** Kullanıcı talep oluşturabilir mi? Rol ve bayi durumu birlikte belirler. */
+  JP.talepYetkisi = function (k) {
+    if (!k) return { olur: false, sebep: 'Oturum yok.' };
+    if (k.durum === 'Pasif') return { olur: false, sebep: 'Hesabınız pasif durumda.' };
+    if (k.rol !== 'yetkili') return { olur: false, sebep: 'Hesabınız görüntüleyici yetkisinde; talep oluşturamazsınız.' };
+    var b = JP.db.bayiler.find(function (x) { return x.kod === k.bayiKod; });
+    if (!b) return { olur: false, sebep: 'Bayi kartı bulunamadı.' };
+    if (!b.siparisAcik) return { olur: false, sebep: 'Bayi hesabınız siparişe kapalı.' };
+    return { olur: true, sebep: '' };
   };
 
   /* -------------------------------------------------------- bayi görünürlüğü */
@@ -370,14 +504,14 @@
   };
 
   /** Sepeti onaylar: talebi oluşturur ve sepeti boşaltır. */
-  JP.sepetOnayla = function (bayiKod, not, teslimTarihi) {
+  JP.sepetOnayla = function (bayiKod, not, teslimTarihi, kullaniciId) {
     var kutu = JP.sepetOku(bayiKod);
     if (!kutu.length) throw new Error('Sepetiniz boş.');
     var gecersiz = kutu.filter(function (s) { return s.gecersiz; });
     if (gecersiz.length) {
       throw new Error(gecersiz.map(function (s) { return s.urunKod; }).join(', ') + ' artık siparişe kapalı. Sepetten çıkarın.');
     }
-    var talep = JP.talepOlustur(bayiKod, kutu.map(function (s) { return { urunKod: s.urunKod, miktar: s.miktar }; }), not, teslimTarihi);
+    var talep = JP.talepOlustur(bayiKod, kutu.map(function (s) { return { urunKod: s.urunKod, miktar: s.miktar }; }), not, teslimTarihi, kullaniciId);
     JP.sepetTemizle(bayiKod);
     return talep;
   };
@@ -437,7 +571,7 @@
   };
 
   /* --------------------------------------------------- 3.4 satın alma talebi */
-  JP.talepOlustur = function (bayiKod, satirlar, not, teslimTarihi) {
+  JP.talepOlustur = function (bayiKod, satirlar, not, teslimTarihi, kullaniciId) {
     return JP.tx(function (db) {
       var bayi = db.bayiler.find(function (b) { return b.kod === bayiKod; });
       if (!bayi) throw new Error('Bayi bulunamadı.');
@@ -447,8 +581,10 @@
 
       db.sayac.talep++;
       var no = 'ST-' + yil() + '-' + pad(db.sayac.talep, 6);
+      var kul = (db.kullanicilar || []).find(function (x) { return x.id === kullaniciId; });
       var talep = {
         no: no, bayiKod: bayiKod, tarih: now(), not: not || '',
+        kullanici: kullaniciId || null, kullaniciAd: kul ? kul.ad : null,
         teslimTarihi: teslimTarihi || null, iptal: false,
         kalemler: temiz.map(function (s) {
           return { id: uid('k'), urunKod: s.urunKod, miktar: r2(s.miktar) };
@@ -459,10 +595,10 @@
         hareket(db, {
           bayiKod: bayiKod, urunKod: k.urunKod, tip: 'dTalep', miktar: k.miktar,
           kaynak: 'portal', talepNo: no, talepKalemId: k.id, belge: no,
-          kullanici: bayiKod, aciklama: 'Satın alma talebi açıldı'
+          kullanici: kul ? kul.ad : bayiKod, aciklama: 'Satın alma talebi açıldı'
         });
       });
-      log(db, 'portal', 'Talep oluşturuldu', no + ' · ' + bayi.unvan + ' · ' + talep.kalemler.length + ' kalem');
+      log(db, 'portal', 'Talep oluşturuldu', no + ' · ' + bayi.unvan + (kul ? ' · ' + kul.ad : '') + ' · ' + talep.kalemler.length + ' kalem');
       bildir(db, 'muhasebe', 'Yeni satın alma talebi', no + ' — ' + bayi.unvan + ' (' + talep.kalemler.length + ' kalem)');
       return talep;
     });
@@ -1038,7 +1174,8 @@
     db.logo.stok.forEach(function (s) {
       db.urunler.push({
         kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
-        renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk, gorselYedek: s.gorselYedek,
+        renk: s.renk, doku: s.doku, seriUri: s.seriUri,
+        gorselUzak: s.gorselUzak, gorselBuyukUzak: s.gorselBuyukUzak,
         logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, ozellik: s.ozellik,
         aciklama: s.ozet, gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
       });
@@ -1050,6 +1187,21 @@
         kisit: { tip: 'tumu', gruplar: [], urunler: [] }, teslimatNotu: ''
       });
     });
+    // bayi kullanıcıları — hesaplar firma tarafından açılır, kayıt formu yoktur
+    [
+      ['BYI-0001', 'Selin Aydın', 'selin.aydin@anadoluperde.example', 'yetkili', 'Aktif', 3],
+      ['BYI-0001', 'Kerem Doğan', 'kerem.dogan@anadoluperde.example', 'izleyici', 'Aktif', 12],
+      ['BYI-0002', 'Merve Şahin', 'merve.sahin@egestor.example', 'yetkili', 'Aktif', 5],
+      ['BYI-0003', 'Onur Yalçın', 'onur.yalcin@marmaratekstil.example', 'yetkili', 'Davet gönderildi', null],
+      ['BYI-0004', 'Milica Petrović', 'milica@balkanhome.example', 'yetkili', 'Aktif', 1]
+    ].forEach(function (x) {
+      db.kullanicilar.push({
+        id: uid('u'), bayiKod: x[0], ad: x[1], eposta: x[2], dil: x[0] === 'BYI-0004' ? 'en' : 'tr',
+        rol: x[3], durum: x[4], olusturuldu: gecmis(30), davetTs: gecmis(30),
+        sonGiris: x[5] === null ? null : gecmis(x[5])
+      });
+    });
+
     db.senkron.urun = { ts: gecmis(2), yeni: db.logo.stok.length, guncel: 0, pasif: 0, toplam: db.logo.stok.length };
     db.senkron.cari = { ts: gecmis(2), yeni: db.logo.cari.length, guncel: 0, pasif: 0, toplam: db.logo.cari.length };
 

@@ -16,6 +16,8 @@
   var fSiparis = { bas: '', bit: '', ara: '', durum: '' };
   var fUrun = { ara: '' };
   var fBayi = { ara: '' };
+  var secKullanici = null;
+  var fKullanici = { ara: '', bayiKod: '', durum: '' };
 
   JP.firmaEkran = function () {
     kabuk = UI.kabuk({
@@ -43,7 +45,11 @@
           ciz: urunler, sayi: function () { return JP.db.urunler.length; } },
         { id: 'bayiler', ad: 'Bayiler', baslik: 'Bayiler',
           aciklama: 'Unvan ve ülke Logo’dan gelir. Portal alanları bayi detayından düzenlenir.',
-          ciz: bayiler, sayi: function () { return JP.db.bayiler.length; } }
+          ciz: bayiler, sayi: function () { return JP.db.bayiler.length; } },
+        { id: 'kullanicilar', ad: 'Kullanıcılar', baslik: 'Bayi kullanıcıları',
+          aciklama: 'Portal hesapları yalnızca buradan açılır; bayiler kendileri kayıt olamaz.',
+          ciz: kullanicilar, sayi: function () { return (JP.db.kullanicilar || []).length; },
+          sicak: function () { return (JP.db.kullanicilar || []).some(function (k) { return k.durum === 'Davet gönderildi'; }); } }
       ]
     });
   };
@@ -711,15 +717,17 @@
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(db.bayiler.length
-        ? UI.panel(null, null, UI.tablo(['Bayi', 'Şehir / Ülke', 'Logo', 'Siparişe', 'Katalog', { t: 'Bekleyen talep', num: true }, ''],
+        ? UI.panel(null, null, UI.tablo(['Bayi', 'Şehir / Ülke', 'Logo', 'Siparişe', 'Katalog', { t: 'Kullanıcı', num: true }, { t: 'Bekleyen talep', num: true }, ''],
             liste.map(function (b) {
               var acikT = db.talepler.filter(function (t) { return t.bayiKod === b.kod && bekleyen(t); }).length;
+              var kSay = JP.kullanicilar(b.kod).length;
               return h('tr', { style: { cursor: 'pointer' }, onclick: function () { bayiAc(b.kod); } }, [
                 h('td', {}, [h('div', { text: b.unvan }), h('div.pc.mono', { text: b.kod + ' · ' + b.eposta })]),
                 h('td.small', { text: b.sehir + ' / ' + b.ulke }),
                 h('td', {}, b.logodaYok ? UI.rozet("Logo'da yok", 'bad') : (b.logoAktif ? UI.rozet('Aktif', 'ok') : UI.rozet('Pasif', 'warn'))),
                 h('td', {}, b.siparisAcik ? UI.rozet('Açık', 'ok') : UI.rozet('Kapalı', '')),
                 h('td.small.muted', { text: kisitMetni(b) }),
+                h('td.num.mono', { text: String(kSay), style: kSay ? null : { color: 'var(--warn)' } }),
                 h('td.num.mono', { text: String(acikT) }),
                 h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); bayiAc(b.kod); } }))
               ]);
@@ -757,8 +765,10 @@
     var talepleri = db.talepler.filter(function (t) { return t.bayiKod === b.kod; });
     var siparisleri = db.siparisler.filter(function (s) { return s.bayiKod === b.kod; });
 
+    var kullanicilari = JP.kullanicilar(b.kod);
     var govde = h('div.stack');
     if (bayiGorunum === 'bilgiler') govde.appendChild(bayiBilgi(b));
+    else if (bayiGorunum === 'kullanicilar') govde.appendChild(bayiKullanicilar(b, kullanicilari));
     else if (bayiGorunum === 'talepler') govde.appendChild(bayiTalepler(talepleri));
     else govde.appendChild(bayiSiparisler(siparisleri));
 
@@ -777,6 +787,7 @@
       ])),
       h('div.seg', {}, [
         ['bilgiler', 'Bilgiler'],
+        ['kullanicilar', 'Kullanıcılar (' + kullanicilari.length + ')'],
         ['talepler', 'Talepler (' + talepleri.length + ')'],
         ['siparisler', 'Siparişler (' + siparisleri.length + ')']
       ].map(function (o) {
@@ -879,4 +890,231 @@
           ]);
         }), 'Bu bayinin siparişi yok.'), true);
   }
+
+  /* ----------------------------------------------- kullanıcılar: liste + ekran
+   * Portal hesapları yalnızca buradan açılır. Bayi tarafında kayıt formu yoktur;
+   * kullanıcı davet bağlantısıyla gelir ve tek bir cari karta bağlıdır. */
+  function kullaniciAc(id) { secKullanici = id; kabuk.git('kullanicilar'); }
+
+  function kullaniciSuz() {
+    var q = kucult(fKullanici.ara).trim();
+    return JP.kullanicilar().filter(function (k) {
+      if (fKullanici.bayiKod && k.bayiKod !== fKullanici.bayiKod) return false;
+      if (fKullanici.durum && k.durum !== fKullanici.durum) return false;
+      if (!q) return true;
+      return kucult(k.ad + ' ' + k.eposta + ' ' + bayiAd(k.bayiKod) + ' ' + k.bayiKod).indexOf(q) >= 0;
+    });
+  }
+
+  function durumRozeti(d) {
+    return UI.rozet(d, d === 'Aktif' ? 'ok' : (d === 'Davet gönderildi' ? 'warn' : ''));
+  }
+
+  function kullanicilar() {
+    var db = JP.db;
+    if (secKullanici) {
+      var k = JP.kullanici(secKullanici);
+      if (k) return kullaniciEkrani(k);
+      secKullanici = null;
+    }
+
+    var liste = kullaniciSuz();
+    var govde = h('div');
+    function tabloCiz() {
+      govde.textContent = '';
+      govde.appendChild(UI.panel(null, null, UI.tablo(
+        ['Ad soyad', 'E-posta', 'Bayi', 'Rol', 'Durum', 'Son giriş', ''],
+        liste.map(function (k) {
+          return h('tr', { style: { cursor: 'pointer' }, onclick: function () { kullaniciAc(k.id); } }, [
+            h('td', { text: k.ad, style: { fontWeight: '500' } }),
+            h('td.small.mono', { text: k.eposta }),
+            h('td.small', { text: bayiAd(k.bayiKod) }),
+            h('td.small.muted', { text: JP.rolAdi(k.rol) }),
+            h('td', {}, durumRozeti(k.durum)),
+            h('td.small.muted.nowrap', { text: k.sonGiris ? JP.fmt.tarih(k.sonGiris) : '—' }),
+            h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); kullaniciAc(k.id); } }))
+          ]);
+        }), db.kullanicilar && db.kullanicilar.length ? 'Filtreye uyan kullanıcı yok.' : 'Henüz kullanıcı tanımlanmadı.'), true));
+    }
+    function yenile(yerinde) {
+      liste = kullaniciSuz();
+      sayimEl.textContent = liste.length + ' / ' + JP.kullanicilar().length + ' kullanıcı';
+      if (yerinde) tabloCiz(); else kabuk.ciz();
+    }
+    var sayimEl = h('span.small.muted', { text: liste.length + ' / ' + JP.kullanicilar().length + ' kullanıcı' });
+    tabloCiz();
+
+    return h('div.stack', {}, [
+      h('div.note', { html: '<b>Kayıt formu yoktur.</b> Bayi kullanıcıları yalnızca bu ekrandan tanımlanır; hesap açılınca e-posta adresine davet bağlantısı gider ve kullanıcı yalnızca bağlı olduğu bayinin talep ve siparişlerini görür.' }),
+      h('div.filtre', {}, [
+        h('label.f.filtre-alan', {}, ['Ara', h('input.filtre-ara', {
+          type: 'text', value: fKullanici.ara, placeholder: 'Ad, e-posta veya bayi ara…',
+          oninput: function (e) { fKullanici.ara = e.target.value; yenile(true); } })]),
+        h('label.f.filtre-alan', {}, ['Bayi', h('select', { onchange: function (e) { fKullanici.bayiKod = e.target.value; yenile(); } },
+          [h('option', { value: '', text: 'Tümü', selected: !fKullanici.bayiKod })].concat(
+            db.bayiler.map(function (b) { return h('option', { value: b.kod, selected: fKullanici.bayiKod === b.kod, text: b.unvan }); })))]),
+        h('label.f.filtre-alan', {}, ['Durum', h('select', { onchange: function (e) { fKullanici.durum = e.target.value; yenile(); } },
+          [h('option', { value: '', text: 'Tümü', selected: !fKullanici.durum })].concat(
+            JP.KULLANICI_DURUM.map(function (d) { return h('option', { value: d, selected: fKullanici.durum === d, text: d }); })))]),
+        h('div.filtre-son', {}, [
+          sayimEl,
+          h('button.btn.primary.sm', { text: 'Kullanıcı ekle', onclick: function () { kullaniciEkleKip(fKullanici.bayiKod); } })
+        ])
+      ]),
+      govde
+    ]);
+  }
+
+  function kullaniciEkleKip(bayiKod) {
+    var db = JP.db;
+    if (!db.bayiler.length) { UI.hata(new Error('Önce Logo’dan bayileri çekin.')); return; }
+    var ad = h('input', { type: 'text', placeholder: 'Ad Soyad' });
+    var eposta = h('input', { type: 'text', placeholder: 'ad.soyad@bayi.example', inputmode: 'email' });
+    var bayiSec = h('select', {}, db.bayiler.map(function (b) {
+      return h('option', { value: b.kod, selected: b.kod === bayiKod, text: b.unvan + ' (' + b.kod + ')' });
+    }));
+    var rolSec = h('select', {}, JP.ROLLER.map(function (r) { return h('option', { value: r.kod, text: r.ad }); }));
+    var dilSec = h('select', {}, [h('option', { value: 'tr', text: 'Türkçe' }), h('option', { value: 'en', text: 'İngilizce' })]);
+    var rolNot = h('div.small.muted', { text: JP.ROLLER[0].aciklama });
+    rolSec.addEventListener('change', function () {
+      var r = JP.ROLLER.find(function (x) { return x.kod === rolSec.value; });
+      rolNot.textContent = r ? r.aciklama : '';
+    });
+
+    UI.modal({
+      baslik: 'Kullanıcı ekle', etiket: 'Davet bağlantısı gönderilir',
+      icerik: h('div.stack', {}, [
+        h('div.grid.k2', {}, [
+          h('label.f', {}, ['Ad soyad', ad]),
+          h('label.f', {}, ['E-posta', eposta]),
+          h('label.f', {}, ['Bağlı bayi', bayiSec]),
+          h('label.f', {}, ['Dil tercihi', dilSec])
+        ]),
+        h('label.f', {}, ['Rol', rolSec]),
+        rolNot,
+        h('div.note', { text: 'Hesap “Davet gönderildi” durumunda oluşur. Kullanıcı davet bağlantısından şifresini belirleyip giriş yapınca “Aktif” olur.' })
+      ]),
+      aksiyonlar: function (kapat) {
+        return [
+          h('button.btn', { text: 'Vazgeç', onclick: kapat }),
+          h('button.btn.primary', { text: 'Oluştur ve davet gönder',
+            onclick: function () {
+              UI.dene(function () {
+                var k = JP.kullaniciEkle({ ad: ad.value, eposta: eposta.value, bayiKod: bayiSec.value, rol: rolSec.value, dil: dilSec.value });
+                kapat(); UI.toast('Kullanıcı oluşturuldu', k.eposta + ' adresine davet gönderildi.', 'ok');
+                kullaniciAc(k.id);
+              });
+            } })
+        ];
+      }
+    });
+  }
+
+  function kullaniciEkrani(k) {
+    var db = JP.db;
+    var bayi = db.bayiler.find(function (b) { return b.kod === k.bayiKod; }) || { unvan: k.bayiKod, kod: k.bayiKod, siparisAcik: false };
+    var ad = h('input', { type: 'text', value: k.ad });
+    var eposta = h('input', { type: 'text', value: k.eposta, inputmode: 'email' });
+    var bayiSec = h('select', {}, db.bayiler.map(function (b) { return h('option', { value: b.kod, selected: b.kod === k.bayiKod, text: b.unvan + ' (' + b.kod + ')' }); }));
+    var rolSec = h('select', {}, JP.ROLLER.map(function (r) { return h('option', { value: r.kod, selected: r.kod === k.rol, text: r.ad }); }));
+    var dilSec = h('select', {}, [
+      h('option', { value: 'tr', selected: k.dil === 'tr', text: 'Türkçe' }),
+      h('option', { value: 'en', selected: k.dil === 'en', text: 'İngilizce' })
+    ]);
+    var yetki = JP.talepYetkisi(k);
+
+    function kaydet() {
+      UI.dene(function () {
+        JP.kullaniciGuncelle(k.id, { ad: ad.value, eposta: eposta.value, bayiKod: bayiSec.value, rol: rolSec.value, dil: dilSec.value });
+        UI.toast('Kullanıcı kaydedildi', ad.value, 'ok');
+      });
+    }
+
+    return h('div.stack', {}, [
+      h('div.row', {}, [
+        h('button.btn.ghost.sm', { text: '← Kullanıcı listesi', onclick: function () { secKullanici = null; kabuk.ciz(); } }),
+        h('div.spacer'),
+        h('button.btn.sm', { text: 'Daveti yeniden gönder',
+          onclick: function () { UI.dene(function () { JP.kullaniciDavet(k.id); UI.toast('Davet gönderildi', k.eposta, 'ok'); }); } }),
+        h('button.btn.sm', { text: 'Şifre sıfırlama gönder',
+          onclick: function () { UI.dene(function () { JP.kullaniciDavet(k.id, 'sifre'); UI.toast('Bağlantı gönderildi', k.eposta, 'ok'); }); } }),
+        k.durum === 'Pasif'
+          ? h('button.btn.sm', { text: 'Aktife al', onclick: function () { UI.dene(function () { JP.kullaniciDurum(k.id, 'Aktif'); UI.toast('Hesap aktif', k.ad, 'ok'); }); } })
+          : h('button.btn.sm', { text: 'Pasife al', onclick: function () { UI.onay('Hesabı pasife al', k.ad + ' portala giriş yapamayacak. Talep ve sipariş kayıtları korunur.', function () { JP.kullaniciDurum(k.id, 'Pasif'); }, true); } }),
+        h('button.btn.ghost.sm.danger', { text: 'Sil',
+          onclick: function () { UI.onay('Kullanıcıyı sil', k.ad + ' silinecek. Oluşturduğu talepler kayıtta kalır.', function () { JP.kullaniciSil(k.id); secKullanici = null; kabuk.ciz(); UI.toast('Kullanıcı silindi', k.ad, 'ok'); }, true); } }),
+        h('button.btn.primary', { text: 'Kaydet', onclick: kaydet })
+      ]),
+
+      UI.panel(null, null, h('div.row', {}, [
+        h('span.avatar', { text: basHarf(k.ad) }),
+        h('h2', { text: k.ad }),
+        durumRozeti(k.durum),
+        h('span.tag', { text: JP.rolAdi(k.rol) }),
+        h('button.btn.ghost.sm', { text: bayi.unvan, onclick: function () { secKullanici = null; bayiAc(k.bayiKod); } }),
+        h('span.small.muted', { text: k.eposta })
+      ])),
+
+      !yetki.olur ? h('div.note.warn', { text: 'Bu kullanıcı şu anda talep oluşturamaz: ' + yetki.sebep }) : null,
+
+      h('div.grid.k2', {}, [
+        UI.panel('Hesap bilgileri', h('span.small.muted', { text: 'Düzenlenebilir' }), h('div.stack', {}, [
+          h('div.grid.k2', {}, [
+            h('label.f', {}, ['Ad soyad', ad]),
+            h('label.f', {}, ['E-posta (giriş adresi)', eposta])
+          ]),
+          h('div.grid.k2', {}, [
+            h('label.f', {}, ['Bağlı bayi', bayiSec]),
+            h('label.f', {}, ['Dil tercihi', dilSec])
+          ]),
+          h('label.f', {}, ['Rol', rolSec]),
+          h('div.small.muted', { text: (JP.ROLLER.find(function (r) { return r.kod === k.rol; }) || {}).aciklama || '' })
+        ])),
+        UI.panel('Hesap durumu', null, h('div.stack', {}, [
+          h('dl.kv', {}, [
+            h('dt', { text: 'Durum' }), h('dd', {}, durumRozeti(k.durum)),
+            h('dt', { text: 'Oluşturuldu' }), h('dd', { text: JP.fmt.saat(k.olusturuldu) }),
+            h('dt', { text: 'Son davet' }), h('dd', { text: k.davetTs ? JP.fmt.saat(k.davetTs) : '—' }),
+            h('dt', { text: 'Son giriş' }), h('dd', { text: k.sonGiris ? JP.fmt.saat(k.sonGiris) : 'Henüz giriş yapmadı' }),
+            h('dt', { text: 'Bayi durumu' }), h('dd', {}, bayi.siparisAcik ? UI.rozet('Siparişe açık', 'ok') : UI.rozet('Siparişe kapalı', 'warn'))
+          ]),
+          h('div.small.muted', { text: 'Gerçek kurulumda kimlik doğrulama ASP.NET Core Identity ile yapılır: davet bağlantısı, şifre politikası, hesap kilitleme ve opsiyonel iki adımlı doğrulama.' })
+        ]))
+      ]),
+
+      UI.panel('Bu kullanıcının oluşturduğu talepler', null,
+        UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, ''],
+          db.talepler.filter(function (t) { return t.kullanici === k.id || t.bayiKod === k.bayiKod; }).slice(0, 12).map(function (t) {
+            return h('tr', { style: { cursor: 'pointer' }, onclick: function () { secKullanici = null; talepAc(t.no); } }, [
+              h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
+              h('td.mono', { text: t.no }),
+              h('td', {}, UI.rozet(JP.talepDurumu(t))),
+              h('td.num.mono', { text: String(t.kalemler.length) }),
+              h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); secKullanici = null; talepAc(t.no); } }))
+            ]);
+          }), 'Bu bayiden henüz talep gelmedi.'), true)
+    ]);
+  }
+
+  function basHarf(ad) {
+    return (ad || '?').split(/\s+/).slice(0, 2).map(function (p) { return p[0]; }).join('').toLocaleUpperCase('tr');
+  }
+
+  function bayiKullanicilar(b, liste) {
+    return UI.panel('Portal kullanıcıları', h('div.row.tight', {}, [
+      h('span.small.muted', { text: liste.length + ' kullanıcı' }),
+      h('button.btn.primary.sm', { text: 'Kullanıcı ekle', onclick: function () { kullaniciEkleKip(b.kod); } })
+    ]), UI.tablo(['Ad soyad', 'E-posta', 'Rol', 'Durum', 'Son giriş', ''],
+      liste.map(function (k) {
+        return h('tr', { style: { cursor: 'pointer' }, onclick: function () { secBayi = null; kullaniciAc(k.id); } }, [
+          h('td', { text: k.ad, style: { fontWeight: '500' } }),
+          h('td.small.mono', { text: k.eposta }),
+          h('td.small.muted', { text: JP.rolAdi(k.rol) }),
+          h('td', {}, durumRozeti(k.durum)),
+          h('td.small.muted.nowrap', { text: k.sonGiris ? JP.fmt.tarih(k.sonGiris) : '—' }),
+          h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); secBayi = null; kullaniciAc(k.id); } }))
+        ]);
+      }), 'Bu bayiye henüz kullanıcı tanımlanmadı. Kayıt formu olmadığı için hesabı buradan açmanız gerekir.'), true);
+  }
+
 })();

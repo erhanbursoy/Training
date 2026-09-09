@@ -29,6 +29,31 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
 Panel üstündeki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
 böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön** başlangıç örneğini geri yükler.
 
+## Bayi kullanıcıları
+
+Portal hesapları yalnızca firma panelindeki **Kullanıcılar** ekranından açılır;
+bayi tarafında kayıt formu yoktur. Her kullanıcı tek bir cari karta bağlıdır ve
+yalnızca o bayinin talep ve siparişlerini görür.
+
+| Alan | Anlamı |
+| --- | --- |
+| Rol | **Sipariş yetkilisi** sepete ekler ve talep gönderir; **Görüntüleyici** yalnızca izler |
+| Durum | Davet gönderildi → Aktif (ilk girişte) → Pasif (firma kapatınca) |
+| Dil | Türkçe / İngilizce tercihi |
+
+Firma tarafında: kullanıcı ekleme, ad/e-posta/rol/dil düzenleme, başka bayiye taşıma,
+daveti ve şifre sıfırlama bağlantısını yeniden gönderme, pasife alma ve silme.
+Bayi detayında da o bayinin kullanıcıları ayrı sekmede listelenir.
+
+Bayi portalı oturum yokken **giriş ekranı** gösterir. E-posta tanımlı değilse giriş
+reddedilir ve hesabın firma tarafından açıldığı belirtilir. Prototipte şifre sorulmaz;
+gerçek kurulumda ASP.NET Core Identity ile davet bağlantısı, şifre politikası, hesap
+kilitleme ve opsiyonel iki adımlı doğrulama kullanılır.
+
+Talep oluşturma yetkisi rol ve bayi durumunu birlikte gözetir: görüntüleyici rolü,
+pasif hesap veya siparişe kapalı bayi sepete ekleme ve talep gönderme düğmelerini
+kapatır, sebebi ekranda yazar.
+
 ## Bayi portalı yerleşimi
 
 Standart web uygulaması düzeni: üstte **Ürün kataloğu** ve **Taleplerim**;
@@ -184,6 +209,9 @@ yatay kayar ve ürün ağacı kısa bir kaydırılır kutuya iner. Sayfanın ken
 genişlikte yatay kaymaz.
 
 Veri yalnızca tarayıcının `localStorage` alanında tutulur; sunucuya hiçbir şey gönderilmez.
+Görsel baytları veritabanına değil `JP.GORSEL` haritasına yazılır; ürün kaydı yalnızca
+seri anahtarını taşır. Aksi halde veritabanı tarayıcı kotasını aşar ve hiçbir değişiklik
+kaydedilmez.
 Sekmeler `BroadcastChannel` ve `storage` olayıyla senkronlanır.
 
 Tek dosya sürümünü yeniden üretmek için: `node build.mjs`
