@@ -1,5 +1,5 @@
 /* Bayi portalı — standart web uygulaması yerleşimi:
-   üstte Dashboard / Ürün kataloğu / Taleplerim, sağ üstte sepet, bildirim ve profil.
+   üstte Ürün kataloğu / Taleplerim, sağ üstte sepet, bildirim ve profil.
    Katalogda sol yan panel ürün ağacıdır (grup → seri → renk varyantları).
    Sepet yalnızca taslaktır; havuza hareket ancak sepet onaylanınca yazılır. */
 (function () {
@@ -31,11 +31,7 @@
       rol: 'bayi', rolAdi: 'Bayi portalı', baslik: 'Bayi portalı', altBaslik: 'Bayi portalı',
       ustMenu: true, ustSag: ustSag,
       bolumler: [
-        { id: 'dashboard', ad: 'Dashboard', baslik: 'Dashboard',
-          aciklama: 'Açık talepleriniz ve hangi üründen ne kadarının henüz sevk edilmediği.',
-          ciz: dashboard },
-        { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu',
-          aciklama: 'Ürünleri sepete ekleyin; sepeti onayladığınızda satın alma talebi oluşur. Fiyat ve stok gösterilmez.',
+        { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu', basliksiz: true,
           ciz: katalog, yan: agacPaneli, yanBaslik: 'Ürün ağacı' },
         { id: 'talepler', ad: 'Taleplerim', baslik: 'Satın alma taleplerim',
           aciklama: 'Taleplerinizin listesi. Bir talebe girince ürünleri, işlemleri ve hareketleri görürsünüz.',
@@ -143,80 +139,6 @@
     return b.kisit.urunler.length + ' seçili ürün';
   }
 
-  /* ------------------------------------------------------------- dashboard */
-  /* Bayi havuzu, rezervi, birimi görmez. Yalnızca kaç talebi açık ve açık
-     taleplerinde hangi üründen ne kadarı henüz sevk edilmedi. */
-  function acikTalepler(bayiKod) {
-    return JP.db.talepler.filter(function (t) {
-      if (t.bayiKod !== bayiKod) return false;
-      var d = JP.talepDurumu(t);
-      return d === 'Açık' || d === 'Kısmen Karşılandı';
-    });
-  }
-
-  function sevkBekleyen(bayiKod) {
-    var kutu = {};
-    acikTalepler(bayiKod).forEach(function (t) {
-      JP.talepKalemDurum(t).forEach(function (k) {
-        var bekleyen = Math.max(0, k.talep - k.fatura);
-        if (bekleyen <= 0.001) return;
-        var r = (kutu[k.kalem.urunKod] = kutu[k.kalem.urunKod] || {
-          urun: k.urun, kod: k.kalem.urunKod, talep: 0, sevk: 0, talepler: [], enEski: t.tarih
-        });
-        r.talep += k.talep;
-        r.sevk += k.fatura;
-        if (r.talepler.indexOf(t.no) < 0) r.talepler.push(t.no);
-        if (t.tarih < r.enEski) r.enEski = t.tarih;
-      });
-    });
-    return Object.keys(kutu).map(function (x) { return kutu[x]; })
-      .sort(function (a, b) { return (b.talep - b.sevk) - (a.talep - a.sevk); });
-  }
-
-  function dashboard() {
-    var bayi = aktifBayi();
-    if (!bayi) return h('div.note.warn', { html: '<b>Bayi kartı yok.</b> Firma panelinden “Bayileri Logo’dan al” işlemini çalıştırın.' });
-
-    var acik = acikTalepler(bayi.kod);
-    var urunler = sevkBekleyen(bayi.kod);
-    var sepetAdet = JP.sepetSayisi(bayi.kod);
-
-    return h('div.stack', {}, [
-      sepetAdet ? h('div.note', {}, [
-        h('b', { text: 'Sepetinizde ' + sepetAdet + ' kalem bekliyor. ' }),
-        h('span', { text: 'Onaylamadan talep oluşmaz. ' }),
-        h('button.btn.sm', { text: 'Sepete git', onclick: function () { kabuk.git('sepet'); } })
-      ]) : null,
-
-      h('div.grid.k3', {}, [
-        UI.kpi('Açık talep', String(acik.length), acik.length === 1 ? 'talep' : 'talep',
-          acik.length ? 'Tamamı sevk edilmemiş talepleriniz' : 'Bekleyen talebiniz yok', true)
-      ]),
-
-      UI.panel('Sevkiyat bekleyen ürünler',
-        h('div.row.tight', {}, [
-          h('span.small.muted', { text: urunler.length + ' ürün' }),
-          h('button.btn.ghost.sm', { text: 'Taleplerim', onclick: function () { kabuk.git('talepler'); } })
-        ]),
-        UI.tablo(['Ürün', { t: 'Talep edilen', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, 'Talepler'],
-          urunler.map(function (r) {
-            var bekleyen = r.talep - r.sevk;
-            return h('tr', {}, [
-              h('td', {}, h('div.row.tight', {}, [UI.kartela(r.urun, '26px', '40px'), h('div', {}, [
-                h('div', { text: r.urun.ad }),
-                h('div.pc.mono', { text: r.kod + ' · ' + r.urun.gosterimBirimi })
-              ])])),
-              h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-              h('td.num.mono', { text: JP.fmt.miktar(bekleyen), style: { color: 'var(--warn)', fontWeight: '600' } }),
-              h('td.small.muted', {}, h('div.row.tight', {}, r.talepler.map(function (no) {
-                return h('button.tag', { style: { cursor: 'pointer' }, text: no, onclick: function () { talepAc(no); } });
-              })))
-            ]);
-          }), 'Sevkiyat bekleyen ürününüz yok. Ürün kataloğundan sepete ekleyip talep oluşturabilirsiniz.'), true)
-    ]);
-  }
-
   /* --------------------------------------------------------- ürün ağacı */
   function agacPaneli() {
     var bayi = aktifBayi();
@@ -318,7 +240,7 @@
     if (!tumu.length) { kap.appendChild(h('div.empty', { text: 'Bu bayiye açık ürün bulunmuyor.' })); return kap; }
 
     var izgara = h('div.stack');
-    var sayimEl = h('span.small.muted');
+    var sayimEl = h('span.small.muted.sayim');
     var secEl = h('div.gorunum-sec', { role: 'group', 'aria-label': 'Görünüm' });
 
     var araGirdi = h('input.ara', {
@@ -358,14 +280,13 @@
     izgaraCiz();
 
     kap.appendChild(h('div.cat-bar', {}, [
-      araGirdi,
       filtre.dugum ? h('button.chip', {
         'aria-pressed': 'true',
         text: (filtre.dugum.grup || '') + (filtre.dugum.seri ? ' · ' + filtre.dugum.seri : '') + '  ✕',
         title: 'Kırılımı temizle',
         onclick: function () { filtre.dugum = null; kabuk.ciz(); }
       }) : null,
-      h('div.spacer'),
+      araGirdi,
       sayimEl,
       secEl
     ]));

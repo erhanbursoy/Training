@@ -286,6 +286,7 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; display: block; border-radius: inherit;
 }
+.swatch canvas.kartela-foto { object-fit: cover; }
 .swatch.sw-zebra    { background-image: repeating-linear-gradient(180deg, rgba(255,255,255,.92) 0 6px, rgba(0,0,0,.34) 6px 12px); }
 .swatch.sw-stor     { background-image: linear-gradient(180deg, rgba(255,255,255,.14), rgba(0,0,0,.10)), repeating-linear-gradient(90deg, rgba(0,0,0,.045) 0 3px, transparent 3px 7px); }
 .swatch.sw-tul      { background-image: radial-gradient(circle, rgba(255,255,255,.95) 1.1px, transparent 1.6px); background-size: 5px 5px; }
@@ -295,8 +296,10 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .swatch.sw-diger    { background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.08) 0 6px, transparent 6px 12px); }
 
 /* ---------- katalog araç çubuğu ---------- */
-.cat-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cat-bar .ara { width: 240px; }
+/* Arama kutusu ürün sayısı ve görünüm geçişine kadar yayılır. */
+.cat-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cat-bar .ara { flex: 1 1 260px; min-width: 200px; width: auto; }
+.cat-bar .sayim { white-space: nowrap; }
 .chip {
   font: inherit; font-size: 12.5px; line-height: 1; cursor: pointer; white-space: nowrap;
   padding: 6px 12px; border-radius: 999px;
@@ -1936,8 +1939,32 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   };
 
   /* ------------------------------------------------------------- kumaş kartı */
-  /* Ürün görseli jalpersan.com'dan çağrılır. Ulaşılamazsa (çevrimdışı dosya,
-     içerik güvenlik kuralı) fotoğraf sessizce düşer ve altındaki dokuma deseni kalır. */
+  /* Ürün görseli. Normal yol <img> etiketidir. Bazı ortamların içerik güvenlik
+     kuralı (Content-Security-Policy) img-src içinde data: taşımaz ve gömülü
+     görselleri de engeller; o durumda aynı baytlar tuvale çizilir. Tuval çizimi
+     kaynak yüklemesi olmadığı için bu kurala takılmaz. Her ikisi de olmazsa
+     altındaki dokuma deseni kalır. */
+  function tuvaleCiz(kap, dataUri) {
+    if (!dataUri || dataUri.slice(0, 5) !== 'data:' || typeof createImageBitmap !== 'function') return;
+    var virgul = dataUri.indexOf(',');
+    var ikili;
+    try {
+      var ham = atob(dataUri.slice(virgul + 1));
+      ikili = new Uint8Array(ham.length);
+      for (var i = 0; i < ham.length; i++) ikili[i] = ham.charCodeAt(i);
+    } catch (e) { return; }
+    var tur = dataUri.slice(5, dataUri.indexOf(';')) || 'image/jpeg';
+    createImageBitmap(new Blob([ikili], { type: tur })).then(function (bm) {
+      if (!kap.isConnected) { if (bm.close) bm.close(); return; }
+      var c = document.createElement('canvas');
+      c.className = 'kartela-foto';
+      c.width = bm.width; c.height = bm.height;
+      c.getContext('2d').drawImage(bm, 0, 0);
+      kap.appendChild(c);
+      if (bm.close) bm.close();
+    }).catch(function () {});
+  }
+
   UI.kartela = function (urun, yukseklik, genislik, buyuk) {
     var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
     if (genislik) { st.width = genislik; st.flex = 'none'; }
@@ -1949,7 +1976,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         src: src, alt: '', loading: 'lazy', decoding: 'async',
         onerror: function () {
           if (yedek && im.getAttribute('src') !== yedek) { im.setAttribute('src', yedek); return; }
-          im.remove();                       // yedek de yoksa dokuma deseni kalır
+          im.remove();
+          tuvaleCiz(el, yedek || src);          // <img> engellendiyse baytları tuvale çiz
         }
       });
       el.appendChild(im);
@@ -2032,10 +2060,12 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       kabukEl.appendChild(anaEl);
 
       anaEl.textContent = '';
-      anaEl.appendChild(h('header', {}, [
-        h('h1', { text: b.baslik || b.ad }),
-        b.aciklama ? h('p', { text: b.aciklama }) : null
-      ]));
+      if (!b.basliksiz) {
+        anaEl.appendChild(h('header', {}, [
+          h('h1', { text: b.baslik || b.ad }),
+          b.aciklama ? h('p', { text: b.aciklama }) : null
+        ]));
+      }
       try { anaEl.appendChild(b.ciz({ git: git, ciz: ciz })); }
       catch (e) { console.error(e); anaEl.appendChild(h('div.note.bad', { text: 'Ekran çizilemedi: ' + e.message })); }
       if (kaydirma) window.scrollTo(0, kaydirma);
@@ -2104,7 +2134,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 })();
 
 /* Bayi portalı — standart web uygulaması yerleşimi:
-   üstte Dashboard / Ürün kataloğu / Taleplerim, sağ üstte sepet, bildirim ve profil.
+   üstte Ürün kataloğu / Taleplerim, sağ üstte sepet, bildirim ve profil.
    Katalogda sol yan panel ürün ağacıdır (grup → seri → renk varyantları).
    Sepet yalnızca taslaktır; havuza hareket ancak sepet onaylanınca yazılır. */
 (function () {
@@ -2136,11 +2166,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       rol: 'bayi', rolAdi: 'Bayi portalı', baslik: 'Bayi portalı', altBaslik: 'Bayi portalı',
       ustMenu: true, ustSag: ustSag,
       bolumler: [
-        { id: 'dashboard', ad: 'Dashboard', baslik: 'Dashboard',
-          aciklama: 'Açık talepleriniz ve hangi üründen ne kadarının henüz sevk edilmediği.',
-          ciz: dashboard },
-        { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu',
-          aciklama: 'Ürünleri sepete ekleyin; sepeti onayladığınızda satın alma talebi oluşur. Fiyat ve stok gösterilmez.',
+        { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu', basliksiz: true,
           ciz: katalog, yan: agacPaneli, yanBaslik: 'Ürün ağacı' },
         { id: 'talepler', ad: 'Taleplerim', baslik: 'Satın alma taleplerim',
           aciklama: 'Taleplerinizin listesi. Bir talebe girince ürünleri, işlemleri ve hareketleri görürsünüz.',
@@ -2248,80 +2274,6 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     return b.kisit.urunler.length + ' seçili ürün';
   }
 
-  /* ------------------------------------------------------------- dashboard */
-  /* Bayi havuzu, rezervi, birimi görmez. Yalnızca kaç talebi açık ve açık
-     taleplerinde hangi üründen ne kadarı henüz sevk edilmedi. */
-  function acikTalepler(bayiKod) {
-    return JP.db.talepler.filter(function (t) {
-      if (t.bayiKod !== bayiKod) return false;
-      var d = JP.talepDurumu(t);
-      return d === 'Açık' || d === 'Kısmen Karşılandı';
-    });
-  }
-
-  function sevkBekleyen(bayiKod) {
-    var kutu = {};
-    acikTalepler(bayiKod).forEach(function (t) {
-      JP.talepKalemDurum(t).forEach(function (k) {
-        var bekleyen = Math.max(0, k.talep - k.fatura);
-        if (bekleyen <= 0.001) return;
-        var r = (kutu[k.kalem.urunKod] = kutu[k.kalem.urunKod] || {
-          urun: k.urun, kod: k.kalem.urunKod, talep: 0, sevk: 0, talepler: [], enEski: t.tarih
-        });
-        r.talep += k.talep;
-        r.sevk += k.fatura;
-        if (r.talepler.indexOf(t.no) < 0) r.talepler.push(t.no);
-        if (t.tarih < r.enEski) r.enEski = t.tarih;
-      });
-    });
-    return Object.keys(kutu).map(function (x) { return kutu[x]; })
-      .sort(function (a, b) { return (b.talep - b.sevk) - (a.talep - a.sevk); });
-  }
-
-  function dashboard() {
-    var bayi = aktifBayi();
-    if (!bayi) return h('div.note.warn', { html: '<b>Bayi kartı yok.</b> Firma panelinden “Bayileri Logo’dan al” işlemini çalıştırın.' });
-
-    var acik = acikTalepler(bayi.kod);
-    var urunler = sevkBekleyen(bayi.kod);
-    var sepetAdet = JP.sepetSayisi(bayi.kod);
-
-    return h('div.stack', {}, [
-      sepetAdet ? h('div.note', {}, [
-        h('b', { text: 'Sepetinizde ' + sepetAdet + ' kalem bekliyor. ' }),
-        h('span', { text: 'Onaylamadan talep oluşmaz. ' }),
-        h('button.btn.sm', { text: 'Sepete git', onclick: function () { kabuk.git('sepet'); } })
-      ]) : null,
-
-      h('div.grid.k3', {}, [
-        UI.kpi('Açık talep', String(acik.length), acik.length === 1 ? 'talep' : 'talep',
-          acik.length ? 'Tamamı sevk edilmemiş talepleriniz' : 'Bekleyen talebiniz yok', true)
-      ]),
-
-      UI.panel('Sevkiyat bekleyen ürünler',
-        h('div.row.tight', {}, [
-          h('span.small.muted', { text: urunler.length + ' ürün' }),
-          h('button.btn.ghost.sm', { text: 'Taleplerim', onclick: function () { kabuk.git('talepler'); } })
-        ]),
-        UI.tablo(['Ürün', { t: 'Talep edilen', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, 'Talepler'],
-          urunler.map(function (r) {
-            var bekleyen = r.talep - r.sevk;
-            return h('tr', {}, [
-              h('td', {}, h('div.row.tight', {}, [UI.kartela(r.urun, '26px', '40px'), h('div', {}, [
-                h('div', { text: r.urun.ad }),
-                h('div.pc.mono', { text: r.kod + ' · ' + r.urun.gosterimBirimi })
-              ])])),
-              h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-              h('td.num.mono', { text: JP.fmt.miktar(bekleyen), style: { color: 'var(--warn)', fontWeight: '600' } }),
-              h('td.small.muted', {}, h('div.row.tight', {}, r.talepler.map(function (no) {
-                return h('button.tag', { style: { cursor: 'pointer' }, text: no, onclick: function () { talepAc(no); } });
-              })))
-            ]);
-          }), 'Sevkiyat bekleyen ürününüz yok. Ürün kataloğundan sepete ekleyip talep oluşturabilirsiniz.'), true)
-    ]);
-  }
-
   /* --------------------------------------------------------- ürün ağacı */
   function agacPaneli() {
     var bayi = aktifBayi();
@@ -2423,7 +2375,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     if (!tumu.length) { kap.appendChild(h('div.empty', { text: 'Bu bayiye açık ürün bulunmuyor.' })); return kap; }
 
     var izgara = h('div.stack');
-    var sayimEl = h('span.small.muted');
+    var sayimEl = h('span.small.muted.sayim');
     var secEl = h('div.gorunum-sec', { role: 'group', 'aria-label': 'Görünüm' });
 
     var araGirdi = h('input.ara', {
@@ -2463,14 +2415,13 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     izgaraCiz();
 
     kap.appendChild(h('div.cat-bar', {}, [
-      araGirdi,
       filtre.dugum ? h('button.chip', {
         'aria-pressed': 'true',
         text: (filtre.dugum.grup || '') + (filtre.dugum.seri ? ' · ' + filtre.dugum.seri : '') + '  ✕',
         title: 'Kırılımı temizle',
         onclick: function () { filtre.dugum = null; kabuk.ciz(); }
       }) : null,
-      h('div.spacer'),
+      araGirdi,
       sayimEl,
       secEl
     ]));

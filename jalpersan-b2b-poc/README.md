@@ -31,12 +31,9 @@ böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön**
 
 ## Bayi portalı yerleşimi
 
-Standart web uygulaması düzeni: üstte **Dashboard**, **Ürün kataloğu**, **Taleplerim**;
+Standart web uygulaması düzeni: üstte **Ürün kataloğu** ve **Taleplerim**;
 sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
 
-- **Dashboard** · tek ölçüm: kaç talep açık. Altında açık taleplerdeki ürünler
-  talep edilen / sevk edilen / bekleyen olarak listelenir. Talep numarasına
-  tıklayınca o talebin detayı açılır.
 - **Taleplerim** · liste (tarih, talep no, durum, talep edilen, sevk edilen) ve talep detayı.
   Detayda üç görünüm var: **Ürünler**, **İşlemler** (talepten doğan siparişler ve faturalar)
   ve **Hareketler** (talep geçmişi).
@@ -83,7 +80,12 @@ Katalog **jalpersan.com/urunler** adresinden derlenmiştir: 11 kategori, 178 ser
 çevrimdışı ve dış görsele izin vermeyen ortamlarda da eksiksiz görünür.
 
 Ürün detayında önce jalpersan.com'daki büyük görsel (`_xl`, 1279 piksel) denenir;
-ulaşılamazsa gömülü görsele, o da yoksa dokuma desenine düşülür.
+ulaşılamazsa gömülü görsele düşülür.
+
+Bazı ortamların içerik güvenlik kuralı (`Content-Security-Policy`) `img-src` içinde
+`data:` taşımaz ve gömülü görselleri de engeller. Bu durumda `<img>` başarısız olur ve
+aynı baytlar tuvale (`canvas`) çizilir; tuval çizimi kaynak yüklemesi olmadığı için bu
+kurala takılmaz. İkisi de olmazsa altındaki dokuma deseni kalır.
 
 Görselleri yenilemek için seri sayfalarının kapak görselleri şu kalıptan indirilir:
 `https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_m.jpeg?v1`

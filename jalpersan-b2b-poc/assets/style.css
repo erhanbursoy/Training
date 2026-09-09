@@ -277,6 +277,7 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
   position: absolute; inset: 0; width: 100%; height: 100%;
   object-fit: cover; display: block; border-radius: inherit;
 }
+.swatch canvas.kartela-foto { object-fit: cover; }
 .swatch.sw-zebra    { background-image: repeating-linear-gradient(180deg, rgba(255,255,255,.92) 0 6px, rgba(0,0,0,.34) 6px 12px); }
 .swatch.sw-stor     { background-image: linear-gradient(180deg, rgba(255,255,255,.14), rgba(0,0,0,.10)), repeating-linear-gradient(90deg, rgba(0,0,0,.045) 0 3px, transparent 3px 7px); }
 .swatch.sw-tul      { background-image: radial-gradient(circle, rgba(255,255,255,.95) 1.1px, transparent 1.6px); background-size: 5px 5px; }
@@ -286,8 +287,10 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .swatch.sw-diger    { background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.08) 0 6px, transparent 6px 12px); }
 
 /* ---------- katalog araç çubuğu ---------- */
-.cat-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cat-bar .ara { width: 240px; }
+/* Arama kutusu ürün sayısı ve görünüm geçişine kadar yayılır. */
+.cat-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cat-bar .ara { flex: 1 1 260px; min-width: 200px; width: auto; }
+.cat-bar .sayim { white-space: nowrap; }
 .chip {
   font: inherit; font-size: 12.5px; line-height: 1; cursor: pointer; white-space: nowrap;
   padding: 6px 12px; border-radius: 999px;

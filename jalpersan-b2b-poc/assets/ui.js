@@ -174,8 +174,32 @@
   };
 
   /* ------------------------------------------------------------- kumaş kartı */
-  /* Ürün görseli jalpersan.com'dan çağrılır. Ulaşılamazsa (çevrimdışı dosya,
-     içerik güvenlik kuralı) fotoğraf sessizce düşer ve altındaki dokuma deseni kalır. */
+  /* Ürün görseli. Normal yol <img> etiketidir. Bazı ortamların içerik güvenlik
+     kuralı (Content-Security-Policy) img-src içinde data: taşımaz ve gömülü
+     görselleri de engeller; o durumda aynı baytlar tuvale çizilir. Tuval çizimi
+     kaynak yüklemesi olmadığı için bu kurala takılmaz. Her ikisi de olmazsa
+     altındaki dokuma deseni kalır. */
+  function tuvaleCiz(kap, dataUri) {
+    if (!dataUri || dataUri.slice(0, 5) !== 'data:' || typeof createImageBitmap !== 'function') return;
+    var virgul = dataUri.indexOf(',');
+    var ikili;
+    try {
+      var ham = atob(dataUri.slice(virgul + 1));
+      ikili = new Uint8Array(ham.length);
+      for (var i = 0; i < ham.length; i++) ikili[i] = ham.charCodeAt(i);
+    } catch (e) { return; }
+    var tur = dataUri.slice(5, dataUri.indexOf(';')) || 'image/jpeg';
+    createImageBitmap(new Blob([ikili], { type: tur })).then(function (bm) {
+      if (!kap.isConnected) { if (bm.close) bm.close(); return; }
+      var c = document.createElement('canvas');
+      c.className = 'kartela-foto';
+      c.width = bm.width; c.height = bm.height;
+      c.getContext('2d').drawImage(bm, 0, 0);
+      kap.appendChild(c);
+      if (bm.close) bm.close();
+    }).catch(function () {});
+  }
+
   UI.kartela = function (urun, yukseklik, genislik, buyuk) {
     var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
     if (genislik) { st.width = genislik; st.flex = 'none'; }
@@ -187,7 +211,8 @@
         src: src, alt: '', loading: 'lazy', decoding: 'async',
         onerror: function () {
           if (yedek && im.getAttribute('src') !== yedek) { im.setAttribute('src', yedek); return; }
-          im.remove();                       // yedek de yoksa dokuma deseni kalır
+          im.remove();
+          tuvaleCiz(el, yedek || src);          // <img> engellendiyse baytları tuvale çiz
         }
       });
       el.appendChild(im);
@@ -270,10 +295,12 @@
       kabukEl.appendChild(anaEl);
 
       anaEl.textContent = '';
-      anaEl.appendChild(h('header', {}, [
-        h('h1', { text: b.baslik || b.ad }),
-        b.aciklama ? h('p', { text: b.aciklama }) : null
-      ]));
+      if (!b.basliksiz) {
+        anaEl.appendChild(h('header', {}, [
+          h('h1', { text: b.baslik || b.ad }),
+          b.aciklama ? h('p', { text: b.aciklama }) : null
+        ]));
+      }
       try { anaEl.appendChild(b.ciz({ git: git, ciz: ciz })); }
       catch (e) { console.error(e); anaEl.appendChild(h('div.note.bad', { text: 'Ekran çizilemedi: ' + e.message })); }
       if (kaydirma) window.scrollTo(0, kaydirma);
