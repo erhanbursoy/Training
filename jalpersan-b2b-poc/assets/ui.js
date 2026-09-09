@@ -38,7 +38,9 @@
     zil: '<path d="M8 2.1a3.9 3.9 0 0 0-3.9 3.9v2.4L2.7 11h10.6l-1.4-2.6V6A3.9 3.9 0 0 0 8 2.1z"/><path d="M6.4 13.1a1.75 1.75 0 0 0 3.2 0"/>',
     profil: '<circle cx="8" cy="5.6" r="2.6"/><path d="M2.9 13.6a5.4 5.4 0 0 1 10.2 0"/>',
     ok: '<path d="M6 3.5 10.5 8 6 12.5"/>',
-    kutu: '<path d="M2.4 5.2 8 2.3l5.6 2.9v5.6L8 13.7 2.4 10.8z"/><path d="M2.4 5.2 8 8.1l5.6-2.9M8 8.1v5.6"/>'
+    kutu: '<path d="M2.4 5.2 8 2.3l5.6 2.9v5.6L8 13.7 2.4 10.8z"/><path d="M2.4 5.2 8 8.1l5.6-2.9M8 8.1v5.6"/>',
+    liste: '<path d="M2.6 4.2h10.8M2.6 8h10.8M2.6 11.8h10.8"/>',
+    kart: '<rect x="2.4" y="2.4" width="5" height="5" rx="1"/><rect x="8.6" y="2.4" width="5" height="5" rx="1"/><rect x="2.4" y="8.6" width="5" height="5" rx="1"/><rect x="8.6" y="8.6" width="5" height="5" rx="1"/>'
   };
   UI.ikon = function (ad, boy) {
     var d = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -172,10 +174,21 @@
   };
 
   /* ------------------------------------------------------------- kumaş kartı */
-  UI.kartela = function (urun, yukseklik, genislik) {
+  /* Ürün görseli jalpersan.com'dan çağrılır. Ulaşılamazsa (çevrimdışı dosya,
+     içerik güvenlik kuralı) fotoğraf sessizce düşer ve altındaki dokuma deseni kalır. */
+  UI.kartela = function (urun, yukseklik, genislik, buyuk) {
     var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
     if (genislik) { st.width = genislik; st.flex = 'none'; }
-    return h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
+    var el = h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
+    var src = buyuk ? (urun.gorselBuyuk || urun.gorsel) : urun.gorsel;
+    if (src) {
+      var im = h('img.kartela-foto', {
+        src: src, alt: '', loading: 'lazy', decoding: 'async',
+        onerror: function () { im.remove(); }
+      });
+      el.appendChild(im);
+    }
+    return el;
   };
 
   /* ------------------------------------------------------------------ tablo */

@@ -71,6 +71,36 @@ rezerv çözümü teknik bir kayıt olduğu için bayiye gösterilmez.
 Sipariş birimi (metre / adet) yalnızca talep detayında kalem satırının yanında yazar;
 dashboard ve listelerde miktarlar birimsiz gösterilir.
 
+## Ürün verisi ve görseller
+
+Katalog **jalpersan.com/urunler** adresinden derlenmiştir: 11 kategori, 178 seri, 259 model
+(`assets/katalog.js`). Prototipte Logo stok kartlarının kaynağı budur; gerçek kurulumda yerini
+`LG_XXX_ITEMS` sorgusu alır. Yeniden derlemek gerekirse veri kategori sayfalarının JSON çıktısından
+üretilir.
+
+Ürün fotoğrafları jalpersan.com üzerinden çağrılır, kopyalanmaz:
+
+```
+https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_m.jpeg?v1   (liste ve kart)
+https://www.jalpersan.com/assets/images/tr/<sayfa-uri>/<görsel>_xl.jpeg?v1  (ürün detayı)
+```
+
+Görsele ulaşılamazsa fotoğraf sessizce düşer ve altındaki dokuma deseni kalır. Bu, çevrimdışı açılan
+tek dosya sürümünde ve dış görsele izin vermeyen ortamlarda kataloğun boş görünmesini önler.
+
+## Tasarım
+
+Renk ve tipografi jalpersan.com kurumsal kimliğinden alınmıştır:
+
+| | |
+| --- | --- |
+| Metin / koyu | `#27292D`, `#0F1217` |
+| Marka kırmızısı | `#F00F45` — yalnızca birincil eylemlerde ve aktif durumda |
+| Zemin | `#F4F4F4`, yüzey `#FFFFFF`, çizgi `#E8E8E8` |
+| Yazı tipi | Source Sans 3 (arayüz), IBM Plex Mono (kod ve miktar sütunları) |
+
+Font isteği çizimi engellemez; yavaş bağlantıda sayfa yedek yazı tipiyle açılır.
+
 ## Havuz mantığı
 
 Bakiye hiçbir yerde saklanmaz; tek bir hareket tablosundan türetilir. Kayıt güncellenmez,

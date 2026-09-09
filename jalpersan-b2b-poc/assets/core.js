@@ -14,7 +14,7 @@
   'use strict';
   var JP = (window.JP = window.JP || {});
 
-  JP.KEY = 'jalpersan.poc.v5';
+  JP.KEY = 'jalpersan.poc.v6';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
 
   /* ---------------------------------------------------------------- yardımcı */
@@ -97,28 +97,45 @@
   };
 
   /* --------------------------------------------------------- ana veri (Logo) */
+  /* Stok kartları jalpersan.com kataloğundan üretilir: kategori → seri → model.
+     Gerçek kurulumda bu liste Logo LG_XXX_ITEMS sorgusundan gelir. */
+  var DOKU = {
+    'Stor Perde Kumaşı': 'stor', 'Tül Stor Perde Kumaşı': 'tul', 'Dikey Perde Kumaşı': 'zebra',
+    'Tül Dikey Perde Kumaşı': 'tul', 'Baskılı Tül Dikey Fonluk Serisi': 'plise',
+    'Verduo - Dijital Baskılı Tül Dikey Serisi': 'plise', 'Serenat: Çiçek Koleksiyonu': 'screen',
+    'Serüven: Bebek Koleksiyonu': 'screen', 'Yakamoz: Etekucu Koleksiyonu': 'sineklik',
+    'Jalpersan Trendleri': 'zebra', 'Ronco': 'diger', 'Renkli Tela Kartelası': 'diger'
+  };
+
+  /** Kod üzerinden kararlı bir kumaş rengi — görsel yüklenemezse dokuma deseninde kullanılır. */
+  function kartelaRengi(kod) {
+    var t = 0;
+    for (var i = 0; i < kod.length; i++) t = (t * 31 + kod.charCodeAt(i)) % 100000;
+    var ton = [38, 28, 210, 20, 45, 195, 15, 60][t % 8];
+    return 'hsl(' + ton + ', ' + (12 + t % 16) + '%, ' + (58 + t % 18) + '%)';
+  }
+
   function logoStok() {
-    var s = [
-      ['ZEB-1200-KREM', 'Zebra Perde Kumaşı 1200 · Krem', 'Zebra', 'MTR', '#D8C9AC', 'zebra', '200 cm en · çift kat gündüz/gece'],
-      ['ZEB-1200-ANTR', 'Zebra Perde Kumaşı 1200 · Antrasit', 'Zebra', 'MTR', '#5A6068', 'zebra', '200 cm en · çift kat gündüz/gece'],
-      ['ZEB-2400-BEJ', 'Zebra Perde Kumaşı 2400 · Bej', 'Zebra', 'MTR', '#C9B394', 'zebra', '280 cm en · çift kat gündüz/gece'],
-      ['STR-3000-BEYAZ', 'Stor Perde Kumaşı 3000 · Beyaz', 'Stor', 'MTR', '#EDE9E1', 'stor', '280 cm en · leke tutmaz apre'],
-      ['STR-3000-GRI', 'Stor Perde Kumaşı 3000 · Gri', 'Stor', 'MTR', '#9AA0A3', 'stor', '280 cm en · leke tutmaz apre'],
-      ['TUL-0500-EKRU', 'Tül Stor 0500 · Ekru', 'Tül Stor', 'MTR', '#E7E2D6', 'tul', '300 cm en · şeffaf dokuma'],
-      ['SSC-0310-GUMUS', 'Sun Screen %3 Açıklık · Gümüş', 'Sun Screen', 'MTR', '#A9AEB2', 'screen', '%3 açıklık · 280 cm en · PVC/cam elyaf'],
-      ['SSC-0510-BEYAZ', 'Sun Screen %5 Açıklık · Beyaz', 'Sun Screen', 'MTR', '#DDD9D2', 'screen', '%5 açıklık · 280 cm en · PVC/cam elyaf'],
-      ['PLS-0900-VIZON', 'Plise Perde Kumaşı 0900 · Vizon', 'Plise', 'MTR', '#B9A791', 'plise', '45 mm katlama · cam üstü montaj'],
-      ['SNK-1800-SIYAH', 'Sineklik Tülü 1800 · Siyah', 'Sineklik', 'MTR', '#3C4145', 'sineklik', '180 cm en · 18×16 göz fiberglas'],
-      ['PLS-KASET-VIZON', 'Plise Kaset Profili · Vizon', 'Plise', 'ADET', '#B0A08B', 'diger', '45 mm kaset · 3 m boy'],
-      ['ZEB-1200-KARTELA', 'Zebra Kartela Seti (12 renk)', 'Zebra', 'ADET', '#C2A87C', 'diger', '12 renk · sunum kutusu']
-    ];
-    return s.map(function (x, i) {
-      return {
-        kod: x[0], ad: x[1], grup: x[2], birim: x[3], renk: x[4], doku: x[5], ozellik: x[6],
-        aktif: x[0] !== 'SNK-1800-SIYAH',      // Logo'da bir kart pasif — senkron davranışı gösterilsin
-        sira: i
-      };
+    var kat = (window.JP && JP.KATALOG) || { cdn: '', gruplar: [] };
+    var out = [], sira = 0;
+    kat.gruplar.forEach(function (g) {
+      g.seriler.forEach(function (se) {
+        se.m.forEach(function (model) {
+          out.push({
+            kod: model,
+            ad: model + ' ' + g.kisa,
+            grup: g.ad, grupKisa: g.kisa, seri: se.ad, seriUri: se.uri,
+            birim: g.birim, ozellik: g.ozellik, ozet: g.ozet,
+            gorsel: kat.cdn + se.g, gorselBuyuk: kat.cdn + se.b,
+            renk: kartelaRengi(model), doku: DOKU[g.ad] || 'diger',
+            aktif: true, sira: sira++
+          });
+        });
+      });
     });
+    // Logo'da pasif bir kart bulunsun: senkron davranışı demoda görünsün
+    if (out.length > 6) out[out.length - 1].aktif = false;
+    return out;
   }
 
   function logoCari() {
@@ -229,15 +246,17 @@
         var p = db.urunler.find(function (u) { return u.kod === s.kod; });
         if (!p) {
           db.urunler.push({
-            kod: s.kod, ad: s.ad, grup: s.grup, birim: s.birim, renk: s.renk, doku: s.doku,
+            kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
+            renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk,
             logoAktif: s.aktif, logodaYok: false,
-            siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: aciklamaOf(s.grup),
+            siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: s.ozet || aciklamaOf(s.grup),
             gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
           });
           yeni++;
         } else {
           if (p.ad !== s.ad || p.logoAktif !== s.aktif || p.grup !== s.grup) guncel++;
-          p.ad = s.ad; p.grup = s.grup; p.birim = s.birim; p.renk = s.renk; p.doku = s.doku;
+          p.ad = s.ad; p.grup = s.grup; p.grupKisa = s.grupKisa; p.seri = s.seri; p.birim = s.birim;
+          p.renk = s.renk; p.doku = s.doku; p.gorsel = s.gorsel; p.gorselBuyuk = s.gorselBuyuk;
           p.logoAktif = s.aktif; p.logodaYok = false;                 // portal ek alanları korunur
         }
       });
@@ -360,8 +379,33 @@
     return talep;
   };
 
-  /** Katalog ağacı: grup → seri (stok kodunun orta bölümü) → renk varyantları.
-      Logo kodlama yapısı ZEB-1200-KREM biçiminde olduğu için seri koddan türetilir. */
+  /** Ürünün seri bilgisi. Katalogdan gelir (ör. "HB Serisi Stor Perdeler");
+      yoksa stok kodunun orta bölümünden türetilir. */
+  JP.seriBilgi = function (u) {
+    if (u.seri) return { kod: u.seri, ad: u.seri };
+    var parca = u.kod.split('-');
+    var kod = parca.length > 1 ? parca[1] : 'DIGER';
+    return { kod: kod, ad: kod + ' serisi' };
+  };
+
+  /** Seri adının kısa biçimi: "HB Serisi Stor Perdeler" → "HB Serisi",
+      "JP-01 Baskılı Tül Dikey Fonluk Perdeler" → "JP-01". Kategori adı seride
+      tekrar ettiği için etiket kısaltılır. */
+  JP.seriKisa = function (ad) {
+    if (!ad) return '';
+    var m = ad.match(/^(.*?\sSerisi)\b/);
+    if (m) return m[1];
+    m = ad.match(/^([A-ZÇĞİÖŞÜ0-9]{1,5}(?:-[A-Z0-9]{1,4})?)\s/);
+    if (m) return m[1];
+    return ad.length > 26 ? ad.slice(0, 25).trim() + '…' : ad;
+  };
+
+  /** Ürünün katalog kırılımı: "Stor Perde · HB Serisi" */
+  JP.urunKirilim = function (u) {
+    return (u.grupKisa || u.grup) + ' · ' + JP.seriKisa(JP.seriBilgi(u).ad);
+  };
+
+  /** Katalog ağacı: kategori → seri → model kodu (HB-01, HB-02 …). */
   JP.urunAgaci = function (bayiKod) {
     var urunler = JP.bayiUrunleri(bayiKod);
     var gruplar = [];
@@ -369,11 +413,9 @@
       var g = gruplar.find(function (x) { return x.ad === u.grup; });
       if (!g) { g = { ad: u.grup, adet: 0, seriler: [] }; gruplar.push(g); }
       g.adet++;
-      var parca = u.kod.split('-');
-      var seriKod = parca.length > 1 ? parca[1] : 'DIGER';
-      var seriAd = u.birim === 'ADET' ? 'Kartela ve aksesuar' : seriKod + ' serisi';
-      var se = g.seriler.find(function (x) { return x.kod === seriKod && x.ad === seriAd; });
-      if (!se) { se = { kod: seriKod, ad: seriAd, adet: 0 }; g.seriler.push(se); }
+      var seri = JP.seriBilgi(u);
+      var se = g.seriler.find(function (x) { return x.kod === seri.kod && x.ad === seri.ad; });
+      if (!se) { se = { kod: seri.kod, ad: seri.ad, adet: 0 }; g.seriler.push(se); }
       se.adet++;
     });
     gruplar.forEach(function (g) { g.seriler.sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); }); });
@@ -385,10 +427,7 @@
     var q = (arama || '').trim().toLocaleLowerCase('tr');
     return JP.bayiUrunleri(bayiKod).filter(function (u) {
       if (dugum && dugum.grup && u.grup !== dugum.grup) return false;
-      if (dugum && dugum.seri) {
-        var parca = u.kod.split('-');
-        if ((parca.length > 1 ? parca[1] : 'DIGER') !== dugum.seri) return false;
-      }
+      if (dugum && dugum.seri && JP.seriBilgi(u).kod !== dugum.seri) return false;
       if (!q) return true;
       return (u.ad + ' ' + u.kod + ' ' + (u.ozellik || '')).toLocaleLowerCase('tr').indexOf(q) >= 0;
     });
@@ -947,6 +986,13 @@
   };
 
   /* ------------------------------------------------------------------ tohum */
+  /** Tohum verisi için katalogdan ürün seçer; kod listesi değişse de kırılmaz. */
+  function tohumUrun(db, grupAdi, sira) {
+    var liste = db.logo.stok.filter(function (x) { return x.grup === grupAdi && x.aktif; });
+    if (!liste.length) liste = db.logo.stok.filter(function (x) { return x.aktif; });
+    return (liste[sira % liste.length] || liste[0] || {}).kod;
+  }
+
   function tohum(bos) {
     var db = bosDb();
     mem = db;
@@ -955,9 +1001,10 @@
     // --- ana veriyi Logo'dan çekilmiş varsay
     db.logo.stok.forEach(function (s) {
       db.urunler.push({
-        kod: s.kod, ad: s.ad, grup: s.grup, birim: s.birim, renk: s.renk, doku: s.doku,
+        kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
+        renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk,
         logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, ozellik: s.ozellik,
-        aciklama: aciklamaOf(s.grup), gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
+        aciklama: s.ozet, gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
       });
     });
     db.logo.cari.forEach(function (c) {
@@ -972,16 +1019,26 @@
 
     // yurt dışı bayi yalnızca iki gruba açık — kısıt davranışı görünsün
     var balkan = db.bayiler.find(function (b) { return b.kod === 'BYI-0004'; });
-    balkan.kisit = { tip: 'gruplar', gruplar: ['Zebra', 'Sun Screen'], urunler: [] };
-    db.urunler.find(function (u) { return u.kod === 'ZEB-1200-KARTELA'; }).siparieAcik = false;
+    balkan.kisit = { tip: 'gruplar', gruplar: ['Stor Perde Kumaşı', 'Tül Stor Perde Kumaşı'], urunler: [] };
+    var kapali = db.urunler.filter(function (u) { return u.grup === 'Jalpersan Trendleri'; })[1];
+    if (kapali) kapali.siparieAcik = false;      // siparişe kapalı ürün davranışı görünsün
 
     // --- geçmiş hareket: yaşlanmış açık talep + akışı tamamlanmış bir sipariş
+    var U = {
+      stor1: tohumUrun(db, 'Stor Perde Kumaşı', 0),
+      stor2: tohumUrun(db, 'Stor Perde Kumaşı', 6),
+      tul1: tohumUrun(db, 'Tül Stor Perde Kumaşı', 0),
+      dikey1: tohumUrun(db, 'Dikey Perde Kumaşı', 0),
+      trend1: tohumUrun(db, 'Jalpersan Trendleri', 0),
+      aksesuar: tohumUrun(db, 'Ronco', 0)          // adet birimli — karışık birim demoda görünsün
+    };
+
     _ts = gecmis(24);
     JP.talepOlustur('BYI-0001', [
-      { urunKod: 'ZEB-1200-KREM', miktar: 320 },
-      { urunKod: 'STR-3000-BEYAZ', miktar: 150 },
-      { urunKod: 'TUL-0500-EKRU', miktar: 90 },
-      { urunKod: 'PLS-KASET-VIZON', miktar: 24 }
+      { urunKod: U.stor1, miktar: 320 },
+      { urunKod: U.stor2, miktar: 150 },
+      { urunKod: U.tul1, miktar: 90 },
+      { urunKod: U.aksesuar, miktar: 24 }
     ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', null);
 
     _ts = gecmis(21);
@@ -1000,14 +1057,14 @@
 
     _ts = gecmis(9);
     JP.talepOlustur('BYI-0002', [
-      { urunKod: 'SSC-0310-GUMUS', miktar: 240 },
-      { urunKod: 'ZEB-1200-ANTR', miktar: 180 }
+      { urunKod: U.dikey1, miktar: 240 },
+      { urunKod: U.trend1, miktar: 180 }
     ], 'Ofis projesi — teslim tarihi kritik.', null);
 
     _ts = gecmis(3);
     JP.talepOlustur('BYI-0004', [
-      { urunKod: 'ZEB-2400-BEJ', miktar: 400 },
-      { urunKod: 'SSC-0510-BEYAZ', miktar: 120 }
+      { urunKod: tohumUrun(db, 'Stor Perde Kumaşı', 12), miktar: 400 },
+      { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
     ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', null);
 
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
@@ -1024,15 +1081,9 @@
   }
 
   function aciklamaOf(grup) {
-    var m = {
-      'Zebra': 'Çift kat gündüz/gece dokuma. 200 cm ve 280 cm en. Işık geçirgenliği ayarlanabilir.',
-      'Stor': 'Tek kat düz dokuma stor kumaşı. Leke tutmaz apre, 280 cm en.',
-      'Tül Stor': 'Şeffaf tül dokuma. Gün ışığını yumuşatır, 300 cm en.',
-      'Sun Screen': 'PVC kaplı cam elyaf. Isı ve UV kontrolü, açıklık oranı etikette.',
-      'Plise': 'Katlanabilir plise dokuma. Cam üstü montaj için 45 mm katlama.',
-      'Sineklik': 'Fiberglas sineklik tülü. 18×16 göz, 180 cm en.'
-    };
-    return m[grup] || '';
+    var k = ((window.JP && JP.KATALOG) || { gruplar: [] }).gruplar
+      .find(function (g) { return g.ad === grup; });
+    return k ? k.ozet : '';
   }
 
   JP.aciklamaOf = aciklamaOf;

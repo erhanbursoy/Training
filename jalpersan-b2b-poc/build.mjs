@@ -7,17 +7,17 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const oku = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
 const css = oku('assets/style.css');
-const js = ['core', 'ui', 'bayi', 'firma', 'logo'].map((f) => oku(`assets/${f}.js`)).join('\n');
+const js = ['katalog', 'core', 'ui', 'bayi', 'firma', 'logo'].map((f) => oku(`assets/${f}.js`)).join('\n');
 
 const index = oku('index.html');
 const indexCss = index.match(/<style>([\s\S]*?)<\/style>/)[1];
-const girisHtml = index.match(/<div class="wrap">([\s\S]*?)<\/div>\s*<script src="assets\/core\.js">/)[1];
+const girisHtml = index.match(/<div class="wrap">([\s\S]*?)<\/div>\s*<script src="assets\/(?:katalog|core)\.js">/)[1];
 
 const FONTS =
   '<link rel="preconnect" href="https://fonts.googleapis.com">' +
   '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
-  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700' +
-  '&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">';
+  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500' +
+  '&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" media="print" onload="this.media=\'all\'">';
 
 const EK_CSS = `
   .wrap { max-width: 1080px; margin: 0 auto; padding: 30px 22px 72px; }

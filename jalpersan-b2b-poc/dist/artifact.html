@@ -1,40 +1,43 @@
 <title>Jalpersan B2B Prototipi</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'">
 <style>
-/* Jalpersan B2B PoC — ortak tasarım sistemi
-   Renk: ham pamuk zemin, çam-petrol mürekkep, teal aksan.
-   Portal ekranları bilinçli olarak tek dünyaya bağlıdır: her zaman açık renk,
-   tarayıcının koyu tema tercihini izlemez. Yalnızca Logo ERP simülatörü
-   .logo-world sınıfıyla kendi koyu terminal dünyasını kurar. */
+/* Jalpersan B2B PoC — tasarım sistemi
+   Renk ve tipografi jalpersan.com kurumsal kimliğinden alınmıştır:
+   kömür grisi #27292D, marka kırmızısı #F00F45, açık gri zemin #F4F4F4,
+   Source Sans 3. Veri ve kod alanlarında IBM Plex Mono kullanılır.
+   Portal ekranları bilinçli olarak tek dünyaya bağlıdır: her zaman açık renk.
+   Yalnızca Logo ERP simülatörü .logo-world ile kendi koyu dünyasını kurar. */
 
 :root {
   color-scheme: light;
 
-  --paper:      #F6F4EF;
+  --paper:      #F4F4F4;
   --surface:    #FFFFFF;
-  --surface-2:  #FBFAF6;
-  --sunk:       #EEEBE3;
-  --line:       #E1DBCF;
-  --line-2:     #C8C0B0;
+  --surface-2:  #FAFAFA;
+  --sunk:       #EAEAEA;
+  --line:       #E8E8E8;
+  --line-2:     #D2D2D2;
 
-  --text:       #14312E;
-  --text-2:     #5A6862;
-  --text-3:     #8B948E;
+  --text:       #27292D;
+  --text-2:     #444444;
+  --text-3:     #9F9F9F;
 
-  --accent:     #0F6157;
-  --accent-2:   #0B4B43;
-  --accent-soft:#E1EFEC;
+  --accent:     #F00F45;
+  --accent-2:   #C00A35;
+  --accent-soft:#FDE7EC;
+  --accent-koyu:#0F1217;
 
-  --ok:         #3A6B34;  --ok-soft:  #E8F0E3;
-  --warn:       #8A6410;  --warn-soft:#F8EFD9;
-  --bad:        #A03A28;  --bad-soft: #F9E8E3;
-  --info:       #245D7A;  --info-soft:#E4EEF4;
+  --ok:         #2E7D4F;  --ok-soft:  #E6F2EA;
+  --warn:       #B27400;  --warn-soft:#FBF0DC;
+  --bad:        #8E1029;  --bad-soft: #FAE4E9;
+  --info:       #2F3543;  --info-soft:#E9EBEF;
 
-  --shadow:     0 1px 2px rgba(20,49,46,.05), 0 10px 26px -16px rgba(20,49,46,.30);
+  --shadow:     0 1px 2px rgba(39,41,45,.05), 0 10px 26px -16px rgba(39,41,45,.35);
   --radius:     10px;
+  --radius-sm:  5px;
 
-  --font-display: Archivo, "Helvetica Neue", Arial, sans-serif;
-  --font-body:    "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Source Sans 3", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-body:    "Source Sans 3", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
@@ -134,7 +137,7 @@ a { color: var(--accent); }
   font: inherit; font-size: 13.5px;
 }
 .rail button:hover { background: var(--sunk); color: var(--text); }
-.rail button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+.rail button[aria-current="true"] { background: var(--sunk); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .rail .count {
   font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 999px;
   background: var(--sunk); color: var(--text-2);
@@ -224,27 +227,27 @@ table.tbl td.tight { padding: 5px 12px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font: inherit; font-size: 13px; font-weight: 500; line-height: 1;
-  padding: 8px 13px; border-radius: 7px; cursor: pointer;
+  padding: 8px 13px; border-radius: var(--radius-sm); cursor: pointer;
   border: 1px solid var(--line-2); background: var(--surface); color: var(--text);
   transition: background .12s ease, border-color .12s ease;
 }
 .btn:hover { background: var(--sunk); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.btn.primary:hover { background: var(--accent-koyu); border-color: var(--accent-koyu); }
 .logo-world .btn.primary { color: #201704; }
 .btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
 .btn.danger:hover { background: var(--bad-soft); }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
 .btn.ghost:hover { background: var(--sunk); color: var(--text); }
-.btn.sm { font-size: 12px; padding: 5px 9px; border-radius: 6px; }
+.btn.sm { font-size: 12px; padding: 5px 9px; border-radius: var(--radius-sm); }
 .btn.block { width: 100%; }
 
 /* ---------- form ---------- */
 label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-2); }
 input[type=text], input[type=number], input[type=date], input[type=email], select, textarea {
   font: inherit; font-size: 13px; color: var(--text);
-  background: var(--surface); border: 1px solid var(--line-2); border-radius: 7px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--radius-sm);
   padding: 7px 9px; width: 100%; min-width: 0;
 }
 input[type=number] { font-family: var(--font-mono); text-align: right; }
@@ -270,8 +273,12 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 
 /* ---------- kumaş dokusu (kartela) ---------- */
 .swatch {
-  width: 100%; aspect-ratio: 16 / 9; border-radius: 7px; border: 1px solid var(--line);
+  width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-sm); border: 1px solid var(--line);
   background-color: var(--sw, #B9AE99); background-blend-mode: multiply; position: relative; overflow: hidden;
+}
+.swatch .kartela-foto {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; border-radius: inherit;
 }
 .swatch.sw-zebra    { background-image: repeating-linear-gradient(180deg, rgba(255,255,255,.92) 0 6px, rgba(0,0,0,.34) 6px 12px); }
 .swatch.sw-stor     { background-image: linear-gradient(180deg, rgba(255,255,255,.14), rgba(0,0,0,.10)), repeating-linear-gradient(90deg, rgba(0,0,0,.045) 0 3px, transparent 3px 7px); }
@@ -293,40 +300,116 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
 .logo-world .chip[aria-pressed="true"] { color: #201704; }
 
-/* ---------- ürün kartı (e-ticaret) ---------- */
-.cat { display: grid; gap: 13px; grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); }
+/* ---------- ürün listesi ---------- */
+/* Katalog kart yerine liste: kırılım her satırda ürünün üzerinde yazar,
+   ayrı grup bölümleri yoktur. Görselin üzerine gelince büyür. */
+.ulist {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); overflow: visible;
+}
+.ubas, .urow {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr) 116px 92px 122px;
+  gap: 12px; align-items: center; padding: 0 14px;
+}
+.ubas {
+  padding-top: 9px; padding-bottom: 9px; background: var(--surface-2);
+  border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0;
+  font-family: var(--font-display); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+}
+.urow { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); position: relative; }
+.urow:last-child { border-bottom: 0; }
+.urow:hover { background: var(--surface-2); z-index: 10; }
+.urow.sepette { box-shadow: inset 3px 0 0 var(--accent); }
+.urow .ubilgi { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.urow .uad {
+  font-weight: 600; font-size: 13.5px; line-height: 1.35; text-align: left;
+  border: 0; background: none; padding: 0; color: inherit; font-family: inherit; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.urow .uad:hover { color: var(--accent); text-decoration: underline; }
+.urow .umeta { font-size: 11.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.urow .umeta .kod { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.urow .ubirim { font-size: 12px; color: var(--text-2); }
+.urow .usepette { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-2); }
+
+/* görsel: üzerine gelince büyür */
+.uthumb { width: 46px; height: 46px; padding: 0; border: 0; background: none; cursor: zoom-in; display: block; }
+.uthumb .swatch {
+  width: 46px; height: 46px; aspect-ratio: auto; border-radius: 5px; position: relative;
+  transition: transform .18s ease, box-shadow .18s ease, border-radius .18s ease;
+  transform-origin: left center;
+}
+.uthumb:hover .swatch, .uthumb:focus-visible .swatch {
+  transform: scale(3.9); border-radius: 8px; z-index: 30;
+  box-shadow: 0 14px 34px -10px rgba(20, 49, 46, .5);
+}
+@media (prefers-reduced-motion: reduce) { .uthumb:hover .swatch { transform: scale(2.4); } }
+
+@media (max-width: 780px) {
+  .ubas { display: none; }
+  .urow { grid-template-columns: 58px minmax(0, 1fr); row-gap: 8px; padding-top: 12px; padding-bottom: 12px; }
+  .urow > :nth-child(3), .urow > :nth-child(4), .urow > :nth-child(5) { grid-column: 2; justify-self: start; }
+  .uthumb:hover .swatch { transform: scale(2.8); }
+}
+
+/* ---------- ürün kartı (ızgara görünümü) ---------- */
+/* Liste ve kart görünümü aynı veriyi gösterir; kullanıcı üstteki geçişle seçer.
+   İkisinde de kırılım ürünün üzerinde yazar ve görsele gelince büyür. */
+.cat { display: grid; gap: 13px; grid-template-columns: repeat(auto-fill, minmax(202px, 1fr)); }
 .prod {
   display: flex; flex-direction: column; overflow: hidden;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
-  transition: border-color .12s ease, box-shadow .12s ease;
+  transition: border-color .14s ease, box-shadow .14s ease;
 }
 .prod:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.prod.sepette { border-color: var(--accent); }
 .prod .gorsel {
   display: block; width: 100%; padding: 0; border: 0; border-bottom: 1px solid var(--line);
-  background: none; cursor: pointer; position: relative;
+  background: none; cursor: pointer; position: relative; overflow: hidden;
 }
-.prod .gorsel .swatch { border: 0; border-radius: 0; height: 96px; aspect-ratio: auto; }
-.prod .gorsel .buyut {
-  position: absolute; right: 6px; bottom: 6px; opacity: 0; transition: opacity .12s ease;
+.prod .gorsel .swatch {
+  border: 0; border-radius: 0; height: 122px; aspect-ratio: auto;
+  transition: transform .28s ease;
+}
+.prod:hover .gorsel .swatch, .prod .gorsel:focus-visible .swatch { transform: scale(1.11); }
+.prod .buyut {
+  position: absolute; right: 6px; bottom: 6px; opacity: 0; transition: opacity .14s ease;
   background: var(--surface); color: var(--text-2); border: 1px solid var(--line-2);
   border-radius: 5px; font-size: 10.5px; padding: 2px 6px; font-family: var(--font-display); font-weight: 600;
 }
-.prod:hover .gorsel .buyut, .prod .gorsel:focus-visible .buyut { opacity: 1; }
-.prod .pb { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; }
-.prod .pg { font-family: var(--font-display); font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
-.prod .pn {
-  font-weight: 600; font-size: 13px; line-height: 1.32; min-height: 2.64em;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.prod .pc { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
-.prod .po { font-size: 11.5px; color: var(--text-2); line-height: 1.4; min-height: 2.8em; }
-.prod .pf { display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 4px; }
-.prod .pf .btn { flex: 1 1 auto; }
-.prod.sepette { border-color: var(--accent); }
+.prod:hover .buyut, .prod .gorsel:focus-visible .buyut { opacity: 1; }
 .prod .sepette-rozet {
   position: absolute; left: 6px; top: 6px; background: var(--accent); color: #fff;
   font-family: var(--font-mono); font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
 }
+.prod .pb { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 5px; flex: 1 1 auto; }
+.prod .pn {
+  font-weight: 600; font-size: 13.5px; line-height: 1.32; min-height: 2.64em; text-align: left;
+  border: 0; background: none; padding: 0; color: inherit; font-family: inherit; cursor: pointer;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.prod .pn:hover { color: var(--accent); }
+.prod .pc { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.prod .pf { display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 4px; }
+.prod .pf .btn { flex: 1 1 auto; }
+
+/* kırılım etiketi — her iki görünümde ortak. Marka kırmızısı yalnızca birincil
+   eylemlerde kullanılır; burada sessiz bir üst etiket yeterli. */
+.ukirilim {
+  font-family: var(--font-display); font-size: 10px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* görünüm geçişi */
+.gorunum-sec { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.gorunum-sec button {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12.5px;
+  padding: 6px 11px; border: 0; background: var(--surface); color: var(--text-2); cursor: pointer;
+}
+.gorunum-sec button + button { border-left: 1px solid var(--line-2); }
+.gorunum-sec button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 500; }
 
 /* ---------- adet sayacı ---------- */
 .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; flex: none; }
@@ -407,11 +490,6 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .src.logo   { color: var(--info); }
 .src.elle   { color: var(--warn); }
 
-/* katalog grup başlığı — tek ürünlü grup için panel yerine hafif ayraç */
-.grp { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 -4px; }
-.grp h2 { font-size: 15px; }
-.grp .rule { flex: 1 1 auto; height: 1px; background: var(--line); }
-.grp .adet { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 /* ---------- üst gezinme yerleşimi (bayi portalı) ---------- */
 .topbar.ust-menu { gap: 10px; padding-right: 14px; }
@@ -422,9 +500,9 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
   background: none; color: var(--text-2); cursor: pointer;
 }
 .ust-gez button:hover { background: var(--sunk); color: var(--text); }
-.ust-gez button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+.ust-gez button[aria-current="true"] { background: var(--text); color: #fff; font-weight: 600; }
 .ust-gez .count { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--sunk); color: var(--text-2); }
-.ust-gez button[aria-current="true"] .count { background: var(--surface); }
+.ust-gez button[aria-current="true"] .count { background: rgba(255,255,255,.22); color: #fff; }
 .ust-gez .count.hot { background: var(--warn); color: #fff; }
 
 /* sağ üst eylem ikonları */
@@ -567,6 +645,12 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
 </style>
 <div id="app"></div>
 <script>
+/* Jalpersan gerçek ürün kataloğu — jalpersan.com/urunler adresinden derlendi.
+   Prototipte Logo stok kartlarının kaynağı budur: kategori → seri → model kodu.
+   Görseller jalpersan.com üzerinden çağrılır; ulaşılamazsa dokuma deseni gösterilir. */
+window.JP = window.JP || {};
+JP.KATALOG = {"cdn":"https://www.jalpersan.com/assets/images/tr/","gruplar":[{"ad":"Stor Perde Kumaşı","uri":"stor-perde-kumasi","kisa":"Stor Perde","birim":"MTR","ozellik":"280 cm en · leke tutmaz apre · %100 polyester","ozet":"Modern ve şık Jalpersan Stor Perde Kumaşları, evinizin ve iş yerinizin ışığını kontrol etmek için en ideal seçim.","seriler":[{"ad":"HB Serisi Stor Perdeler","uri":"hb-serisi-stor-perdeler","g":"hb-serisi-stor-perdeler/hb-01-hb-02-hb-03-hb-04-hb-05_m.jpeg?v1","b":"hb-serisi-stor-perdeler/hb-01-hb-02-hb-03-hb-04-hb-05_xl.jpeg?v1","m":["HB-01","HB-02","HB-03","HB-04","HB-05"]},{"ad":"WB Serisi Stor Perdeler","uri":"wb-serisi-stor-perdeler","g":"wb-serisi-stor-perdeler/wb-01-wb-02-wb-03-wb-04-wb-05-wb-06_m.jpeg?v1","b":"wb-serisi-stor-perdeler/wb-01-wb-02-wb-03-wb-04-wb-05-wb-06_xl.jpeg?v1","m":["WB-01","WB-02","WB-03","WB-04","WB-05","WB-06"]},{"ad":"GB Serisi Stor Perdeler","uri":"gb-serisi-stor-perdeler","g":"gb-serisi-stor-perdeler/gb-01-gb-02-gb-03-gb-04-gb-05_m.jpeg?v1","b":"gb-serisi-stor-perdeler/gb-01-gb-02-gb-03-gb-04-gb-05_xl.jpeg?v1","m":["GB-01","GB-02","GB-03","GB-04","GB-05"]},{"ad":"UB Serisi Stor Perdeler","uri":"ub-serisi-stor-perdeler","g":"ub-serisi-stor-perdeler/ub-01-ub-02-ub-03-ub-04-ub-05_m.jpeg?v1","b":"ub-serisi-stor-perdeler/ub-01-ub-02-ub-03-ub-04-ub-05_xl.jpeg?v1","m":["UB-01","UB-02","UB-03","UB-04","UB-05"]},{"ad":"MB Serisi Stor Perdeler","uri":"mb-serisi-stor-perdeler","g":"mb-serisi-stor-perdeler/mb-01-mb-02-mb-03-mb-04-mb-05_m.jpeg?v1","b":"mb-serisi-stor-perdeler/mb-01-mb-02-mb-03-mb-04-mb-05_xl.jpeg?v1","m":["MB-01","MB-02","MB-03","MB-04","MB-05"]},{"ad":"OB Serisi Stor Perdeler","uri":"ob-serisi-stor-perdeler","g":"ob-serisi-stor-perdeler/ob-01-ob-02-ob-03-ob-04-ob-05-ob-06_m.jpeg?v1","b":"ob-serisi-stor-perdeler/ob-01-ob-02-ob-03-ob-04-ob-05-ob-06_xl.jpeg?v1","m":["OB-01","OB-02","OB-03","OB-04","OB-05","OB-06"]},{"ad":"BS Serisi Stor Perdeler","uri":"bs-serisi-stor-perdeler","g":"bs-serisi-stor-perdeler/bs-01-bs-02-bs-03-bs-04_m.jpeg?v1","b":"bs-serisi-stor-perdeler/bs-01-bs-02-bs-03-bs-04_xl.jpeg?v1","m":["BS-01","BS-02","BS-03","BS-04"]},{"ad":"WD Serisi Stor Perdeler","uri":"wd-serisi-stor-perdeler","g":"wd-serisi-stor-perdeler/wd-01-wd-02-wd-03-wd-04-wd-05-wd-06_m.jpeg?v1","b":"wd-serisi-stor-perdeler/wd-01-wd-02-wd-03-wd-04-wd-05-wd-06_xl.jpeg?v1","m":["WD-01","WD-02","WD-03","WD-04","WD-05","WD-06"]},{"ad":"GD Serisi Stor Perdeler","uri":"gd-serisi-stor-perdeler","g":"gd-serisi-stor-perdeler/gd-01-gd-02-gd-03-gd-04-gd-05_m.jpeg?v1","b":"gd-serisi-stor-perdeler/gd-01-gd-02-gd-03-gd-04-gd-05_xl.jpeg?v1","m":["GD-01","GD-02","GD-03","GD-04","GD-05"]},{"ad":"UD Serisi Stor Perdeler","uri":"ud-serisi-stor-perdeler","g":"ud-serisi-stor-perdeler/ud-01-ud-02-ud-03-ud-04-ud-05_m.jpeg?v1","b":"ud-serisi-stor-perdeler/ud-01-ud-02-ud-03-ud-04-ud-05_xl.jpeg?v1","m":["UD-01","UD-02","UD-03","UD-04","UD-05"]},{"ad":"MD Serisi Stor Perdeler","uri":"md-serisi-stor-perdeler","g":"md-serisi-stor-perdeler/md-01-md-02-md-03-md-04-md-05_m.jpeg?v1","b":"md-serisi-stor-perdeler/md-01-md-02-md-03-md-04-md-05_xl.jpeg?v1","m":["MD-01","MD-02","MD-03","MD-04","MD-05"]},{"ad":"OD Serisi Stor Perdeler","uri":"od-serisi-stor-perdeler","g":"od-serisi-stor-perdeler/od-01-0d-02-od-03-od-04-od-05-od-06_m.jpeg?v1","b":"od-serisi-stor-perdeler/od-01-0d-02-od-03-od-04-od-05-od-06_xl.jpeg?v1","m":["OD-01","OD-03","OD-04","OD-05","OD-06"]},{"ad":"FB Serisi Stor Perdeler","uri":"fb-serisi-stor-perdeler","g":"fb-serisi-stor-perdeler/fb-01-fb-02-fb-03-fb-04-fb-05_m.jpeg?v1","b":"fb-serisi-stor-perdeler/fb-01-fb-02-fb-03-fb-04-fb-05_xl.jpeg?v1","m":["FB-01","FB-02","FB-03","FB-04","FB-05"]},{"ad":"JBL Serisi Stor Perdeler","uri":"jbl-serisi-stor-perdeler","g":"jbl-serisi-stor-perdeler/jbl-1-jbl-02-jbl-03-jbl-04-jbl-05_m.jpeg?v1","b":"jbl-serisi-stor-perdeler/jbl-1-jbl-02-jbl-03-jbl-04-jbl-05_xl.jpeg?v1","m":["JBL-1","JBL-02","JBL-03","JBL-04","JBL-05"]},{"ad":"JBX Serisi Stor Perdeler","uri":"jbx-serisi-stor-perdeler","g":"jbx-serisi-stor-perdeler/jbx-01-jbx-02-jbx-03-jbx-04-jbx-05_m.jpeg?v1","b":"jbx-serisi-stor-perdeler/jbx-01-jbx-02-jbx-03-jbx-04-jbx-05_xl.jpeg?v1","m":["JBX-01","JBX-02","JBX-03","JBX-04","JBX-05"]},{"ad":"SD Serisi Stor Perdeler","uri":"sd-serisi-stor-perdeler","g":"sd-serisi-stor-perdeler/sd-01-sd-02-sd-03-sd-04-sd-05-sd-06_m.jpeg?v1","b":"sd-serisi-stor-perdeler/sd-01-sd-02-sd-03-sd-04-sd-05-sd-06_xl.jpeg?v1","m":["SD-01","SD-02","SD-03","SD-04","SD-05","SD-06"]},{"ad":"PB Serisi Stor Perdeler","uri":"pb-serisi-stor-perdeler","g":"pb-serisi-stor-perdeler/pb-01-pb-02-pb-03-pb-04-pb-05_m.png?v1","b":"pb-serisi-stor-perdeler/pb-01-pb-02-pb-03-pb-04-pb-05_xl.png?v1","m":["PB-01","PB-02","PB-03","PB-04","PB-05"]}]},{"ad":"Tül Stor Perde Kumaşı","uri":"tul-stor-perde-kumasi","kisa":"Tül Stor Perde","birim":"MTR","ozellik":"300 cm en · şeffaf dokuma · %100 polyester","ozet":"Zarafetin simgesi Jalpersan Tül Stor Perde Kumaşları, güneş ışığını yumuşak bir şekilde içeri alır, şıklığı ve işlevselliği bir arada sunar.","seriler":[{"ad":"TB-JT Serisi Tül Stor Perdeler","uri":"tb-jt-serisi-tul-stor-perdeler","g":"tb-jt-serisi-tul-stor-perdeler/tb-01-tb-02-tb-03-tb-04_m.jpeg?v1","b":"tb-jt-serisi-tul-stor-perdeler/tb-01-tb-02-tb-03-tb-04_xl.jpeg?v1","m":["TB-01","TB-02","TB-03","TB-04"]},{"ad":"JT Serisi Tül Stor Perdeler","uri":"jt-serisi-tul-stor-perdeler","g":"jt-serisi-tul-stor-perdeler/jt-06-jt-07-jt-08-jt-09_m.jpeg?v1","b":"jt-serisi-tul-stor-perdeler/jt-06-jt-07-jt-08-jt-09_xl.jpeg?v1","m":["JT-06","JT-07","JT-08","JT-09"]},{"ad":"LN-YT Serisi Tül Stor Perdeler","uri":"ln-yt-serisi-tul-stor-perdeler","g":"ln-yt-serisi-tul-stor-perdeler/ln-01-ln-02-ln-03-ln-04_m.jpeg?v1","b":"ln-yt-serisi-tul-stor-perdeler/ln-01-ln-02-ln-03-ln-04_xl.jpeg?v1","m":["LN-01","LN-02","LN-03","LN-04"]},{"ad":"RTE Serisi Tül Stor Perdeler","uri":"rte-serisi-tul-stor-perdeler","g":"rte-serisi-tul-stor-perdeler/rte-01-rte-02_m.jpeg?v1","b":"rte-serisi-tul-stor-perdeler/rte-01-rte-02_xl.jpeg?v1","m":["RTE-01","RTE-02"]},{"ad":"ST Serisi Tül Stor Perdeler","uri":"st-serisi-tul-stor-perdeler","g":"st-serisi-tul-stor-perdeler/st-01_m.jpeg?v1","b":"st-serisi-tul-stor-perdeler/st-01_xl.jpeg?v1","m":["ST-01"]}]},{"ad":"Dikey Perde Kumaşı","uri":"dikey-perde-kumasi","kisa":"Dikey Perde","birim":"MTR","ozellik":"89 mm lamel · 250 cm en","ozet":"Fonksiyonelliği ve modern görünümü ile dikkat çeken Jalpersan Dikey Perde Kumaşları, mekanlarınıza hem tarz hem de konfor getirir.","seriler":[{"ad":"VDS Serisi Dikey Perdeler","uri":"vds-serisi-dikey-perdeler","g":"vds-serisi-dikey-perdeler/vds-01_m.jpeg?v1","b":"vds-serisi-dikey-perdeler/vds-01_xl.jpeg?v1","m":["VDS-01"]},{"ad":"VDM Serisi Dikey Perdeler","uri":"vdm-serisi-dikey-perdeler","g":"vdm-serisi-dikey-perdeler/vdm-01_m.jpeg?v1","b":"vdm-serisi-dikey-perdeler/vdm-01_xl.jpeg?v1","m":["VDM-01"]},{"ad":"VDO Serisi Dikey Perdeler","uri":"vdo-serisi-dikey-perdeler","g":"vdo-serisi-dikey-perdeler/vdo-01_m.jpeg?v1","b":"vdo-serisi-dikey-perdeler/vdo-01_xl.jpeg?v1","m":["VDO-01"]},{"ad":"VBH Serisi Dikey Perdeler","uri":"vbh-serisi-dikey-perdeler","g":"vbh-serisi-dikey-perdeler/vbh-01_m.jpeg?v1","b":"vbh-serisi-dikey-perdeler/vbh-01_xl.jpeg?v1","m":["VBH-01"]},{"ad":"VBM Serisi Dikey Perdeler","uri":"vbm-serisi-dikey-perdeler","g":"vbm-serisi-dikey-perdeler/vbm-01_m.jpeg?v1","b":"vbm-serisi-dikey-perdeler/vbm-01_xl.jpeg?v1","m":["VBM-01"]},{"ad":"VBO Serisi Dikey Perdeler","uri":"vbo-serisi-dikey-perdeler","g":"vbo-serisi-dikey-perdeler/vbo-01_m.jpeg?v1","b":"vbo-serisi-dikey-perdeler/vbo-01_xl.jpeg?v1","m":["VBO-01"]}]},{"ad":"Tül Dikey Perde Kumaşı","uri":"tul-dikey-perde-kumasi","kisa":"Tül Dikey Perde","birim":"MTR","ozellik":"89 mm lamel · tül dokuma","ozet":"Şık ve işlevsel Jalpersan Tül Dikey Perde Kumaşları, hem ışığı filtreler hem de mekanlarınıza ferahlık katar.","seriler":[{"ad":"DT Serisi Perde Modelleri","uri":"dt-serisi-perde-modelleri","g":"dt-serisi-perde-modelleri/dt-01_m.jpeg?v1","b":"dt-serisi-perde-modelleri/dt-01_xl.jpeg?v1","m":["DT-01"]},{"ad":"ZX Serisi Perde Modelleri","uri":"zx-serisi-perde-modelleri","g":"zx-serisi-perde-modelleri/zx-01_m.jpeg?v1","b":"zx-serisi-perde-modelleri/zx-01_xl.jpeg?v1","m":["ZX-01"]},{"ad":"BR Serisi Perde Modelleri","uri":"br-serisi-perde-modelleri","g":"br-serisi-perde-modelleri/br-01_m.jpeg?v1","b":"br-serisi-perde-modelleri/br-01_xl.jpeg?v1","m":["BR-01"]},{"ad":"MC Serisi Perde Modelleri","uri":"mc-serisi-perde-modelleri","g":"mc-serisi-perde-modelleri/mc-01_m.jpeg?v1","b":"mc-serisi-perde-modelleri/mc-01_xl.jpeg?v1","m":["MC-01"]},{"ad":"ND Serisi Perde Modelleri","uri":"nd-serisi-perde-modelleri","g":"nd-serisi-perde-modelleri/nd-01_m.jpeg?v1","b":"nd-serisi-perde-modelleri/nd-01_xl.jpeg?v1","m":["ND-01"]},{"ad":"DF Serisi Perde Modelleri","uri":"df-serisi-perde-modelleri","g":"df-serisi-perde-modelleri/df-01_m.jpeg?v1","b":"df-serisi-perde-modelleri/df-01_xl.jpeg?v1","m":["DF-01"]},{"ad":"DJ-A Serisi Perde Modelleri","uri":"dj-a-serisi-perde-modelleri","g":"dj-a-serisi-perde-modelleri/dj-a-01_m.jpeg?v1","b":"dj-a-serisi-perde-modelleri/dj-a-01_xl.jpeg?v1","m":["DJ-A-SERISI-PE"]},{"ad":"DJ-B Serisi Perde Modelleri","uri":"dj-b-serisi-perde-modelleri","g":"dj-b-serisi-perde-modelleri/dj-b-01_m.jpeg?v1","b":"dj-b-serisi-perde-modelleri/dj-b-01_xl.jpeg?v1","m":["DJ-B-SERISI-PE"]},{"ad":"DJ-C Serisi Perde Modelleri","uri":"dj-c-serisi-perde-modelleri","g":"dj-c-serisi-perde-modelleri/dj-c-01_m.jpeg?v1","b":"dj-c-serisi-perde-modelleri/dj-c-01_xl.jpeg?v1","m":["DJ-C-SERISI-PE"]},{"ad":"DJ-D Serisi Perde Modelleri","uri":"dj-d-serisi-perde-modelleri","g":"dj-d-serisi-perde-modelleri/dj-d-01_m.jpeg?v1","b":"dj-d-serisi-perde-modelleri/dj-d-01_xl.jpeg?v1","m":["DJ-D-SERISI-PE"]},{"ad":"DJ-E Serisi Perde Modelleri","uri":"dj-e-serisi-perde-modelleri","g":"dj-e-serisi-perde-modelleri/dj-e-01_m.jpeg?v1","b":"dj-e-serisi-perde-modelleri/dj-e-01_xl.jpeg?v1","m":["DJ-E-SERISI-PE"]},{"ad":"DJ-G Serisi Perde Modelleri","uri":"dj-g-serisi-perde-modelleri","g":"dj-g-serisi-perde-modelleri/dj-g-01_m.jpeg?v1","b":"dj-g-serisi-perde-modelleri/dj-g-01_xl.jpeg?v1","m":["DJ-G-SERISI-PE"]},{"ad":"DJ-H Serisi Perde Modelleri","uri":"dj-h-serisi-perde-modelleri","g":"dj-h-serisi-perde-modelleri/dj-h-01_m.jpeg?v1","b":"dj-h-serisi-perde-modelleri/dj-h-01_xl.jpeg?v1","m":["DJ-H-SERISI-PE"]},{"ad":"DJ-I Serisi Perde Modelleri","uri":"dj-i-serisi-perde-modelleri","g":"dj-i-serisi-perde-modelleri/dj-i-01_m.jpeg?v1","b":"dj-i-serisi-perde-modelleri/dj-i-01_xl.jpeg?v1","m":["DJ-I-SERISI-PE"]},{"ad":"ZP Serisi (Dijital Baskılı) Perde Modelleri","uri":"zp-serisi-dijital-baskili-perde-modelleri","g":"zp-serisi-dijital-baskili-perde-modelleri/zp-01_m.jpeg?v1","b":"zp-serisi-dijital-baskili-perde-modelleri/zp-01_xl.jpeg?v1","m":["ZP-01"]}]},{"ad":"Baskılı Tül Dikey Fonluk Serisi","uri":"baskili-tul-dikey-fonluk-serisi","kisa":"Baskılı Tül Dikey","birim":"MTR","ozellik":"89 mm lamel · dijital baskı","ozet":"Jalpersan Tül Dikey Perde Baskılı Fonluk Kumaşları, 162 çeşit geniş ürün yelpazesi ile kaliteli, şık dokusu ve zarifliği ile siz değerli müsterilerimize sunulmuştur. Baskılarımız Türkiye'de ilk dünya devi HP Stitch baskı teknolojisi ile uluslararası sertifikalı, insan saülığına zararsız, çok canlı ve net şekilde özenle basılmıştır.","seriler":[{"ad":"JP-01 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-01-baskili-tul-dikey-fonluk-perdeler","g":"jp-01-baskili-tul-dikey-fonluk-perdeler/jp-01_m.jpeg?v2","b":"jp-01-baskili-tul-dikey-fonluk-perdeler/jp-01_xl.jpeg?v2","m":["JP-01"]},{"ad":"JP-02 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-02-baskili-tul-dikey-fonluk-perdeler","g":"jp-02-baskili-tul-dikey-fonluk-perdeler/jp-02_m.jpeg?v1","b":"jp-02-baskili-tul-dikey-fonluk-perdeler/jp-02_xl.jpeg?v1","m":["JP-02"]},{"ad":"JP-03 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-03-baskili-tul-dikey-fonluk-perdeler","g":"jp-03-baskili-tul-dikey-fonluk-perdeler/jp-03_m.jpeg?v1","b":"jp-03-baskili-tul-dikey-fonluk-perdeler/jp-03_xl.jpeg?v1","m":["JP-03"]},{"ad":"JP-04 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-04-baskili-tul-dikey-fonluk-perdeler","g":"jp-04-baskili-tul-dikey-fonluk-perdeler/jp-04_m.jpeg?v1","b":"jp-04-baskili-tul-dikey-fonluk-perdeler/jp-04_xl.jpeg?v1","m":["JP-04"]},{"ad":"JP-05 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-05-baskili-tul-dikey-fonluk-perdeler","g":"jp-05-baskili-tul-dikey-fonluk-perdeler/jp-05_m.jpeg?v1","b":"jp-05-baskili-tul-dikey-fonluk-perdeler/jp-05_xl.jpeg?v1","m":["JP-05"]},{"ad":"JP-06 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-06-baskili-tul-dikey-fonluk-perdeler","g":"jp-06-baskili-tul-dikey-fonluk-perdeler/jp-06_m.jpeg?v1","b":"jp-06-baskili-tul-dikey-fonluk-perdeler/jp-06_xl.jpeg?v1","m":["JP-06"]},{"ad":"JP-07 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-07-baskili-tul-dikey-fonluk-perdeler","g":"jp-07-baskili-tul-dikey-fonluk-perdeler/jp-07_m.jpeg?v1","b":"jp-07-baskili-tul-dikey-fonluk-perdeler/jp-07_xl.jpeg?v1","m":["JP-07"]},{"ad":"JP-08 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-08-baskili-tul-dikey-fonluk-perdeler","g":"jp-08-baskili-tul-dikey-fonluk-perdeler/jp-08_m.jpeg?v1","b":"jp-08-baskili-tul-dikey-fonluk-perdeler/jp-08_xl.jpeg?v1","m":["JP-08"]},{"ad":"JP-09 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-09-baskili-tul-dikey-fonluk-perdeler","g":"jp-09-baskili-tul-dikey-fonluk-perdeler/jp-09_m.jpeg?v1","b":"jp-09-baskili-tul-dikey-fonluk-perdeler/jp-09_xl.jpeg?v1","m":["JP-09"]},{"ad":"JP-10 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-10-baskili-tul-dikey-fonluk-perdeler","g":"jp-10-baskili-tul-dikey-fonluk-perdeler/jp-10_m.jpeg?v1","b":"jp-10-baskili-tul-dikey-fonluk-perdeler/jp-10_xl.jpeg?v1","m":["JP-10"]},{"ad":"JP-11 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-11-baskili-tul-dikey-fonluk-perdeler","g":"jp-11-baskili-tul-dikey-fonluk-perdeler/jp-11_m.jpeg?v1","b":"jp-11-baskili-tul-dikey-fonluk-perdeler/jp-11_xl.jpeg?v1","m":["JP-11"]},{"ad":"JP-12 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-12-baskili-tul-dikey-fonluk-perdeler","g":"jp-12-baskili-tul-dikey-fonluk-perdeler/jp-12_m.jpeg?v1","b":"jp-12-baskili-tul-dikey-fonluk-perdeler/jp-12_xl.jpeg?v1","m":["JP-12"]},{"ad":"JP-13 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-13-baskili-tul-dikey-fonluk-perdeler","g":"jp-13-baskili-tul-dikey-fonluk-perdeler/jp-13_m.jpeg?v1","b":"jp-13-baskili-tul-dikey-fonluk-perdeler/jp-13_xl.jpeg?v1","m":["JP-13"]},{"ad":"JP-14 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-14-baskili-tul-dikey-fonluk-perdeler","g":"jp-14-baskili-tul-dikey-fonluk-perdeler/jp-14_m.jpeg?v1","b":"jp-14-baskili-tul-dikey-fonluk-perdeler/jp-14_xl.jpeg?v1","m":["JP-14"]},{"ad":"JP-15 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-15-baskili-tul-dikey-fonluk-perdeler","g":"jp-15-baskili-tul-dikey-fonluk-perdeler/jp-15_m.jpeg?v1","b":"jp-15-baskili-tul-dikey-fonluk-perdeler/jp-15_xl.jpeg?v1","m":["JP-15"]},{"ad":"JP-16 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-16-baskili-tul-dikey-fonluk-perdeler","g":"jp-16-baskili-tul-dikey-fonluk-perdeler/jp-16_m.jpeg?v1","b":"jp-16-baskili-tul-dikey-fonluk-perdeler/jp-16_xl.jpeg?v1","m":["JP-16"]},{"ad":"JP-17 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-17-baskili-tul-dikey-fonluk-perdeler","g":"jp-17-baskili-tul-dikey-fonluk-perdeler/jp-17_m.jpeg?v1","b":"jp-17-baskili-tul-dikey-fonluk-perdeler/jp-17_xl.jpeg?v1","m":["JP-17"]},{"ad":"JP-18 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-18-baskili-tul-dikey-fonluk-perdeler","g":"jp-18-baskili-tul-dikey-fonluk-perdeler/jp-18_m.jpeg?v1","b":"jp-18-baskili-tul-dikey-fonluk-perdeler/jp-18_xl.jpeg?v1","m":["JP-18"]},{"ad":"JP-19 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-19-baskili-tul-dikey-fonluk-perdeler","g":"jp-19-baskili-tul-dikey-fonluk-perdeler/jp-19_m.jpeg?v1","b":"jp-19-baskili-tul-dikey-fonluk-perdeler/jp-19_xl.jpeg?v1","m":["JP-19"]},{"ad":"JP-20 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-20-baskili-tul-dikey-fonluk-perdeler","g":"jp-20-baskili-tul-dikey-fonluk-perdeler/jp-20_m.jpeg?v1","b":"jp-20-baskili-tul-dikey-fonluk-perdeler/jp-20_xl.jpeg?v1","m":["JP-20"]},{"ad":"JP-21 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-21-baskili-tul-dikey-fonluk-perdeler","g":"jp-21-baskili-tul-dikey-fonluk-perdeler/jp-21-i_m.jpeg?v1","b":"jp-21-baskili-tul-dikey-fonluk-perdeler/jp-21-i_xl.jpeg?v1","m":["JP-21"]},{"ad":"JP-22 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-22-baskili-tul-dikey-fonluk-perdeler","g":"jp-22-baskili-tul-dikey-fonluk-perdeler/jp-22-i_m.jpeg?v1","b":"jp-22-baskili-tul-dikey-fonluk-perdeler/jp-22-i_xl.jpeg?v1","m":["JP-22"]},{"ad":"JP-23 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-23-baskili-tul-dikey-fonluk-perdeler","g":"jp-23-baskili-tul-dikey-fonluk-perdeler/jp-23_m.jpeg?v1","b":"jp-23-baskili-tul-dikey-fonluk-perdeler/jp-23_xl.jpeg?v1","m":["JP-23"]},{"ad":"JP-24 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-24-baskili-tul-dikey-fonluk-perdeler","g":"jp-24-baskili-tul-dikey-fonluk-perdeler/jp-24-i_m.jpeg?v1","b":"jp-24-baskili-tul-dikey-fonluk-perdeler/jp-24-i_xl.jpeg?v1","m":["JP-24"]},{"ad":"JP-25 Baskılı Tül Dikey Fonluk Perdeler","uri":"jp-25-baskili-tul-dikey-fonluk-perdeler","g":"jp-25-baskili-tul-dikey-fonluk-perdeler/jp-25-i_m.jpeg?v1","b":"jp-25-baskili-tul-dikey-fonluk-perdeler/jp-25-i_xl.jpeg?v1","m":["JP-25"]}]},{"ad":"Verduo - Dijital Baskılı Tül Dikey Serisi","uri":"dijital-baskili-tul-dikey-serisi","kisa":"Verduo Tül Dikey","birim":"MTR","ozellik":"89 mm lamel · dijital baskı","ozet":"Jalpersan Verduo - Dijital Baskılı Tül Dikey Perde Kumaşları","seriler":[{"ad":"Indigo","uri":"indigo","g":"indigo/indigo-01_m.jpeg?v1","b":"indigo/indigo-01_xl.jpeg?v1","m":["INDIGO"]},{"ad":"Spell","uri":"spell","g":"spell/spell-01_m.jpeg?v1","b":"spell/spell-01_xl.jpeg?v1","m":["SPELL"]},{"ad":"Anima","uri":"anima","g":"anima/anima-01_m.jpeg?v1","b":"anima/anima-01_xl.jpeg?v1","m":["ANIMA"]},{"ad":"Sun","uri":"sun","g":"sun/sun-01_m.jpeg?v1","b":"sun/sun-01_xl.jpeg?v1","m":["SUN"]},{"ad":"Pearl","uri":"pearl","g":"pearl/pearl-01_m.jpeg?v1","b":"pearl/pearl-01_xl.jpeg?v1","m":["PEARL"]},{"ad":"Scotland","uri":"scotland","g":"scotland/scotland-01_m.jpeg?v1","b":"scotland/scotland-01_xl.jpeg?v1","m":["SCOTLAND"]},{"ad":"Vintage","uri":"vintage","g":"vintage/vintage-01_m.jpeg?v1","b":"vintage/vintage-01_xl.jpeg?v1","m":["VINTAGE"]}]},{"ad":"Serenat: Çiçek Koleksiyonu","uri":"serenat-cicek-koleksiyonu","kisa":"Serenat","birim":"MTR","ozellik":"Çiçek koleksiyonu · dijital baskı","ozet":"Hayat size şarkı söyleyen bir serenat gibidir. Şarkıyı duymak için çok uzaklara gitmeyin. Uzakları evinize getirin, yaşam alanlarınıza, ruhunuza yansıtın.","seriler":[{"ad":"Zarif","uri":"zarif","g":"zarif/zarif-2135-a_m.jpeg?v1","b":"zarif/zarif-2135-a_xl.jpeg?v1","m":["ZARIF"]},{"ad":"Floral Yaprak","uri":"floral-yaprak","g":"floral-yaprak/floral-yaprak-2136-a_m.jpeg?v1","b":"floral-yaprak/floral-yaprak-2136-a_xl.jpeg?v1","m":["FLORAL-YAPRAK"]},{"ad":"Doğanın Sesi","uri":"doganin-sesi","g":"doganin-sesi/doganin-sesi-2137-a_m.jpeg?v1","b":"doganin-sesi/doganin-sesi-2137-a_xl.jpeg?v1","m":["DO-ANIN-SESI"]},{"ad":"Güzel Bahçe","uri":"guzel-bahce","g":"guzel-bahce/guzel-bahce-2138-a_m.jpeg?v1","b":"guzel-bahce/guzel-bahce-2138-a_xl.jpeg?v1","m":["G-ZEL-BAH-E"]},{"ad":"Bahar","uri":"bahar","g":"bahar/bahar-2139-a_m.jpeg?v1","b":"bahar/bahar-2139-a_xl.jpeg?v1","m":["BAHAR"]},{"ad":"Çiçeğin Büyüsü","uri":"cicegin-buyusu","g":"cicegin-buyusu/cicegin-buyusu-2140-a_m.jpeg?v1","b":"cicegin-buyusu/cicegin-buyusu-2140-a_xl.jpeg?v1","m":["I-E-IN-B-Y-S"]},{"ad":"Kuş Cıvıltısı","uri":"kus-civiltisi","g":"kus-civiltisi/kus-civiltisi-2141-a_m.jpeg?v1","b":"kus-civiltisi/kus-civiltisi-2141-a_xl.jpeg?v1","m":["KU-CIVILTISI"]},{"ad":"Kelebek","uri":"kelebek","g":"kelebek/kelebek-2142-a_m.jpeg?v1","b":"kelebek/kelebek-2142-a_xl.jpeg?v1","m":["KELEBEK"]},{"ad":"Rengarenk","uri":"rengarenk","g":"rengarenk/rengarenk-2143-a_m.jpeg?v1","b":"rengarenk/rengarenk-2143-a_xl.jpeg?v1","m":["RENGARENK"]},{"ad":"Venedik","uri":"venedik","g":"venedik/venedik-2144-a_m.jpeg?v1","b":"venedik/venedik-2144-a_xl.jpeg?v1","m":["VENEDIK"]},{"ad":"Puantiyeli","uri":"puantiyeli","g":"puantiyeli/puantiyeli-2145-a_m.jpeg?v1","b":"puantiyeli/puantiyeli-2145-a_xl.jpeg?v1","m":["PUANTIYELI"]},{"ad":"Paris","uri":"paris","g":"paris/paris-2146-a_m.jpeg?v1","b":"paris/paris-2146-a_xl.jpeg?v1","m":["PARIS"]},{"ad":"Romantik","uri":"romantik","g":"romantik/romantik-2147-a_m.jpeg?v1","b":"romantik/romantik-2147-a_xl.jpeg?v1","m":["ROMANTIK"]},{"ad":"Lale","uri":"lale","g":"lale/lale-2148-a_m.jpeg?v1","b":"lale/lale-2148-a_xl.jpeg?v1","m":["LALE"]}]},{"ad":"Serüven: Bebek Koleksiyonu","uri":"seruven-bebek-koleksiyonu","kisa":"Serüven","birim":"MTR","ozellik":"Bebek koleksiyonu · dijital baskı","ozet":"Bir serüvendir hayatın içinde olmak. Önce güzel hayalleri içinizde keşfetmek, sonra da gerçeğe dönüştürmek...","seriler":[{"ad":"Balerin","uri":"balerin","g":"balerin/balerin-2119-a_m.jpeg?v1","b":"balerin/balerin-2119-a_xl.jpeg?v1","m":["BALERIN"]},{"ad":"Prenses","uri":"prenses","g":"prenses/prenses-2120-a_m.jpeg?v1","b":"prenses/prenses-2120-a_xl.jpeg?v1","m":["PRENSES"]},{"ad":"Minik Tavşan","uri":"minik-tavsan","g":"minik-tavsan/minik-tavsan-2121-a_m.jpeg?v1","b":"minik-tavsan/minik-tavsan-2121-a_xl.jpeg?v1","m":["MINIK-TAV-AN"]},{"ad":"Tatlı Kız","uri":"tatli-kiz","g":"tatli-kiz/tatli-kiz-2122-a_m.jpeg?v1","b":"tatli-kiz/tatli-kiz-2122-a_xl.jpeg?v1","m":["TATLI-KIZ"]},{"ad":"Deniz Kızı","uri":"deniz-kizi","g":"deniz-kizi/deniz-kizi-2123-a_m.jpeg?v1","b":"deniz-kizi/deniz-kizi-2123-a_xl.jpeg?v1","m":["DENIZ-KIZI"]},{"ad":"Yarış","uri":"yaris","g":"yaris/yaris-2124-a_m.jpeg?v1","b":"yaris/yaris-2124-a_xl.jpeg?v1","m":["YARI"]},{"ad":"Şehir","uri":"sehir","g":"sehir/sehir-2125-a_m.jpeg?v1","b":"sehir/sehir-2125-a_xl.jpeg?v1","m":["EHIR"]},{"ad":"Galaksi","uri":"galaksi","g":"galaksi/galaksi-2126-a_m.jpeg?v1","b":"galaksi/galaksi-2126-a_xl.jpeg?v1","m":["GALAKSI"]},{"ad":"Araba","uri":"araba","g":"araba/araba-871-a_m.jpeg?v1","b":"araba/araba-871-a_xl.jpeg?v1","m":["ARABA"]},{"ad":"Marin","uri":"marin","g":"marin/marin-2127-a_m.jpeg?v1","b":"marin/marin-2127-a_xl.jpeg?v1","m":["MARIN"]},{"ad":"Kedi","uri":"kedi","g":"kedi/kedi-2128-a_m.jpeg?v1","b":"kedi/kedi-2128-a_xl.jpeg?v1","m":["KEDI"]},{"ad":"Güneşli Köy","uri":"gunesli-koy","g":"gunesli-koy/gunesli-koy-2129-a_m.jpeg?v1","b":"gunesli-koy/gunesli-koy-2129-a_xl.jpeg?v1","m":["G-NE-LI-K-Y"]},{"ad":"Ay Dede","uri":"ay-dede","g":"ay-dede/ay-dede-2131-a_m.jpeg?v1","b":"ay-dede/ay-dede-2131-a_xl.jpeg?v1","m":["AY-DEDE"]},{"ad":"Güzel Bahçe","uri":"guzel-bahce-seruven","g":"guzel-bahce-seruven/guzel-bahce-2130-a_m.jpeg?v1","b":"guzel-bahce-seruven/guzel-bahce-2130-a_xl.jpeg?v1","m":["G-ZEL-BAH-E"]},{"ad":"Tavşan","uri":"tavsan","g":"tavsan/tavsan-2132-a_m.jpeg?v1","b":"tavsan/tavsan-2132-a_xl.jpeg?v1","m":["TAV-AN"]},{"ad":"Kuzu","uri":"kuzu","g":"kuzu/kuzu-2133-a_m.jpeg?v1","b":"kuzu/kuzu-2133-a_xl.jpeg?v1","m":["KUZU"]},{"ad":"Mantar","uri":"mantar","g":"mantar/mantar-2134-a_m.jpeg?v1","b":"mantar/mantar-2134-a_xl.jpeg?v1","m":["MANTAR"]}]},{"ad":"Yakamoz: Etekucu Koleksiyonu","uri":"yakamoz-etekucu-koleksiyonu","kisa":"Yakamoz Etekucu","birim":"MTR","ozellik":"Etekucu koleksiyonu · nakışlı","ozet":"Jalpersan Yakamoz: Etekucu Koleksiyonu perdeler ile mekanlarınıza renklerin enerjisini yansıtın.","seriler":[{"ad":"Romantik","uri":"romantik-yakamoz","g":"romantik-yakamoz/romantik-2147-a_m.jpeg?v1","b":"romantik-yakamoz/romantik-2147-a_xl.jpeg?v1","m":["ROMANTIK"]},{"ad":"Göl Kıyısı","uri":"gol-kiyisi-yakamoz","g":"gol-kiyisi-yakamoz/gol-kiyisi-2161-b_m.jpeg?v1","b":"gol-kiyisi-yakamoz/gol-kiyisi-2161-b_xl.jpeg?v1","m":["G-L-KIYISI"]},{"ad":"Polen","uri":"polen","g":"polen/polen-4050-b_m.jpeg?v1","b":"polen/polen-4050-b_xl.jpeg?v1","m":["POLEN"]},{"ad":"Kuşaklı","uri":"kusakli","g":"kusakli/yakamoz-2151-b_m.jpeg?v1","b":"kusakli/yakamoz-2151-b_xl.jpeg?v1","m":["KU-AKLI"]},{"ad":"Cennet","uri":"cennet","g":"cennet/cennet-4052-a_m.jpeg?v1","b":"cennet/cennet-4052-a_xl.jpeg?v1","m":["CENNET"]},{"ad":"Çiçek Bahçesi","uri":"cicek-bahcesi","g":"cicek-bahcesi/cicek-bahcesi-4053-b_m.jpeg?v1","b":"cicek-bahcesi/cicek-bahcesi-4053-b_xl.jpeg?v1","m":["I-EK-BAH-ESI"]},{"ad":"Mermer","uri":"mermer","g":"mermer/mermer-4054-b_m.jpeg?v1","b":"mermer/mermer-4054-b_xl.jpeg?v1","m":["MERMER"]},{"ad":"Nilüfer","uri":"nilufer","g":"nilufer/nilufer-4055-a_m.jpeg?v1","b":"nilufer/nilufer-4055-a_xl.jpeg?v1","m":["NIL-FER"]},{"ad":"Flamingo","uri":"flamingo","g":"flamingo/flamingo-4056-b_m.jpeg?v1","b":"flamingo/flamingo-4056-b_xl.jpeg?v1","m":["FLAMINGO"]},{"ad":"Bahar Dalı","uri":"bahar-dali","g":"bahar-dali/bahar-dali-4057-a_m.jpeg?v1","b":"bahar-dali/bahar-dali-4057-a_xl.jpeg?v1","m":["BAHAR-DALI"]},{"ad":"Zerafet","uri":"zerafet","g":"zerafet/zerafet-4058-b_m.jpeg?v1","b":"zerafet/zerafet-4058-b_xl.jpeg?v1","m":["ZERAFET"]},{"ad":"Zarif Dantel","uri":"zarif-dantel","g":"zarif-dantel/zarif-dantel-4059-a_m.jpeg?v1","b":"zarif-dantel/zarif-dantel-4059-a_xl.jpeg?v1","m":["ZARIF-DANTEL"]},{"ad":"Sahil","uri":"sahil","g":"sahil/sahil-4060-b_m.jpeg?v1","b":"sahil/sahil-4060-b_xl.jpeg?v1","m":["SAHIL"]},{"ad":"Nehir Çiçekleri","uri":"nehir-cicekleri","g":"nehir-cicekleri/nehir-cicekleri-4061-b_m.jpeg?v2","b":"nehir-cicekleri/nehir-cicekleri-4061-b_xl.jpeg?v2","m":["NEHIR-I-EKLERI"]},{"ad":"Yapraklar","uri":"yapraklar","g":"yapraklar/yapraklar-4062-b_m.jpeg?v1","b":"yapraklar/yapraklar-4062-b_xl.jpeg?v1","m":["YAPRAKLAR"]},{"ad":"Çam","uri":"cam","g":"cam/cam-4063-a_m.jpeg?v1","b":"cam/cam-4063-a_xl.jpeg?v1","m":["AM"]},{"ad":"Coşku","uri":"cosku","g":"cosku/cosku-4064-a_m.jpeg?v1","b":"cosku/cosku-4064-a_xl.jpeg?v1","m":["CO-KU"]},{"ad":"Karahindiba","uri":"karahindiba","g":"karahindiba/karahindiba-4065-a_m.jpeg?v1","b":"karahindiba/karahindiba-4065-a_xl.jpeg?v1","m":["KARAHINDIBA"]},{"ad":"Bahar","uri":"bahar-yakamoz","g":"bahar-yakamoz/bahar-4066-b_m.jpeg?v1","b":"bahar-yakamoz/bahar-4066-b_xl.jpeg?v1","m":["BAHAR"]},{"ad":"Sevinç","uri":"sevinc","g":"sevinc/sevinc-4067-a_m.jpeg?v1","b":"sevinc/sevinc-4067-a_xl.jpeg?v1","m":["SEVIN"]},{"ad":"Bahar Esintisi","uri":"bahar-esintisi","g":"bahar-esintisi/bahar-esintisi-4068-a_m.jpeg?v1","b":"bahar-esintisi/bahar-esintisi-4068-a_xl.jpeg?v1","m":["BAHAR-ESINTISI"]},{"ad":"Demet","uri":"demet","g":"demet/demet-4069-a_m.jpeg?v1","b":"demet/demet-4069-a_xl.jpeg?v1","m":["DEMET"]},{"ad":"Damask","uri":"damask-yakamoz","g":"damask-yakamoz/damask-4070-a_m.jpeg?v1","b":"damask-yakamoz/damask-4070-a_xl.jpeg?v1","m":["DAMASK"]},{"ad":"Pırıltı","uri":"pirilti","g":"pirilti/pirilti-4071-a_m.jpeg?v1","b":"pirilti/pirilti-4071-a_xl.jpeg?v1","m":["PIRILTI"]},{"ad":"Şık","uri":"sik","g":"sik/sik-4072-a_m.jpeg?v1","b":"sik/sik-4072-a_xl.jpeg?v1","m":["IK"]},{"ad":"Su Yolu","uri":"su-yolu","g":"su-yolu/su-yolu-4073-a_m.jpeg?v1","b":"su-yolu/su-yolu-4073-a_xl.jpeg?v1","m":["SU-YOLU"]},{"ad":"Yıldız","uri":"yildiz","g":"yildiz/yildiz-4074-a_m.jpeg?v1","b":"yildiz/yildiz-4074-a_xl.jpeg?v1","m":["YILDIZ"]},{"ad":"Çizgili","uri":"cizgili","g":"cizgili/cizgili-4075-b_m.jpeg?v1","b":"cizgili/cizgili-4075-b_xl.jpeg?v1","m":["IZGILI"]},{"ad":"Bahar Dalı","uri":"bahar-dali-yakamoz","g":"bahar-dali-yakamoz/bahar-dali-4076-a_m.jpeg?v1","b":"bahar-dali-yakamoz/bahar-dali-4076-a_xl.jpeg?v1","m":["BAHAR-DALI"]},{"ad":"Pıtır","uri":"pitir","g":"pitir/pitir-4098-b_m.jpeg?v1","b":"pitir/pitir-4098-b_xl.jpeg?v1","m":["PITIR"]},{"ad":"Dantel Çiçek","uri":"dantel-cicek","g":"dantel-cicek/dantel-cicek-4099-a_m.jpeg?v1","b":"dantel-cicek/dantel-cicek-4099-a_xl.jpeg?v1","m":["DANTEL-I-EK"]},{"ad":"Deniz","uri":"deniz","g":"deniz/deniz-4079-a_m.jpeg?v1","b":"deniz/deniz-4079-a_xl.jpeg?v1","m":["DENIZ"]},{"ad":"Taç","uri":"tac","g":"tac/tac-4080-a_m.jpeg?v1","b":"tac/tac-4080-a_xl.jpeg?v1","m":["TA"]},{"ad":"Güzel Bahçe","uri":"guzel-bahce-yakamoz","g":"guzel-bahce-yakamoz/guzel-bahce-2130-a_m.jpeg?v1","b":"guzel-bahce-yakamoz/guzel-bahce-2130-a_xl.jpeg?v1","m":["G-ZEL-BAH-E"]},{"ad":"Doğal Yaşam","uri":"dogal-yasam","g":"dogal-yasam/dogal-yasam-4081-a_m.jpeg?v2","b":"dogal-yasam/dogal-yasam-4081-a_xl.jpeg?v2","m":["DO-AL-YA-AM"]},{"ad":"Klasik","uri":"klasik","g":"klasik/klasik-4082-a_m.jpeg?v1","b":"klasik/klasik-4082-a_xl.jpeg?v1","m":["KLASIK"]},{"ad":"Orman","uri":"orman","g":"orman/orman-4083-a_m.jpeg?v1","b":"orman/orman-4083-a_xl.jpeg?v1","m":["ORMAN"]},{"ad":"Prenses","uri":"prenses-yakamoz","g":"prenses-yakamoz/prenses-4084-a_m.jpeg?v1","b":"prenses-yakamoz/prenses-4084-a_xl.jpeg?v1","m":["PRENSES"]},{"ad":"Penguen","uri":"penguen","g":"penguen/penguen-4085-a_m.jpeg?v1","b":"penguen/penguen-4085-a_xl.jpeg?v1","m":["PENGUEN"]},{"ad":"Balon","uri":"balon","g":"balon/balon-4086-a_m.jpeg?v1","b":"balon/balon-4086-a_xl.jpeg?v1","m":["BALON"]},{"ad":"Bulut","uri":"bulut","g":"bulut/bulut-4087-a_m.jpeg?v1","b":"bulut/bulut-4087-a_xl.jpeg?v1","m":["BULUT"]},{"ad":"Çit","uri":"cit","g":"cit/cit-4088-a_m.jpeg?v1","b":"cit/cit-4088-a_xl.jpeg?v1","m":["IT"]},{"ad":"Kelebek","uri":"kelebek-yakamoz","g":"kelebek-yakamoz/kelebek-4089-a_m.jpeg?v1","b":"kelebek-yakamoz/kelebek-4089-a_xl.jpeg?v1","m":["KELEBEK"]},{"ad":"Oyuncak","uri":"oyuncak","g":"oyuncak/oyuncak-4090-a_m.jpeg?v1","b":"oyuncak/oyuncak-4090-a_xl.jpeg?v1","m":["OYUNCAK"]},{"ad":"Manzara","uri":"manzara","g":"manzara/manzara-4091-a_m.jpeg?v1","b":"manzara/manzara-4091-a_xl.jpeg?v1","m":["MANZARA"]},{"ad":"Küçük Köy","uri":"kucuk-koy","g":"kucuk-koy/kucuk-koy-4092-b_m.jpeg?v1","b":"kucuk-koy/kucuk-koy-4092-b_xl.jpeg?v1","m":["K-K-K-Y"]},{"ad":"Civciv","uri":"civciv","g":"civciv/civciv-4093-a_m.jpeg?v1","b":"civciv/civciv-4093-a_xl.jpeg?v1","m":["CIVCIV"]},{"ad":"Bale","uri":"bale","g":"bale/bale-4094-a_m.jpeg?v1","b":"bale/bale-4094-a_xl.jpeg?v1","m":["BALE"]},{"ad":"Dondurma","uri":"dondurma","g":"dondurma/dondurma-4095-a_m.jpeg?v1","b":"dondurma/dondurma-4095-a_xl.jpeg?v1","m":["DONDURMA"]},{"ad":"Mevsim","uri":"mevsim","g":"mevsim/mevsim-4096-a_m.jpeg?v1","b":"mevsim/mevsim-4096-a_xl.jpeg?v1","m":["MEVSIM"]},{"ad":"Macera","uri":"macera","g":"macera/macera-4097-a_m.jpeg?v1","b":"macera/macera-4097-a_xl.jpeg?v1","m":["MACERA"]},{"ad":"Şehir","uri":"sehir-yakamoz","g":"sehir-yakamoz/sehir-4077-b_m.jpeg?v1","b":"sehir-yakamoz/sehir-4077-b_xl.jpeg?v1","m":["EHIR"]},{"ad":"Rüya","uri":"ruya","g":"ruya/ruya-4078-a_m.jpeg?v1","b":"ruya/ruya-4078-a_xl.jpeg?v1","m":["R-YA"]},{"ad":"Kuş Cenneti","uri":"kus-cenneti","g":"kus-cenneti/kus-cenneti-4100-a_m.jpeg?v1","b":"kus-cenneti/kus-cenneti-4100-a_xl.jpeg?v1","m":["KU-CENNETI"]}]},{"ad":"Jalpersan Trendleri","uri":"jalpersan-trendleri","kisa":"Trend","birim":"MTR","ozellik":"Sezon koleksiyonu","ozet":"Elinde tutamadığın bir kuş gibidir zaman. Zamanı durdurmak, özgürce uçabilmek, hissettirdiği duyguyla da mutlu olabilmektir hayat.","seriler":[{"ad":"Yaprak","uri":"yaprak","g":"yaprak/yaprak-2149-a_m.jpeg?v1","b":"yaprak/yaprak-2149-a_xl.jpeg?v1","m":["YAPRAK"]},{"ad":"Modern Yaprak","uri":"modern-yaprak","g":"modern-yaprak/modern-yaprak-2150-a_m.jpeg?v1","b":"modern-yaprak/modern-yaprak-2150-a_xl.jpeg?v1","m":["MODERN-YAPRAK"]},{"ad":"Lavanta","uri":"lavanta","g":"lavanta/lavanta-2163-a_m.jpeg?v1","b":"lavanta/lavanta-2163-a_xl.jpeg?v1","m":["LAVANTA"]},{"ad":"Damalı","uri":"damali","g":"damali/damali-2152-a_m.jpeg?v1","b":"damali/damali-2152-a_xl.jpeg?v1","m":["DAMALI"]},{"ad":"Puantiye","uri":"puantiye","g":"puantiye/puantiye-2153-a_m.jpeg?v1","b":"puantiye/puantiye-2153-a_xl.jpeg?v1","m":["PUANTIYE"]},{"ad":"Damask","uri":"damask","g":"damask/damask-2154-a_m.jpeg?v1","b":"damask/damask-2154-a_xl.jpeg?v1","m":["DAMASK"]},{"ad":"Sihirli Dokunuş","uri":"sihirli-dokunus","g":"sihirli-dokunus/sihirli-dokunus-2155-a_m.jpeg?v1","b":"sihirli-dokunus/sihirli-dokunus-2155-a_xl.jpeg?v1","m":["SIHIRLI-DOKUNU"]},{"ad":"Esinti","uri":"esinti","g":"esinti/esinti-2156-a_m.jpeg?v1","b":"esinti/esinti-2156-a_xl.jpeg?v1","m":["ESINTI"]},{"ad":"Huzur","uri":"huzur","g":"huzur/huzur-2157-a_m.jpeg?v1","b":"huzur/huzur-2157-a_xl.jpeg?v1","m":["HUZUR"]},{"ad":"Çizgi","uri":"cizgi","g":"cizgi/cizgi-2158-a_m.jpeg?v1","b":"cizgi/cizgi-2158-a_xl.jpeg?v1","m":["IZGI"]},{"ad":"Geometrik","uri":"geometrik","g":"geometrik/geometrik-2159-a_m.jpeg?v1","b":"geometrik/geometrik-2159-a_xl.jpeg?v1","m":["GEOMETRIK"]},{"ad":"Göl Kıyısı","uri":"gol-kiyisi","g":"gol-kiyisi/gol-kiyisi-2161-a_m.jpeg?v2","b":"gol-kiyisi/gol-kiyisi-2161-a_xl.jpeg?v2","m":["G-L-KIYISI"]},{"ad":"Doğal Şıklık","uri":"dogal-siklik","g":"dogal-siklik/dogal-siklik-761-a_m.jpeg?v1","b":"dogal-siklik/dogal-siklik-761-a_xl.jpeg?v1","m":["DO-AL-IKLIK"]},{"ad":"Dingin","uri":"dingin","g":"dingin/dingin-2162-a_m.jpeg?v2","b":"dingin/dingin-2162-a_xl.jpeg?v2","m":["DINGIN"]},{"ad":"Su Sesi","uri":"su-sesi","g":"su-sesi/su-sesi-481-b_m.jpeg?v1","b":"su-sesi/su-sesi-481-b_xl.jpeg?v1","m":["SU-SESI"]}]},{"ad":"Ronco","uri":"ronco","kisa":"Ronco","birim":"ADET","ozellik":"Motor ve kumanda sistemleri","ozet":"Ronco Motorlar, Kumandalar ve Smart Hub","seriler":[{"ad":"Ronco Motorlar","uri":"ronco-motorlar","g":"ronco-motorlar/ronco-motor-02_m.jpeg?v1","b":"ronco-motorlar/ronco-motor-02_xl.jpeg?v1","m":["RONCO-MOTORLAR"]},{"ad":"Kumandalar","uri":"kumandalar","g":"kumandalar/kumandalar_m.jpeg?v1","b":"kumandalar/kumandalar_xl.jpeg?v1","m":["KUMANDALAR"]},{"ad":"Smart Hub (Akıllı Merkez)","uri":"smart-hub-akilli-merkez","g":"smart-hub-akilli-merkez/smart-hub_m.jpeg?v1","b":"smart-hub-akilli-merkez/smart-hub_xl.jpeg?v1","m":["SMART-HUB-AKIL"]}]}]};
+
 /* Jalpersan B2B PoC — çekirdek veri modeli ve iş kuralları
  *
  * Tasarım ilkeleri (teknik doküman v0.6, bölüm 3.6–3.7):
@@ -583,7 +667,7 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
   'use strict';
   var JP = (window.JP = window.JP || {});
 
-  JP.KEY = 'jalpersan.poc.v5';
+  JP.KEY = 'jalpersan.poc.v6';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
 
   /* ---------------------------------------------------------------- yardımcı */
@@ -666,28 +750,45 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
   };
 
   /* --------------------------------------------------------- ana veri (Logo) */
+  /* Stok kartları jalpersan.com kataloğundan üretilir: kategori → seri → model.
+     Gerçek kurulumda bu liste Logo LG_XXX_ITEMS sorgusundan gelir. */
+  var DOKU = {
+    'Stor Perde Kumaşı': 'stor', 'Tül Stor Perde Kumaşı': 'tul', 'Dikey Perde Kumaşı': 'zebra',
+    'Tül Dikey Perde Kumaşı': 'tul', 'Baskılı Tül Dikey Fonluk Serisi': 'plise',
+    'Verduo - Dijital Baskılı Tül Dikey Serisi': 'plise', 'Serenat: Çiçek Koleksiyonu': 'screen',
+    'Serüven: Bebek Koleksiyonu': 'screen', 'Yakamoz: Etekucu Koleksiyonu': 'sineklik',
+    'Jalpersan Trendleri': 'zebra', 'Ronco': 'diger', 'Renkli Tela Kartelası': 'diger'
+  };
+
+  /** Kod üzerinden kararlı bir kumaş rengi — görsel yüklenemezse dokuma deseninde kullanılır. */
+  function kartelaRengi(kod) {
+    var t = 0;
+    for (var i = 0; i < kod.length; i++) t = (t * 31 + kod.charCodeAt(i)) % 100000;
+    var ton = [38, 28, 210, 20, 45, 195, 15, 60][t % 8];
+    return 'hsl(' + ton + ', ' + (12 + t % 16) + '%, ' + (58 + t % 18) + '%)';
+  }
+
   function logoStok() {
-    var s = [
-      ['ZEB-1200-KREM', 'Zebra Perde Kumaşı 1200 · Krem', 'Zebra', 'MTR', '#D8C9AC', 'zebra', '200 cm en · çift kat gündüz/gece'],
-      ['ZEB-1200-ANTR', 'Zebra Perde Kumaşı 1200 · Antrasit', 'Zebra', 'MTR', '#5A6068', 'zebra', '200 cm en · çift kat gündüz/gece'],
-      ['ZEB-2400-BEJ', 'Zebra Perde Kumaşı 2400 · Bej', 'Zebra', 'MTR', '#C9B394', 'zebra', '280 cm en · çift kat gündüz/gece'],
-      ['STR-3000-BEYAZ', 'Stor Perde Kumaşı 3000 · Beyaz', 'Stor', 'MTR', '#EDE9E1', 'stor', '280 cm en · leke tutmaz apre'],
-      ['STR-3000-GRI', 'Stor Perde Kumaşı 3000 · Gri', 'Stor', 'MTR', '#9AA0A3', 'stor', '280 cm en · leke tutmaz apre'],
-      ['TUL-0500-EKRU', 'Tül Stor 0500 · Ekru', 'Tül Stor', 'MTR', '#E7E2D6', 'tul', '300 cm en · şeffaf dokuma'],
-      ['SSC-0310-GUMUS', 'Sun Screen %3 Açıklık · Gümüş', 'Sun Screen', 'MTR', '#A9AEB2', 'screen', '%3 açıklık · 280 cm en · PVC/cam elyaf'],
-      ['SSC-0510-BEYAZ', 'Sun Screen %5 Açıklık · Beyaz', 'Sun Screen', 'MTR', '#DDD9D2', 'screen', '%5 açıklık · 280 cm en · PVC/cam elyaf'],
-      ['PLS-0900-VIZON', 'Plise Perde Kumaşı 0900 · Vizon', 'Plise', 'MTR', '#B9A791', 'plise', '45 mm katlama · cam üstü montaj'],
-      ['SNK-1800-SIYAH', 'Sineklik Tülü 1800 · Siyah', 'Sineklik', 'MTR', '#3C4145', 'sineklik', '180 cm en · 18×16 göz fiberglas'],
-      ['PLS-KASET-VIZON', 'Plise Kaset Profili · Vizon', 'Plise', 'ADET', '#B0A08B', 'diger', '45 mm kaset · 3 m boy'],
-      ['ZEB-1200-KARTELA', 'Zebra Kartela Seti (12 renk)', 'Zebra', 'ADET', '#C2A87C', 'diger', '12 renk · sunum kutusu']
-    ];
-    return s.map(function (x, i) {
-      return {
-        kod: x[0], ad: x[1], grup: x[2], birim: x[3], renk: x[4], doku: x[5], ozellik: x[6],
-        aktif: x[0] !== 'SNK-1800-SIYAH',      // Logo'da bir kart pasif — senkron davranışı gösterilsin
-        sira: i
-      };
+    var kat = (window.JP && JP.KATALOG) || { cdn: '', gruplar: [] };
+    var out = [], sira = 0;
+    kat.gruplar.forEach(function (g) {
+      g.seriler.forEach(function (se) {
+        se.m.forEach(function (model) {
+          out.push({
+            kod: model,
+            ad: model + ' ' + g.kisa,
+            grup: g.ad, grupKisa: g.kisa, seri: se.ad, seriUri: se.uri,
+            birim: g.birim, ozellik: g.ozellik, ozet: g.ozet,
+            gorsel: kat.cdn + se.g, gorselBuyuk: kat.cdn + se.b,
+            renk: kartelaRengi(model), doku: DOKU[g.ad] || 'diger',
+            aktif: true, sira: sira++
+          });
+        });
+      });
     });
+    // Logo'da pasif bir kart bulunsun: senkron davranışı demoda görünsün
+    if (out.length > 6) out[out.length - 1].aktif = false;
+    return out;
   }
 
   function logoCari() {
@@ -798,15 +899,17 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
         var p = db.urunler.find(function (u) { return u.kod === s.kod; });
         if (!p) {
           db.urunler.push({
-            kod: s.kod, ad: s.ad, grup: s.grup, birim: s.birim, renk: s.renk, doku: s.doku,
+            kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
+            renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk,
             logoAktif: s.aktif, logodaYok: false,
-            siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: aciklamaOf(s.grup),
+            siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: s.ozet || aciklamaOf(s.grup),
             gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
           });
           yeni++;
         } else {
           if (p.ad !== s.ad || p.logoAktif !== s.aktif || p.grup !== s.grup) guncel++;
-          p.ad = s.ad; p.grup = s.grup; p.birim = s.birim; p.renk = s.renk; p.doku = s.doku;
+          p.ad = s.ad; p.grup = s.grup; p.grupKisa = s.grupKisa; p.seri = s.seri; p.birim = s.birim;
+          p.renk = s.renk; p.doku = s.doku; p.gorsel = s.gorsel; p.gorselBuyuk = s.gorselBuyuk;
           p.logoAktif = s.aktif; p.logodaYok = false;                 // portal ek alanları korunur
         }
       });
@@ -929,8 +1032,33 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
     return talep;
   };
 
-  /** Katalog ağacı: grup → seri (stok kodunun orta bölümü) → renk varyantları.
-      Logo kodlama yapısı ZEB-1200-KREM biçiminde olduğu için seri koddan türetilir. */
+  /** Ürünün seri bilgisi. Katalogdan gelir (ör. "HB Serisi Stor Perdeler");
+      yoksa stok kodunun orta bölümünden türetilir. */
+  JP.seriBilgi = function (u) {
+    if (u.seri) return { kod: u.seri, ad: u.seri };
+    var parca = u.kod.split('-');
+    var kod = parca.length > 1 ? parca[1] : 'DIGER';
+    return { kod: kod, ad: kod + ' serisi' };
+  };
+
+  /** Seri adının kısa biçimi: "HB Serisi Stor Perdeler" → "HB Serisi",
+      "JP-01 Baskılı Tül Dikey Fonluk Perdeler" → "JP-01". Kategori adı seride
+      tekrar ettiği için etiket kısaltılır. */
+  JP.seriKisa = function (ad) {
+    if (!ad) return '';
+    var m = ad.match(/^(.*?\sSerisi)\b/);
+    if (m) return m[1];
+    m = ad.match(/^([A-ZÇĞİÖŞÜ0-9]{1,5}(?:-[A-Z0-9]{1,4})?)\s/);
+    if (m) return m[1];
+    return ad.length > 26 ? ad.slice(0, 25).trim() + '…' : ad;
+  };
+
+  /** Ürünün katalog kırılımı: "Stor Perde · HB Serisi" */
+  JP.urunKirilim = function (u) {
+    return (u.grupKisa || u.grup) + ' · ' + JP.seriKisa(JP.seriBilgi(u).ad);
+  };
+
+  /** Katalog ağacı: kategori → seri → model kodu (HB-01, HB-02 …). */
   JP.urunAgaci = function (bayiKod) {
     var urunler = JP.bayiUrunleri(bayiKod);
     var gruplar = [];
@@ -938,11 +1066,9 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
       var g = gruplar.find(function (x) { return x.ad === u.grup; });
       if (!g) { g = { ad: u.grup, adet: 0, seriler: [] }; gruplar.push(g); }
       g.adet++;
-      var parca = u.kod.split('-');
-      var seriKod = parca.length > 1 ? parca[1] : 'DIGER';
-      var seriAd = u.birim === 'ADET' ? 'Kartela ve aksesuar' : seriKod + ' serisi';
-      var se = g.seriler.find(function (x) { return x.kod === seriKod && x.ad === seriAd; });
-      if (!se) { se = { kod: seriKod, ad: seriAd, adet: 0 }; g.seriler.push(se); }
+      var seri = JP.seriBilgi(u);
+      var se = g.seriler.find(function (x) { return x.kod === seri.kod && x.ad === seri.ad; });
+      if (!se) { se = { kod: seri.kod, ad: seri.ad, adet: 0 }; g.seriler.push(se); }
       se.adet++;
     });
     gruplar.forEach(function (g) { g.seriler.sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); }); });
@@ -954,10 +1080,7 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
     var q = (arama || '').trim().toLocaleLowerCase('tr');
     return JP.bayiUrunleri(bayiKod).filter(function (u) {
       if (dugum && dugum.grup && u.grup !== dugum.grup) return false;
-      if (dugum && dugum.seri) {
-        var parca = u.kod.split('-');
-        if ((parca.length > 1 ? parca[1] : 'DIGER') !== dugum.seri) return false;
-      }
+      if (dugum && dugum.seri && JP.seriBilgi(u).kod !== dugum.seri) return false;
       if (!q) return true;
       return (u.ad + ' ' + u.kod + ' ' + (u.ozellik || '')).toLocaleLowerCase('tr').indexOf(q) >= 0;
     });
@@ -1516,6 +1639,13 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
   };
 
   /* ------------------------------------------------------------------ tohum */
+  /** Tohum verisi için katalogdan ürün seçer; kod listesi değişse de kırılmaz. */
+  function tohumUrun(db, grupAdi, sira) {
+    var liste = db.logo.stok.filter(function (x) { return x.grup === grupAdi && x.aktif; });
+    if (!liste.length) liste = db.logo.stok.filter(function (x) { return x.aktif; });
+    return (liste[sira % liste.length] || liste[0] || {}).kod;
+  }
+
   function tohum(bos) {
     var db = bosDb();
     mem = db;
@@ -1524,9 +1654,10 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
     // --- ana veriyi Logo'dan çekilmiş varsay
     db.logo.stok.forEach(function (s) {
       db.urunler.push({
-        kod: s.kod, ad: s.ad, grup: s.grup, birim: s.birim, renk: s.renk, doku: s.doku,
+        kod: s.kod, ad: s.ad, grup: s.grup, grupKisa: s.grupKisa, seri: s.seri, birim: s.birim,
+        renk: s.renk, doku: s.doku, gorsel: s.gorsel, gorselBuyuk: s.gorselBuyuk,
         logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, ozellik: s.ozellik,
-        aciklama: aciklamaOf(s.grup), gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
+        aciklama: s.ozet, gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
       });
     });
     db.logo.cari.forEach(function (c) {
@@ -1541,16 +1672,26 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
 
     // yurt dışı bayi yalnızca iki gruba açık — kısıt davranışı görünsün
     var balkan = db.bayiler.find(function (b) { return b.kod === 'BYI-0004'; });
-    balkan.kisit = { tip: 'gruplar', gruplar: ['Zebra', 'Sun Screen'], urunler: [] };
-    db.urunler.find(function (u) { return u.kod === 'ZEB-1200-KARTELA'; }).siparieAcik = false;
+    balkan.kisit = { tip: 'gruplar', gruplar: ['Stor Perde Kumaşı', 'Tül Stor Perde Kumaşı'], urunler: [] };
+    var kapali = db.urunler.filter(function (u) { return u.grup === 'Jalpersan Trendleri'; })[1];
+    if (kapali) kapali.siparieAcik = false;      // siparişe kapalı ürün davranışı görünsün
 
     // --- geçmiş hareket: yaşlanmış açık talep + akışı tamamlanmış bir sipariş
+    var U = {
+      stor1: tohumUrun(db, 'Stor Perde Kumaşı', 0),
+      stor2: tohumUrun(db, 'Stor Perde Kumaşı', 6),
+      tul1: tohumUrun(db, 'Tül Stor Perde Kumaşı', 0),
+      dikey1: tohumUrun(db, 'Dikey Perde Kumaşı', 0),
+      trend1: tohumUrun(db, 'Jalpersan Trendleri', 0),
+      aksesuar: tohumUrun(db, 'Ronco', 0)          // adet birimli — karışık birim demoda görünsün
+    };
+
     _ts = gecmis(24);
     JP.talepOlustur('BYI-0001', [
-      { urunKod: 'ZEB-1200-KREM', miktar: 320 },
-      { urunKod: 'STR-3000-BEYAZ', miktar: 150 },
-      { urunKod: 'TUL-0500-EKRU', miktar: 90 },
-      { urunKod: 'PLS-KASET-VIZON', miktar: 24 }
+      { urunKod: U.stor1, miktar: 320 },
+      { urunKod: U.stor2, miktar: 150 },
+      { urunKod: U.tul1, miktar: 90 },
+      { urunKod: U.aksesuar, miktar: 24 }
     ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', null);
 
     _ts = gecmis(21);
@@ -1569,14 +1710,14 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
 
     _ts = gecmis(9);
     JP.talepOlustur('BYI-0002', [
-      { urunKod: 'SSC-0310-GUMUS', miktar: 240 },
-      { urunKod: 'ZEB-1200-ANTR', miktar: 180 }
+      { urunKod: U.dikey1, miktar: 240 },
+      { urunKod: U.trend1, miktar: 180 }
     ], 'Ofis projesi — teslim tarihi kritik.', null);
 
     _ts = gecmis(3);
     JP.talepOlustur('BYI-0004', [
-      { urunKod: 'ZEB-2400-BEJ', miktar: 400 },
-      { urunKod: 'SSC-0510-BEYAZ', miktar: 120 }
+      { urunKod: tohumUrun(db, 'Stor Perde Kumaşı', 12), miktar: 400 },
+      { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
     ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', null);
 
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
@@ -1593,15 +1734,9 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
   }
 
   function aciklamaOf(grup) {
-    var m = {
-      'Zebra': 'Çift kat gündüz/gece dokuma. 200 cm ve 280 cm en. Işık geçirgenliği ayarlanabilir.',
-      'Stor': 'Tek kat düz dokuma stor kumaşı. Leke tutmaz apre, 280 cm en.',
-      'Tül Stor': 'Şeffaf tül dokuma. Gün ışığını yumuşatır, 300 cm en.',
-      'Sun Screen': 'PVC kaplı cam elyaf. Isı ve UV kontrolü, açıklık oranı etikette.',
-      'Plise': 'Katlanabilir plise dokuma. Cam üstü montaj için 45 mm katlama.',
-      'Sineklik': 'Fiberglas sineklik tülü. 18×16 göz, 180 cm en.'
-    };
-    return m[grup] || '';
+    var k = ((window.JP && JP.KATALOG) || { gruplar: [] }).gruplar
+      .find(function (g) { return g.ad === grup; });
+    return k ? k.ozet : '';
   }
 
   JP.aciklamaOf = aciklamaOf;
@@ -1647,7 +1782,9 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
     zil: '<path d="M8 2.1a3.9 3.9 0 0 0-3.9 3.9v2.4L2.7 11h10.6l-1.4-2.6V6A3.9 3.9 0 0 0 8 2.1z"/><path d="M6.4 13.1a1.75 1.75 0 0 0 3.2 0"/>',
     profil: '<circle cx="8" cy="5.6" r="2.6"/><path d="M2.9 13.6a5.4 5.4 0 0 1 10.2 0"/>',
     ok: '<path d="M6 3.5 10.5 8 6 12.5"/>',
-    kutu: '<path d="M2.4 5.2 8 2.3l5.6 2.9v5.6L8 13.7 2.4 10.8z"/><path d="M2.4 5.2 8 8.1l5.6-2.9M8 8.1v5.6"/>'
+    kutu: '<path d="M2.4 5.2 8 2.3l5.6 2.9v5.6L8 13.7 2.4 10.8z"/><path d="M2.4 5.2 8 8.1l5.6-2.9M8 8.1v5.6"/>',
+    liste: '<path d="M2.6 4.2h10.8M2.6 8h10.8M2.6 11.8h10.8"/>',
+    kart: '<rect x="2.4" y="2.4" width="5" height="5" rx="1"/><rect x="8.6" y="2.4" width="5" height="5" rx="1"/><rect x="2.4" y="8.6" width="5" height="5" rx="1"/><rect x="8.6" y="8.6" width="5" height="5" rx="1"/>'
   };
   UI.ikon = function (ad, boy) {
     var d = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1781,10 +1918,21 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
   };
 
   /* ------------------------------------------------------------- kumaş kartı */
-  UI.kartela = function (urun, yukseklik, genislik) {
+  /* Ürün görseli jalpersan.com'dan çağrılır. Ulaşılamazsa (çevrimdışı dosya,
+     içerik güvenlik kuralı) fotoğraf sessizce düşer ve altındaki dokuma deseni kalır. */
+  UI.kartela = function (urun, yukseklik, genislik, buyuk) {
     var st = { '--sw': urun.renk || '#B9AE99', aspectRatio: yukseklik ? 'auto' : '3 / 2', height: yukseklik || 'auto' };
     if (genislik) { st.width = genislik; st.flex = 'none'; }
-    return h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
+    var el = h('div.swatch.sw-' + (urun.doku || 'diger'), { style: st, 'aria-hidden': 'true' });
+    var src = buyuk ? (urun.gorselBuyuk || urun.gorsel) : urun.gorsel;
+    if (src) {
+      var im = h('img.kartela-foto', {
+        src: src, alt: '', loading: 'lazy', decoding: 'async',
+        onerror: function () { im.remove(); }
+      });
+      el.appendChild(im);
+    }
+    return el;
   };
 
   /* ------------------------------------------------------------------ tablo */
@@ -2202,12 +2350,47 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
   }
 
   /* ------------------------------------------------------------- katalog */
+  /* Liste ve kart görünümü, e-ticaret sitelerindeki gibi üstteki geçişle seçilir;
+     tercih tarayıcıda saklanır. İki görünüm de aynı şeyi verir: kırılım ürünün
+     üzerinde, hızlı miktar girişi ve sepete ekleme. Açıklama ve teknik özellik
+     kalabalık yapmasın diye yalnızca ürün detayında gösterilir. */
+  function gorunumOku() {
+    try { return localStorage.getItem('jp.katalogGorunum') === 'kart' ? 'kart' : 'liste'; }
+    catch (e) { return 'liste'; }
+  }
+  function gorunumYaz(v) { try { localStorage.setItem('jp.katalogGorunum', v); } catch (e) {} }
+
+  function sepeteEkle(u, bayi, miktar) {
+    UI.dene(function () {
+      var yeni = JP.sepetEkle(bayi.kod, u.kod, miktar);
+      UI.toast('Sepete eklendi', u.ad + ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim, 'ok');
+    });
+  }
+
+  /** Miktar sayacı + sepete ekle düğmesi. Enter da ekler (hızlı giriş). */
+  function hizliEkle(u, bayi) {
+    var sepette = sepetteMiktar(bayi.kod, u.kod);
+    var sayac = UI.sayac({ deger: varsayilan(u), adim: adim(u), enAz: 0, etiket: u.ad + ' miktarı' });
+    function ekle() { sepeteEkle(u, bayi, sayac.deger()); }
+    sayac.girdi.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); ekle(); }
+    });
+    return {
+      sayac: sayac,
+      dugme: h('button.btn.primary.sm', {
+        text: sepette ? 'Ekle' : 'Sepete ekle', disabled: !bayi.siparisAcik,
+        title: bayi.siparisAcik ? 'Miktarı girip Enter’a da basabilirsiniz' : '', onclick: ekle
+      })
+    };
+  }
+
   function katalog() {
     var bayi = aktifBayi();
     if (!bayi) return h('div.note.warn', { html: '<b>Bayi kartı yok.</b> Firma panelinden “Bayileri Logo’dan al” işlemini çalıştırın.' });
 
     var tumu = JP.bayiUrunleri(bayi.kod);
     var kap = h('div.stack');
+    var gorunum = gorunumOku();
 
     if (!bayi.siparisAcik) {
       kap.appendChild(h('div.note.warn', { html: '<b>Hesabınız siparişe kapalı.</b> Kataloğu görüntüleyebilirsiniz, sepete ürün eklenemez.' }));
@@ -2219,27 +2402,42 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
 
     var izgara = h('div.stack');
     var sayimEl = h('span.small.muted');
+    var secEl = h('div.gorunum-sec', { role: 'group', 'aria-label': 'Görünüm' });
+
     var araGirdi = h('input.ara', {
       type: 'text', value: filtre.ara, placeholder: 'Ürün adı, stok kodu veya özellik ara…',
       'aria-label': 'Katalogda ara',
       oninput: function (e) { filtre.ara = e.target.value; izgaraCiz(); }
     });
 
+    function secCiz() {
+      secEl.textContent = '';
+      [['liste', 'Liste'], ['kart', 'Kart']].forEach(function (o) {
+        secEl.appendChild(h('button', {
+          type: 'button', 'aria-pressed': String(gorunum === o[0]), title: o[1] + ' görünümü',
+          onclick: function () { gorunum = o[0]; gorunumYaz(o[0]); secCiz(); izgaraCiz(); }
+        }, [UI.ikon(o[0], 14), h('span', { text: o[1] })]));
+      });
+    }
+
     function izgaraCiz() {
       var liste = JP.urunSuz(bayi.kod, filtre.dugum, filtre.ara);
       sayimEl.textContent = liste.length + ' / ' + tumu.length + ' ürün';
       izgara.textContent = '';
       if (!liste.length) { izgara.appendChild(h('div.empty', { text: 'Bu kırılımda ürün yok.' })); return; }
-      var gruplar = [];
-      liste.forEach(function (u) { if (gruplar.indexOf(u.grup) < 0) gruplar.push(u.grup); });
-      gruplar.forEach(function (g) {
-        var grupUrun = liste.filter(function (u) { return u.grup === g; });
-        if (gruplar.length > 1 || !filtre.dugum) {
-          izgara.appendChild(h('div.grp', {}, [h('h2', { text: g }), h('span.rule'), h('span.adet', { text: grupUrun.length + ' ürün' })]));
-        }
-        izgara.appendChild(h('div.cat', {}, grupUrun.map(function (u) { return urunKarti(u, bayi); })));
-      });
+      if (gorunum === 'kart') {
+        izgara.appendChild(h('div.cat', {}, liste.map(function (u) { return urunKarti(u, bayi); })));
+      } else {
+        izgara.appendChild(h('div.ulist', {}, [
+          h('div.ubas', {}, [
+            h('span', { text: 'Görsel' }), h('span', { text: 'Ürün' }),
+            h('span', { text: 'Birim' }), h('span', { text: 'Miktar' }), h('span')
+          ])
+        ].concat(liste.map(function (u) { return urunSatiri(u, bayi); }))));
+      }
     }
+
+    secCiz();
     izgaraCiz();
 
     kap.appendChild(h('div.cat-bar', {}, [
@@ -2251,7 +2449,8 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
         onclick: function () { filtre.dugum = null; kabuk.ciz(); }
       }) : null,
       h('div.spacer'),
-      sayimEl
+      sayimEl,
+      secEl
     ]));
     kap.appendChild(izgara);
     return kap;
@@ -2262,56 +2461,71 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
     return s ? s.miktar : 0;
   }
 
+  /* --- liste satırı --- */
+  function urunSatiri(u, bayi) {
+    var sepette = sepetteMiktar(bayi.kod, u.kod);
+    var he = hizliEkle(u, bayi);
+    return h('div.urow' + (sepette ? '.sepette' : ''), {}, [
+      h('button.uthumb', {
+        type: 'button', 'aria-label': u.ad + ' — ürün detayı',
+        onclick: function () { urunDetay(u, bayi); }
+      }, UI.kartela(u)),
+      h('div.ubilgi', {}, [
+        h('div.ukirilim', { text: JP.urunKirilim(u) }),
+        h('button.uad', { type: 'button', text: u.ad, title: u.ad, onclick: function () { urunDetay(u, bayi); } }),
+        h('div.umeta', {}, [
+          h('span.kod', { text: u.kod }),
+          sepette ? h('span.usepette', { text: ' · sepette ' + JP.fmt.miktar(sepette) + ' ' + u.birim }) : null
+        ])
+      ]),
+      h('span.ubirim', { text: u.gosterimBirimi }),
+      he.sayac,
+      he.dugme
+    ]);
+  }
+
+  /* --- kart --- */
   function urunKarti(u, bayi) {
     var sepette = sepetteMiktar(bayi.kod, u.kod);
-    var sayac = UI.sayac({ deger: varsayilan(u), adim: adim(u), enAz: 0, etiket: u.ad + ' miktarı' });
-
+    var he = hizliEkle(u, bayi);
     return h('div.prod' + (sepette ? '.sepette' : ''), {}, [
       h('button.gorsel', {
-        type: 'button', 'aria-label': u.ad + ' — ürün bilgisi',
+        type: 'button', 'aria-label': u.ad + ' — ürün detayı',
         onclick: function () { urunDetay(u, bayi); }
       }, [
-        UI.kartela(u, '96px'),
+        UI.kartela(u),
         sepette ? h('span.sepette-rozet', { text: 'sepette ' + JP.fmt.miktar(sepette) }) : null,
         h('span.buyut', { text: 'Detay' })
       ]),
       h('div.pb', {}, [
-        h('div.pg', { text: u.grup }),
-        h('div.pn', { text: u.ad, title: u.ad }),
-        h('div.pc', { text: u.kod }),
-        h('div.po', { text: u.ozellik || u.aciklama || '' }),
-        h('div.pf', {}, [
-          sayac,
-          h('button.btn.primary.sm', {
-            text: sepette ? 'Ekle' : 'Sepete ekle', disabled: !bayi.siparisAcik,
-            onclick: function () {
-              UI.dene(function () {
-                var yeni = JP.sepetEkle(bayi.kod, u.kod, sayac.deger());
-                UI.toast('Sepete eklendi', u.ad + ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim, 'ok');
-              });
-            }
-          })
-        ]),
-        h('div.small.muted', { text: 'Birim: ' + u.gosterimBirimi })
+        h('div.ukirilim', { text: JP.urunKirilim(u) }),
+        h('button.pn', { type: 'button', text: u.ad, title: u.ad, onclick: function () { urunDetay(u, bayi); } }),
+        h('div.pc', { text: u.kod + ' · ' + u.gosterimBirimi }),
+        h('div.pf', {}, [he.sayac, he.dugme])
       ])
     ]);
   }
 
+  /* --- ürün detayı: açıklama ve teknik özellik burada --- */
   function urunDetay(u, bayi) {
     var sayac = UI.sayac({ deger: varsayilan(u), adim: adim(u), enAz: 0, etiket: 'Miktar' });
     var sepette = sepetteMiktar(bayi.kod, u.kod);
     UI.modal({
       baslik: u.ad, etiket: u.kod, genis: true,
       icerik: h('div.grid.k2', {}, [
-        h('div', {}, UI.kartela(u, '190px')),
+        h('div', {}, UI.kartela(u, '210px', null, true)),
         h('div.stack', {}, [
+          h('div.ukirilim', { text: JP.urunKirilim(u) }),
           h('dl.kv', {}, [
             h('dt', { text: 'Stok kodu' }), h('dd.mono', { text: u.kod }),
-            h('dt', { text: 'Katalog grubu' }), h('dd', { text: u.grup }),
+            h('dt', { text: 'Katalog kırılımı' }), h('dd', { text: JP.urunKirilim(u) }),
             h('dt', { text: 'Sipariş birimi' }), h('dd', { text: u.gosterimBirimi + ' (' + u.birim + ')' }),
             h('dt', { text: 'Teknik özellik' }), h('dd', { text: u.ozellik || '—' })
           ]),
-          u.aciklama ? h('p.small.muted', { text: u.aciklama }) : null,
+          h('div', {}, [
+            h('div.eyebrow', { text: 'Ürün açıklaması', style: { marginBottom: '4px' } }),
+            h('p.small.muted', { text: u.aciklama || JP.aciklamaOf(u.grup) || 'Açıklama girilmemiş.' })
+          ]),
           sepette ? h('div.note', { text: 'Bu üründen sepetinizde ' + JP.fmt.miktar(sepette) + ' ' + u.birim + ' var. Ekleyeceğiniz miktar üstüne eklenir.' }) : null,
           h('div.small.muted', { text: 'Fiyat ve stok bilgisi bayi ekranında gösterilmez.' })
         ])
@@ -2323,13 +2537,7 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
           h('button.btn', { text: 'Kapat', onclick: kapat }),
           h('button.btn.primary', {
             text: 'Sepete ekle', disabled: !bayi.siparisAcik,
-            onclick: function () {
-              UI.dene(function () {
-                var yeni = JP.sepetEkle(bayi.kod, u.kod, sayac.deger());
-                kapat();
-                UI.toast('Sepete eklendi', u.ad + ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim, 'ok');
-              });
-            }
+            onclick: function () { kapat(); sepeteEkle(u, bayi, sayac.deger()); }
           })
         ];
       }

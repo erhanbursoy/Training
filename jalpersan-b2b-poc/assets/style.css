@@ -1,37 +1,40 @@
-/* Jalpersan B2B PoC — ortak tasarım sistemi
-   Renk: ham pamuk zemin, çam-petrol mürekkep, teal aksan.
-   Portal ekranları bilinçli olarak tek dünyaya bağlıdır: her zaman açık renk,
-   tarayıcının koyu tema tercihini izlemez. Yalnızca Logo ERP simülatörü
-   .logo-world sınıfıyla kendi koyu terminal dünyasını kurar. */
+/* Jalpersan B2B PoC — tasarım sistemi
+   Renk ve tipografi jalpersan.com kurumsal kimliğinden alınmıştır:
+   kömür grisi #27292D, marka kırmızısı #F00F45, açık gri zemin #F4F4F4,
+   Source Sans 3. Veri ve kod alanlarında IBM Plex Mono kullanılır.
+   Portal ekranları bilinçli olarak tek dünyaya bağlıdır: her zaman açık renk.
+   Yalnızca Logo ERP simülatörü .logo-world ile kendi koyu dünyasını kurar. */
 
 :root {
   color-scheme: light;
 
-  --paper:      #F6F4EF;
+  --paper:      #F4F4F4;
   --surface:    #FFFFFF;
-  --surface-2:  #FBFAF6;
-  --sunk:       #EEEBE3;
-  --line:       #E1DBCF;
-  --line-2:     #C8C0B0;
+  --surface-2:  #FAFAFA;
+  --sunk:       #EAEAEA;
+  --line:       #E8E8E8;
+  --line-2:     #D2D2D2;
 
-  --text:       #14312E;
-  --text-2:     #5A6862;
-  --text-3:     #8B948E;
+  --text:       #27292D;
+  --text-2:     #444444;
+  --text-3:     #9F9F9F;
 
-  --accent:     #0F6157;
-  --accent-2:   #0B4B43;
-  --accent-soft:#E1EFEC;
+  --accent:     #F00F45;
+  --accent-2:   #C00A35;
+  --accent-soft:#FDE7EC;
+  --accent-koyu:#0F1217;
 
-  --ok:         #3A6B34;  --ok-soft:  #E8F0E3;
-  --warn:       #8A6410;  --warn-soft:#F8EFD9;
-  --bad:        #A03A28;  --bad-soft: #F9E8E3;
-  --info:       #245D7A;  --info-soft:#E4EEF4;
+  --ok:         #2E7D4F;  --ok-soft:  #E6F2EA;
+  --warn:       #B27400;  --warn-soft:#FBF0DC;
+  --bad:        #8E1029;  --bad-soft: #FAE4E9;
+  --info:       #2F3543;  --info-soft:#E9EBEF;
 
-  --shadow:     0 1px 2px rgba(20,49,46,.05), 0 10px 26px -16px rgba(20,49,46,.30);
+  --shadow:     0 1px 2px rgba(39,41,45,.05), 0 10px 26px -16px rgba(39,41,45,.35);
   --radius:     10px;
+  --radius-sm:  5px;
 
-  --font-display: Archivo, "Helvetica Neue", Arial, sans-serif;
-  --font-body:    "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-display: "Source Sans 3", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-body:    "Source Sans 3", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono:    "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
@@ -131,7 +134,7 @@ a { color: var(--accent); }
   font: inherit; font-size: 13.5px;
 }
 .rail button:hover { background: var(--sunk); color: var(--text); }
-.rail button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+.rail button[aria-current="true"] { background: var(--sunk); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .rail .count {
   font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 999px;
   background: var(--sunk); color: var(--text-2);
@@ -221,27 +224,27 @@ table.tbl td.tight { padding: 5px 12px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font: inherit; font-size: 13px; font-weight: 500; line-height: 1;
-  padding: 8px 13px; border-radius: 7px; cursor: pointer;
+  padding: 8px 13px; border-radius: var(--radius-sm); cursor: pointer;
   border: 1px solid var(--line-2); background: var(--surface); color: var(--text);
   transition: background .12s ease, border-color .12s ease;
 }
 .btn:hover { background: var(--sunk); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.btn.primary:hover { background: var(--accent-koyu); border-color: var(--accent-koyu); }
 .logo-world .btn.primary { color: #201704; }
 .btn.danger { color: var(--bad); border-color: var(--bad); background: transparent; }
 .btn.danger:hover { background: var(--bad-soft); }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
 .btn.ghost:hover { background: var(--sunk); color: var(--text); }
-.btn.sm { font-size: 12px; padding: 5px 9px; border-radius: 6px; }
+.btn.sm { font-size: 12px; padding: 5px 9px; border-radius: var(--radius-sm); }
 .btn.block { width: 100%; }
 
 /* ---------- form ---------- */
 label.f { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-2); }
 input[type=text], input[type=number], input[type=date], input[type=email], select, textarea {
   font: inherit; font-size: 13px; color: var(--text);
-  background: var(--surface); border: 1px solid var(--line-2); border-radius: 7px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--radius-sm);
   padding: 7px 9px; width: 100%; min-width: 0;
 }
 input[type=number] { font-family: var(--font-mono); text-align: right; }
@@ -267,8 +270,12 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 
 /* ---------- kumaş dokusu (kartela) ---------- */
 .swatch {
-  width: 100%; aspect-ratio: 16 / 9; border-radius: 7px; border: 1px solid var(--line);
+  width: 100%; aspect-ratio: 16 / 9; border-radius: var(--radius-sm); border: 1px solid var(--line);
   background-color: var(--sw, #B9AE99); background-blend-mode: multiply; position: relative; overflow: hidden;
+}
+.swatch .kartela-foto {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; border-radius: inherit;
 }
 .swatch.sw-zebra    { background-image: repeating-linear-gradient(180deg, rgba(255,255,255,.92) 0 6px, rgba(0,0,0,.34) 6px 12px); }
 .swatch.sw-stor     { background-image: linear-gradient(180deg, rgba(255,255,255,.14), rgba(0,0,0,.10)), repeating-linear-gradient(90deg, rgba(0,0,0,.045) 0 3px, transparent 3px 7px); }
@@ -290,40 +297,116 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
 .logo-world .chip[aria-pressed="true"] { color: #201704; }
 
-/* ---------- ürün kartı (e-ticaret) ---------- */
-.cat { display: grid; gap: 13px; grid-template-columns: repeat(auto-fill, minmax(198px, 1fr)); }
+/* ---------- ürün listesi ---------- */
+/* Katalog kart yerine liste: kırılım her satırda ürünün üzerinde yazar,
+   ayrı grup bölümleri yoktur. Görselin üzerine gelince büyür. */
+.ulist {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); overflow: visible;
+}
+.ubas, .urow {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr) 116px 92px 122px;
+  gap: 12px; align-items: center; padding: 0 14px;
+}
+.ubas {
+  padding-top: 9px; padding-bottom: 9px; background: var(--surface-2);
+  border-bottom: 1px solid var(--line); border-radius: var(--radius) var(--radius) 0 0;
+  font-family: var(--font-display); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text-3);
+}
+.urow { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); position: relative; }
+.urow:last-child { border-bottom: 0; }
+.urow:hover { background: var(--surface-2); z-index: 10; }
+.urow.sepette { box-shadow: inset 3px 0 0 var(--accent); }
+.urow .ubilgi { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.urow .uad {
+  font-weight: 600; font-size: 13.5px; line-height: 1.35; text-align: left;
+  border: 0; background: none; padding: 0; color: inherit; font-family: inherit; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.urow .uad:hover { color: var(--accent); text-decoration: underline; }
+.urow .umeta { font-size: 11.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.urow .umeta .kod { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.urow .ubirim { font-size: 12px; color: var(--text-2); }
+.urow .usepette { font-family: var(--font-mono); font-size: 10.5px; color: var(--accent-2); }
+
+/* görsel: üzerine gelince büyür */
+.uthumb { width: 46px; height: 46px; padding: 0; border: 0; background: none; cursor: zoom-in; display: block; }
+.uthumb .swatch {
+  width: 46px; height: 46px; aspect-ratio: auto; border-radius: 5px; position: relative;
+  transition: transform .18s ease, box-shadow .18s ease, border-radius .18s ease;
+  transform-origin: left center;
+}
+.uthumb:hover .swatch, .uthumb:focus-visible .swatch {
+  transform: scale(3.9); border-radius: 8px; z-index: 30;
+  box-shadow: 0 14px 34px -10px rgba(20, 49, 46, .5);
+}
+@media (prefers-reduced-motion: reduce) { .uthumb:hover .swatch { transform: scale(2.4); } }
+
+@media (max-width: 780px) {
+  .ubas { display: none; }
+  .urow { grid-template-columns: 58px minmax(0, 1fr); row-gap: 8px; padding-top: 12px; padding-bottom: 12px; }
+  .urow > :nth-child(3), .urow > :nth-child(4), .urow > :nth-child(5) { grid-column: 2; justify-self: start; }
+  .uthumb:hover .swatch { transform: scale(2.8); }
+}
+
+/* ---------- ürün kartı (ızgara görünümü) ---------- */
+/* Liste ve kart görünümü aynı veriyi gösterir; kullanıcı üstteki geçişle seçer.
+   İkisinde de kırılım ürünün üzerinde yazar ve görsele gelince büyür. */
+.cat { display: grid; gap: 13px; grid-template-columns: repeat(auto-fill, minmax(202px, 1fr)); }
 .prod {
   display: flex; flex-direction: column; overflow: hidden;
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
-  transition: border-color .12s ease, box-shadow .12s ease;
+  transition: border-color .14s ease, box-shadow .14s ease;
 }
 .prod:hover { border-color: var(--line-2); box-shadow: var(--shadow); }
+.prod.sepette { border-color: var(--accent); }
 .prod .gorsel {
   display: block; width: 100%; padding: 0; border: 0; border-bottom: 1px solid var(--line);
-  background: none; cursor: pointer; position: relative;
+  background: none; cursor: pointer; position: relative; overflow: hidden;
 }
-.prod .gorsel .swatch { border: 0; border-radius: 0; height: 96px; aspect-ratio: auto; }
-.prod .gorsel .buyut {
-  position: absolute; right: 6px; bottom: 6px; opacity: 0; transition: opacity .12s ease;
+.prod .gorsel .swatch {
+  border: 0; border-radius: 0; height: 122px; aspect-ratio: auto;
+  transition: transform .28s ease;
+}
+.prod:hover .gorsel .swatch, .prod .gorsel:focus-visible .swatch { transform: scale(1.11); }
+.prod .buyut {
+  position: absolute; right: 6px; bottom: 6px; opacity: 0; transition: opacity .14s ease;
   background: var(--surface); color: var(--text-2); border: 1px solid var(--line-2);
   border-radius: 5px; font-size: 10.5px; padding: 2px 6px; font-family: var(--font-display); font-weight: 600;
 }
-.prod:hover .gorsel .buyut, .prod .gorsel:focus-visible .buyut { opacity: 1; }
-.prod .pb { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; }
-.prod .pg { font-family: var(--font-display); font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-3); }
-.prod .pn {
-  font-weight: 600; font-size: 13px; line-height: 1.32; min-height: 2.64em;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.prod .pc { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
-.prod .po { font-size: 11.5px; color: var(--text-2); line-height: 1.4; min-height: 2.8em; }
-.prod .pf { display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 4px; }
-.prod .pf .btn { flex: 1 1 auto; }
-.prod.sepette { border-color: var(--accent); }
+.prod:hover .buyut, .prod .gorsel:focus-visible .buyut { opacity: 1; }
 .prod .sepette-rozet {
   position: absolute; left: 6px; top: 6px; background: var(--accent); color: #fff;
   font-family: var(--font-mono); font-size: 10.5px; padding: 1px 7px; border-radius: 999px;
 }
+.prod .pb { padding: 10px 11px 11px; display: flex; flex-direction: column; gap: 5px; flex: 1 1 auto; }
+.prod .pn {
+  font-weight: 600; font-size: 13.5px; line-height: 1.32; min-height: 2.64em; text-align: left;
+  border: 0; background: none; padding: 0; color: inherit; font-family: inherit; cursor: pointer;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.prod .pn:hover { color: var(--accent); }
+.prod .pc { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.prod .pf { display: flex; align-items: center; gap: 7px; margin-top: auto; padding-top: 4px; }
+.prod .pf .btn { flex: 1 1 auto; }
+
+/* kırılım etiketi — her iki görünümde ortak. Marka kırmızısı yalnızca birincil
+   eylemlerde kullanılır; burada sessiz bir üst etiket yeterli. */
+.ukirilim {
+  font-family: var(--font-display); font-size: 10px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--text-3);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* görünüm geçişi */
+.gorunum-sec { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.gorunum-sec button {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12.5px;
+  padding: 6px 11px; border: 0; background: var(--surface); color: var(--text-2); cursor: pointer;
+}
+.gorunum-sec button + button { border-left: 1px solid var(--line-2); }
+.gorunum-sec button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 500; }
 
 /* ---------- adet sayacı ---------- */
 .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; flex: none; }
@@ -404,11 +487,6 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .src.logo   { color: var(--info); }
 .src.elle   { color: var(--warn); }
 
-/* katalog grup başlığı — tek ürünlü grup için panel yerine hafif ayraç */
-.grp { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 -4px; }
-.grp h2 { font-size: 15px; }
-.grp .rule { flex: 1 1 auto; height: 1px; background: var(--line); }
-.grp .adet { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
 
 /* ---------- üst gezinme yerleşimi (bayi portalı) ---------- */
 .topbar.ust-menu { gap: 10px; padding-right: 14px; }
@@ -419,9 +497,9 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
   background: none; color: var(--text-2); cursor: pointer;
 }
 .ust-gez button:hover { background: var(--sunk); color: var(--text); }
-.ust-gez button[aria-current="true"] { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+.ust-gez button[aria-current="true"] { background: var(--text); color: #fff; font-weight: 600; }
 .ust-gez .count { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 999px; background: var(--sunk); color: var(--text-2); }
-.ust-gez button[aria-current="true"] .count { background: var(--surface); }
+.ust-gez button[aria-current="true"] .count { background: rgba(255,255,255,.22); color: #fff; }
 .ust-gez .count.hot { background: var(--warn); color: #fff; }
 
 /* sağ üst eylem ikonları */
