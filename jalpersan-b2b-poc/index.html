@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jalpersan B2B Prototipi</title>
+<meta name="description" content="Bayi portalı, firma paneli ve Logo ERP simülatörü — üç ekranı ayrı pencerelerde çalıştıran PoC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 34px 22px 72px; }
+  .mast { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+  .mast h1 { font-size: 30px; letter-spacing: -.022em; line-height: 1.12; }
+  .mast .sub { color: var(--text-2); max-width: 56ch; margin-top: 8px; }
+  .mast .meta { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+
+  .roles { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(272px, 1fr)); margin: 24px 0; }
+  .role {
+    display: flex; flex-direction: column; gap: 11px; text-decoration: none; color: inherit;
+    border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: var(--surface);
+    box-shadow: var(--shadow); transition: transform .14s ease, border-color .14s ease;
+  }
+  .role:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .role .ord { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); letter-spacing: .08em; }
+  .role h2 { font-size: 18px; }
+  .role p { color: var(--text-2); font-size: 13px; margin: 0; flex: 1 1 auto; }
+  .role .go { font-family: var(--font-display); font-size: 12.5px; font-weight: 600; color: var(--accent); letter-spacing: .02em; }
+  .role.sim {
+    background: #101820; border-color: #26333B; color: #D8E2E7;
+    background-image: repeating-linear-gradient(0deg, rgba(224,163,46,.05) 0 1px, transparent 1px 5px);
+  }
+  .role.sim p { color: #93A3AC; }
+  .role.sim .ord { color: #67767F; }
+  .role.sim .go { color: #E0A32E; }
+  .role.sim:hover { border-color: #E0A32E; }
+
+  .steps { counter-reset: s; display: grid; gap: 2px; }
+  .step { display: grid; grid-template-columns: 30px 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .step:last-child { border-bottom: 0; }
+  .step::before {
+    counter-increment: s; content: counter(s, decimal-leading-zero);
+    font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 500;
+  }
+  .step b { font-family: var(--font-display); font-weight: 600; }
+  .step .where { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+  .step p { margin: 3px 0 0; color: var(--text-2); font-size: 13px; }
+
+  .cols { display: grid; gap: 18px; grid-template-columns: 1.35fr 1fr; align-items: start; margin-top: 24px; }
+  @media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
+
+  .form { font-family: var(--font-mono); font-size: 12.5px; background: var(--sunk); border-radius: 8px; padding: 12px 14px; line-height: 1.9; }
+  .form em { font-style: normal; color: var(--accent); }
+  footer.foot { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--text-3); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <div>
+      <div class="eyebrow">Jalpersan Tekstil · B2B bayi satın alma talep portalı</div>
+      <h1>Üç ekranı ayrı ayrı çalıştıran prototip</h1>
+      <p class="sub">Bayi portalı, firma paneli ve Logo ERP simülatörü üç ayrı pencerede açılır ve
+        aynı veriyi paylaşır. Bir pencerede yaptığınız işlem diğerlerine anında yansır.</p>
+    </div>
+    <div class="meta">
+      <span class="poc-flag">Prototip · demo verisi</span>
+      <span class="small muted">Teknik doküman v0.6 · bölüm 7</span>
+    </div>
+  </header>
+
+  <div class="roles">
+    <a class="role" href="bayi.html" target="jp-bayi">
+      <span class="ord">ROL 01</span>
+      <h2>Bayi portalı</h2>
+      <p>Ürün kataloğu, satın alma talebi ve kendi havuz dökümü. Fiyat ve stok gösterilmez.</p>
+      <span class="go">Bayi penceresini aç →</span>
+    </a>
+    <a class="role" href="firma.html" target="jp-firma">
+      <span class="ord">ROL 02</span>
+      <h2>Firma paneli</h2>
+      <p>Logo senkronu, ürün ve bayi ek alanları, talep→sipariş dönüşümü, talep havuzu ve raporlar.</p>
+      <span class="go">Firma penceresini aç →</span>
+    </a>
+    <a class="role sim" href="logo.html" target="jp-logo">
+      <span class="ord">SİMÜLASYON</span>
+      <h2>Logo ERP simülatörü</h2>
+      <p>Stok ve cari kartlar, portaldan düşen sipariş fişleri, miktar değişimi, kısmi ve çoklu fatura, GİB gönderimi.</p>
+      <span class="go">Logo penceresini aç →</span>
+    </a>
+  </div>
+
+  <div class="row">
+    <button class="btn primary" id="hepsi">Üç pencereyi birden aç</button>
+    <button class="btn" id="bastan">Demoyu baştan başlat</button>
+    <button class="btn ghost" id="ornek">Örnek veriye dön</button>
+    <span class="small muted" id="durum"></span>
+  </div>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-head"><h2>Beş dakikalık demo senaryosu</h2></div>
+      <div class="panel-body">
+        <div class="steps">
+          <div class="step"><div><b>Ürün ve bayi tanımları</b> <span class="where">firma → panel</span>
+            <p>“Ürünleri Logo’dan al” ve “Bayileri Logo’dan al”. Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili grupları açın.</p></div></div>
+          <div class="step"><div><b>Talep oluşturma</b> <span class="where">bayi → ürün kataloğu</span>
+            <p>Bayiyi seçin, miktar girip talebi gönderin. Havuza <em>dTalep</em> giriş hareketi yazılır.</p></div></div>
+          <div class="step"><div><b>Siparişe dönüştürme</b> <span class="where">firma → gelen talepler</span>
+            <p>Kalem bazında miktarı düşürerek sipariş oluşturun. Kalan miktar havuzda açık kalır.</p></div></div>
+          <div class="step"><div><b>Logo’ya gönderim</b> <span class="where">firma → siparişler</span>
+            <p>“Logo’ya gönder”. Dilerseniz önce gönderim hatası simüle edip yeniden gönderin.</p></div></div>
+          <div class="step"><div><b>Logo tarafı</b> <span class="where">logo → sipariş fişleri</span>
+            <p>Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci faturayı kesin, GİB’e gönderin.</p></div></div>
+          <div class="step"><div><b>Durum sorgusu</b> <span class="where">firma → siparişler</span>
+            <p>“Sipariş ve fatura durumunu sorgula”. Miktar değişimi ve faturalar havuza hareket olarak işlenir, sipariş kapanır. Tekrar sorgulayın: mükerrer hareket yazılmaz.</p></div></div>
+          <div class="step"><div><b>Havuz kontrolü</b> <span class="where">firma → talep havuzu</span>
+            <p>Dört bakiye ve tüm hareket dökümü. “Elle hareket ekle” ile fatura dışı kapatma; “Serbest fatura” ile FIFO ve talep dışı eşleme.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-head"><h2>Havuz mantığı</h2></div>
+        <div class="panel-body stack">
+          <p class="small muted">Bakiye hiçbir yerde saklanmaz; tek bir hareket tablosundan hesaplanır. Kayıt güncellenmez, düzeltme ters hareketle yapılır.</p>
+          <div class="form">
+            talep&nbsp;&nbsp;&nbsp;&nbsp;= Σ <em>dTalep</em><br>
+            siparişte = Σ <em>dRezerv</em><br>
+            faturalanan = Σ <em>dFatura</em><br>
+            <strong>açık</strong>&nbsp;&nbsp;&nbsp;&nbsp;= talep − siparişte − faturalanan
+          </div>
+          <p class="small muted">Fatura yazılırken rezerv aynı işlemde kapatılır; aksi halde sipariş faturalanınca miktar iki kez düşer.</p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Fatura eşleme</h2></div>
+        <div class="panel-body">
+          <div class="steps">
+            <div class="step"><div><b>Bağlantılı</b><p>Fatura satırında sipariş satır referansı var → deterministik dağıtım.</p></div></div>
+            <div class="step"><div><b>FIFO</b><p>Sipariş bağlantısı yok, bayi ve ürün eşleşiyor → en eski açık talepten düşülür.</p></div></div>
+            <div class="step"><div><b>Eşleşmeyen</b><p>Talep yok veya talebi aşıyor → talep dışı fatura listesine düşer, elle bağlanır.</p></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="foot">
+    Veri yalnızca bu tarayıcıda saklanır; sunucuya hiçbir şey gönderilmez. Üç pencerenin veriyi paylaşması için hepsinin aynı adresten açılması gerekir.
+    Gerçek entegrasyona geçişte yalnızca simülatörün yerini Logo servisleri alır; portal ekranları ve iş kuralları değişmez.
+  </footer>
+</div>
+
+<script src="assets/core.js"></script>
+<script src="assets/ui.js"></script>
+<script>
+(function () {
+  var d = JP.db;
+  document.getElementById('durum').textContent =
+    d.urunler.length + ' ürün · ' + d.bayiler.length + ' bayi · ' + d.talepler.length +
+    ' talep · ' + d.siparisler.length + ' sipariş · ' + d.havuz.length + ' havuz hareketi';
+
+  document.getElementById('hepsi').addEventListener('click', function () {
+    ['bayi', 'firma', 'logo'].forEach(function (r, i) {
+      setTimeout(function () { window.open(r + '.html', 'jp-' + r); }, i * 220);
+    });
+  });
+  document.getElementById('bastan').addEventListener('click', function () {
+    JP.UI.onay('Demoyu baştan başlat',
+      'Portal tarafı (ürün, bayi, talep, sipariş, havuz) boşaltılır. Logo simülatöründeki stok ve cari kartlar kalır, senaryoya 1. adımdan başlarsınız.',
+      function () { JP.sifirla(true); location.reload(); }, true);
+  });
+  document.getElementById('ornek').addEventListener('click', function () {
+    JP.UI.onay('Örnek veriye dön', 'Tüm PoC verisi silinip başlangıç örneğine dönülür.',
+      function () { JP.sifirla(false); location.reload(); }, true);
+  });
+})();
+</script>
+</body>
+</html>
