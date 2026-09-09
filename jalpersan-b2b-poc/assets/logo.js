@@ -7,23 +7,19 @@
 
   JP.logoEkran = function () {
     UI.kabuk({
-      rol: 'logo', rolAdi: 'Logo simülatörü', baslik: 'Logo ERP simülatörü', altBaslik: 'Tiger 3 · simülasyon',
+      rol: 'logo', rolAdi: 'Logo simülatörü', altBaslik: 'Tiger 3 · simülasyon',
       railBaslik: 'Logo', karanlik: true,
       ustSag: function () { return h('span.small.muted', { text: 'LG_025_* tabloları · REST servisi' }); },
       bolumler: [
-        { id: 'fisler', ad: 'Sipariş fişleri', baslik: 'Sipariş fişleri (ORFICHE)',
-          aciklama: 'Portalın gönderdiği siparişler buraya düşer. Miktarı değiştirin, kısmi veya çoklu fatura kesin.',
+        { id: 'fisler', ad: 'Sipariş fişleri',
           ciz: fisler, sayi: function () { return JP.db.logo.fisler.length; },
           sicak: function () { return JP.db.logo.fisler.some(function (f) { return !f.iptal && kalanFis(f) > 0.001; }); } },
-        { id: 'faturalar', ad: 'Faturalar', baslik: 'Faturalar (INVOICE + e-Fatura)',
-          aciklama: 'Kesilen faturalar ve GİB gönderim durumu. Sipariş bağlantısı olmayan serbest fatura da kesilebilir.',
+        { id: 'faturalar', ad: 'Faturalar',
           ciz: faturalar, sayi: function () { return JP.db.logo.faturalar.length; },
           sicak: function () { return JP.db.logo.faturalar.some(function (f) { return f.gib === 'Kesilmedi'; }); } },
-        { id: 'stok', ad: 'Stok kartları', baslik: 'Stok kartları (LG_025_ITEMS)',
-          aciklama: 'Ana veri burada durur. Portal bu kartları yalnızca okur; kart oluşturmaz.', ciz: stok,
+        { id: 'stok', ad: 'Stok kartları', ciz: stok,
           sayi: function () { return JP.db.logo.stok.length; } },
-        { id: 'cari', ad: 'Cari kartlar', baslik: 'Cari kartlar (LG_025_CLCARD)',
-          aciklama: 'Bayiler cari kartlara bağlanır. Kartı pasife alıp portalda ne olduğunu görebilirsiniz.', ciz: cari,
+        { id: 'cari', ad: 'Cari kartlar', ciz: cari,
           sayi: function () { return JP.db.logo.cari.length; } }
       ]
     });
@@ -117,8 +113,7 @@
       });
     }));
 
-    UI.modal({
-      baslik: 'Fatura kes', etiket: f.fisNo + ' · ' + cariAd(f.cariKod), genis: true,
+    UI.modal({ etiket: f.fisNo + ' · ' + cariAd(f.cariKod), genis: true,
       icerik: h('div.stack', {}, [
         h('div.row', {}, [h('span.small.muted', { text: 'Fatura tipi' }), turSec]),
         UI.tablo(['Stok', { t: 'Fiş miktarı', num: true }, { t: 'Kalan', num: true }, 'Faturalanacak'], girdiler),
@@ -160,8 +155,7 @@
     var stokSec = h('select', {}, db.logo.stok.map(function (s) { return h('option', { value: s.kod, text: s.kod + ' — ' + s.ad }); }));
     var mik = h('input', { type: 'number', min: '0', step: '10', value: '50' });
 
-    UI.modal({
-      baslik: 'Serbest fatura', etiket: 'Sipariş bağlantısı yok',
+    UI.modal({ etiket: 'Sipariş bağlantısı yok',
       icerik: h('div.stack', {}, [
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Cari', cariSec]),
@@ -254,8 +248,7 @@
     var birim = h('select', {}, ['MTR', 'ADET'].map(function (b) { return h('option', { value: b, text: b }); }));
     var renk = h('input', { type: 'text', value: '#9AA0A3' });
 
-    UI.modal({
-      baslik: 'Stok kartı ekle', etiket: 'Logo ana verisi',
+    UI.modal({ etiket: 'Logo ana verisi',
       icerik: h('div.grid.k2', {}, [
         h('label.f', {}, ['Stok kodu', kod]), h('label.f', {}, ['Ad', ad]),
         h('label.f', {}, ['Grup', grup]), h('label.f', {}, ['Birim', birim]),

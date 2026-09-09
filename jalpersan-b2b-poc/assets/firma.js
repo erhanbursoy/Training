@@ -21,7 +21,7 @@
 
   JP.firmaEkran = function () {
     kabuk = UI.kabuk({
-      rol: 'firma', rolAdi: 'Firma paneli', baslik: 'Firma paneli', altBaslik: 'Muhasebe ve yönetim',
+      rol: 'firma', rolAdi: 'Firma paneli', altBaslik: 'Muhasebe ve yönetim',
       railBaslik: 'Yönetim',
       ustSag: function () {
         return h('div.row.tight', {}, [
@@ -30,24 +30,18 @@
         ]);
       },
       bolumler: [
-        { id: 'panel', ad: 'Panel', baslik: 'Panel',
-          aciklama: 'Bekleyen işlerin özeti. Logo sorguları ilgili ekranlardan tetiklenir.', ciz: panel },
-        { id: 'talepler', ad: 'Talepler', baslik: 'Satın alma talepleri',
-          aciklama: 'Talep listesi. Bir talebe girince kalemlerini görüp siparişe dönüştürürsünüz.',
+        { id: 'panel', ad: 'Panel', ciz: panel },
+        { id: 'talepler', ad: 'Talepler',
           ciz: talepler,
           sayi: function () { return JP.db.talepler.filter(bekleyen).length; },
           sicak: function () { return JP.db.talepler.filter(bekleyen).length > 0; } },
-        { id: 'siparisler', ad: 'Siparişler', baslik: 'Siparişler',
-          aciklama: "Logo'ya gönderim ve durum sorgusu. Sipariş önce portalda kaydedilir, sonra iletilir.",
+        { id: 'siparisler', ad: 'Siparişler',
           ciz: siparisler, sayi: function () { return JP.db.siparisler.length; } },
-        { id: 'urunler', ad: 'Ürünler', baslik: 'Ürünler',
-          aciklama: 'Kod, ad, birim ve kategori Logo’dan gelir. Portal alanları ürün detayından düzenlenir.',
+        { id: 'urunler', ad: 'Ürünler',
           ciz: urunler, sayi: function () { return JP.db.urunler.length; } },
-        { id: 'bayiler', ad: 'Bayiler', baslik: 'Bayiler',
-          aciklama: 'Unvan ve ülke Logo’dan gelir. Portal alanları bayi detayından düzenlenir.',
+        { id: 'bayiler', ad: 'Bayiler',
           ciz: bayiler, sayi: function () { return JP.db.bayiler.length; } },
-        { id: 'kullanicilar', ad: 'Kullanıcılar', baslik: 'Bayi kullanıcıları',
-          aciklama: 'Portal hesapları yalnızca buradan açılır; bayiler kendileri kayıt olamaz.',
+        { id: 'kullanicilar', ad: 'Kullanıcılar',
           ciz: kullanicilar, sayi: function () { return (JP.db.kullanicilar || []).length; },
           sicak: function () { return (JP.db.kullanicilar || []).some(function (k) { return k.durum === 'Davet gönderildi'; }); } }
       ]
@@ -368,8 +362,7 @@
     });
     ozetGuncelle();
 
-    UI.modal({
-      baslik: 'Talebi siparişe dönüştür', etiket: t.no + ' · ' + bayiAd(t.bayiKod), genis: true,
+    UI.modal({ etiket: t.no + ' · ' + bayiAd(t.bayiKod), genis: true,
       icerik: h('div.stack', {}, [
         UI.tablo(['Kalem', 'Kod', 'Birim', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], satirlar),
         ozet,
@@ -981,8 +974,7 @@
       rolNot.textContent = r ? r.aciklama : '';
     });
 
-    UI.modal({
-      baslik: 'Kullanıcı ekle', etiket: 'Davet bağlantısı gönderilir',
+    UI.modal({ etiket: 'Davet bağlantısı gönderilir',
       icerik: h('div.stack', {}, [
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Ad soyad', ad]),

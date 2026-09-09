@@ -40,17 +40,15 @@
   JP.bayiEkran = function () {
     if (!aktifKullanici()) return girisEkrani();
     kabuk = UI.kabuk({
-      rol: 'bayi', rolAdi: 'Bayi portalı', baslik: 'Bayi portalı', altBaslik: 'Bayi portalı',
+      rol: 'bayi', rolAdi: 'Bayi portalı', altBaslik: 'Bayi portalı',
       ustMenu: true, ustSag: ustSag,
       bolumler: [
-        { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu', basliksiz: true,
+        { id: 'katalog', ad: 'Ürün kataloğu',
           ciz: katalog, yan: agacPaneli, yanBaslik: 'Ürün ağacı' },
-        { id: 'talepler', ad: 'Taleplerim', baslik: 'Satın alma taleplerim',
-          aciklama: 'Taleplerinizin listesi. Bir talebe girince ürünleri, işlemleri ve hareketleri görürsünüz.',
+        { id: 'talepler', ad: 'Taleplerim',
           ciz: talepler,
           sayi: function () { var b = aktifBayi(); return b ? JP.db.talepler.filter(function (t) { return t.bayiKod === b.kod; }).length : 0; } },
-        { id: 'sepet', gizli: true, ad: 'Sepetim', baslik: 'Sepetim',
-          aciklama: 'Miktarları gözden geçirin, notu ekleyin ve talebi gönderin.', ciz: sepetEkrani }
+        { id: 'sepet', gizli: true, ad: 'Sepetim', ciz: sepetEkrani }
       ]
     });
   };
@@ -472,8 +470,7 @@
     var tarihAlan = h('input', { type: 'date' });
 
     function onayla() {
-      UI.modal({
-        baslik: 'Talebi gönder', etiket: bayi.unvan, genis: true,
+      UI.modal({ etiket: bayi.unvan, genis: true,
         icerik: h('div.stack', {}, [
           UI.tablo(['Ürün', 'Kod', { t: 'Miktar', num: true }], satirlar.map(function (s) {
             return h('tr', {}, [
@@ -739,8 +736,7 @@
   function azaltKip(t, k) {
     var taban = k.rezerv + k.fatura;
     var girdi = h('input', { type: 'number', min: String(taban), step: '10', value: String(k.talep) });
-    UI.modal({
-      baslik: 'Talep miktarını azalt', etiket: t.no,
+    UI.modal({ etiket: t.no,
       icerik: h('div.stack', {}, [
         h('p', { text: k.urun.ad + ' (' + k.kalem.urunKod + ')' }),
         taban > 0 ? h('div.note.warn', { text: JP.fmt.miktar(taban) + ' birim siparişe alınmış veya sevk edilmiş; bu miktarın altına inilemez.' }) : null,

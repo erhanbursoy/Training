@@ -232,7 +232,7 @@
      standart web uygulaması gibi üst gezinme + sağ üstte eylem ikonları).
      Bir bölüm yan() döndürürse içerik alanı yan panel + ana alan olarak bölünür. */
   UI.kabuk = function (o) {
-    document.title = o.baslik + ' · Jalpersan B2B';
+    document.title = (o.rolAdi || 'Portal') + ' · Jalpersan B2B';
     document.documentElement.classList.toggle('logo-world', !!o.karanlik);
     if (JP.aboneSifirla) JP.aboneSifirla();
 
@@ -291,12 +291,6 @@
       kabukEl.appendChild(anaEl);
 
       anaEl.textContent = '';
-      if (!b.basliksiz) {
-        anaEl.appendChild(h('header', {}, [
-          h('h1', { text: b.baslik || b.ad }),
-          b.aciklama ? h('p', { text: b.aciklama }) : null
-        ]));
-      }
       try { anaEl.appendChild(b.ciz({ git: git, ciz: ciz })); }
       catch (e) { console.error(e); anaEl.appendChild(h('div.note.bad', { text: 'Ekran çizilemedi: ' + e.message })); }
       if (kaydirma) window.scrollTo(0, kaydirma);

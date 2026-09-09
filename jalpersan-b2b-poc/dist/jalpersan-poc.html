@@ -2260,7 +2260,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
      standart web uygulaması gibi üst gezinme + sağ üstte eylem ikonları).
      Bir bölüm yan() döndürürse içerik alanı yan panel + ana alan olarak bölünür. */
   UI.kabuk = function (o) {
-    document.title = o.baslik + ' · Jalpersan B2B';
+    document.title = (o.rolAdi || 'Portal') + ' · Jalpersan B2B';
     document.documentElement.classList.toggle('logo-world', !!o.karanlik);
     if (JP.aboneSifirla) JP.aboneSifirla();
 
@@ -2319,12 +2319,6 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       kabukEl.appendChild(anaEl);
 
       anaEl.textContent = '';
-      if (!b.basliksiz) {
-        anaEl.appendChild(h('header', {}, [
-          h('h1', { text: b.baslik || b.ad }),
-          b.aciklama ? h('p', { text: b.aciklama }) : null
-        ]));
-      }
       try { anaEl.appendChild(b.ciz({ git: git, ciz: ciz })); }
       catch (e) { console.error(e); anaEl.appendChild(h('div.note.bad', { text: 'Ekran çizilemedi: ' + e.message })); }
       if (kaydirma) window.scrollTo(0, kaydirma);
@@ -2434,17 +2428,15 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   JP.bayiEkran = function () {
     if (!aktifKullanici()) return girisEkrani();
     kabuk = UI.kabuk({
-      rol: 'bayi', rolAdi: 'Bayi portalı', baslik: 'Bayi portalı', altBaslik: 'Bayi portalı',
+      rol: 'bayi', rolAdi: 'Bayi portalı', altBaslik: 'Bayi portalı',
       ustMenu: true, ustSag: ustSag,
       bolumler: [
-        { id: 'katalog', ad: 'Ürün kataloğu', baslik: 'Ürün kataloğu', basliksiz: true,
+        { id: 'katalog', ad: 'Ürün kataloğu',
           ciz: katalog, yan: agacPaneli, yanBaslik: 'Ürün ağacı' },
-        { id: 'talepler', ad: 'Taleplerim', baslik: 'Satın alma taleplerim',
-          aciklama: 'Taleplerinizin listesi. Bir talebe girince ürünleri, işlemleri ve hareketleri görürsünüz.',
+        { id: 'talepler', ad: 'Taleplerim',
           ciz: talepler,
           sayi: function () { var b = aktifBayi(); return b ? JP.db.talepler.filter(function (t) { return t.bayiKod === b.kod; }).length : 0; } },
-        { id: 'sepet', gizli: true, ad: 'Sepetim', baslik: 'Sepetim',
-          aciklama: 'Miktarları gözden geçirin, notu ekleyin ve talebi gönderin.', ciz: sepetEkrani }
+        { id: 'sepet', gizli: true, ad: 'Sepetim', ciz: sepetEkrani }
       ]
     });
   };
@@ -2866,8 +2858,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var tarihAlan = h('input', { type: 'date' });
 
     function onayla() {
-      UI.modal({
-        baslik: 'Talebi gönder', etiket: bayi.unvan, genis: true,
+      UI.modal({ etiket: bayi.unvan, genis: true,
         icerik: h('div.stack', {}, [
           UI.tablo(['Ürün', 'Kod', { t: 'Miktar', num: true }], satirlar.map(function (s) {
             return h('tr', {}, [
@@ -3133,8 +3124,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   function azaltKip(t, k) {
     var taban = k.rezerv + k.fatura;
     var girdi = h('input', { type: 'number', min: String(taban), step: '10', value: String(k.talep) });
-    UI.modal({
-      baslik: 'Talep miktarını azalt', etiket: t.no,
+    UI.modal({ etiket: t.no,
       icerik: h('div.stack', {}, [
         h('p', { text: k.urun.ad + ' (' + k.kalem.urunKod + ')' }),
         taban > 0 ? h('div.note.warn', { text: JP.fmt.miktar(taban) + ' birim siparişe alınmış veya sevk edilmiş; bu miktarın altına inilemez.' }) : null,
@@ -3185,7 +3175,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
   JP.firmaEkran = function () {
     kabuk = UI.kabuk({
-      rol: 'firma', rolAdi: 'Firma paneli', baslik: 'Firma paneli', altBaslik: 'Muhasebe ve yönetim',
+      rol: 'firma', rolAdi: 'Firma paneli', altBaslik: 'Muhasebe ve yönetim',
       railBaslik: 'Yönetim',
       ustSag: function () {
         return h('div.row.tight', {}, [
@@ -3194,24 +3184,18 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         ]);
       },
       bolumler: [
-        { id: 'panel', ad: 'Panel', baslik: 'Panel',
-          aciklama: 'Bekleyen işlerin özeti. Logo sorguları ilgili ekranlardan tetiklenir.', ciz: panel },
-        { id: 'talepler', ad: 'Talepler', baslik: 'Satın alma talepleri',
-          aciklama: 'Talep listesi. Bir talebe girince kalemlerini görüp siparişe dönüştürürsünüz.',
+        { id: 'panel', ad: 'Panel', ciz: panel },
+        { id: 'talepler', ad: 'Talepler',
           ciz: talepler,
           sayi: function () { return JP.db.talepler.filter(bekleyen).length; },
           sicak: function () { return JP.db.talepler.filter(bekleyen).length > 0; } },
-        { id: 'siparisler', ad: 'Siparişler', baslik: 'Siparişler',
-          aciklama: "Logo'ya gönderim ve durum sorgusu. Sipariş önce portalda kaydedilir, sonra iletilir.",
+        { id: 'siparisler', ad: 'Siparişler',
           ciz: siparisler, sayi: function () { return JP.db.siparisler.length; } },
-        { id: 'urunler', ad: 'Ürünler', baslik: 'Ürünler',
-          aciklama: 'Kod, ad, birim ve kategori Logo’dan gelir. Portal alanları ürün detayından düzenlenir.',
+        { id: 'urunler', ad: 'Ürünler',
           ciz: urunler, sayi: function () { return JP.db.urunler.length; } },
-        { id: 'bayiler', ad: 'Bayiler', baslik: 'Bayiler',
-          aciklama: 'Unvan ve ülke Logo’dan gelir. Portal alanları bayi detayından düzenlenir.',
+        { id: 'bayiler', ad: 'Bayiler',
           ciz: bayiler, sayi: function () { return JP.db.bayiler.length; } },
-        { id: 'kullanicilar', ad: 'Kullanıcılar', baslik: 'Bayi kullanıcıları',
-          aciklama: 'Portal hesapları yalnızca buradan açılır; bayiler kendileri kayıt olamaz.',
+        { id: 'kullanicilar', ad: 'Kullanıcılar',
           ciz: kullanicilar, sayi: function () { return (JP.db.kullanicilar || []).length; },
           sicak: function () { return (JP.db.kullanicilar || []).some(function (k) { return k.durum === 'Davet gönderildi'; }); } }
       ]
@@ -3532,8 +3516,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     });
     ozetGuncelle();
 
-    UI.modal({
-      baslik: 'Talebi siparişe dönüştür', etiket: t.no + ' · ' + bayiAd(t.bayiKod), genis: true,
+    UI.modal({ etiket: t.no + ' · ' + bayiAd(t.bayiKod), genis: true,
       icerik: h('div.stack', {}, [
         UI.tablo(['Kalem', 'Kod', 'Birim', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], satirlar),
         ozet,
@@ -4145,8 +4128,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       rolNot.textContent = r ? r.aciklama : '';
     });
 
-    UI.modal({
-      baslik: 'Kullanıcı ekle', etiket: 'Davet bağlantısı gönderilir',
+    UI.modal({ etiket: 'Davet bağlantısı gönderilir',
       icerik: h('div.stack', {}, [
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Ad soyad', ad]),
@@ -4292,23 +4274,19 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
   JP.logoEkran = function () {
     UI.kabuk({
-      rol: 'logo', rolAdi: 'Logo simülatörü', baslik: 'Logo ERP simülatörü', altBaslik: 'Tiger 3 · simülasyon',
+      rol: 'logo', rolAdi: 'Logo simülatörü', altBaslik: 'Tiger 3 · simülasyon',
       railBaslik: 'Logo', karanlik: true,
       ustSag: function () { return h('span.small.muted', { text: 'LG_025_* tabloları · REST servisi' }); },
       bolumler: [
-        { id: 'fisler', ad: 'Sipariş fişleri', baslik: 'Sipariş fişleri (ORFICHE)',
-          aciklama: 'Portalın gönderdiği siparişler buraya düşer. Miktarı değiştirin, kısmi veya çoklu fatura kesin.',
+        { id: 'fisler', ad: 'Sipariş fişleri',
           ciz: fisler, sayi: function () { return JP.db.logo.fisler.length; },
           sicak: function () { return JP.db.logo.fisler.some(function (f) { return !f.iptal && kalanFis(f) > 0.001; }); } },
-        { id: 'faturalar', ad: 'Faturalar', baslik: 'Faturalar (INVOICE + e-Fatura)',
-          aciklama: 'Kesilen faturalar ve GİB gönderim durumu. Sipariş bağlantısı olmayan serbest fatura da kesilebilir.',
+        { id: 'faturalar', ad: 'Faturalar',
           ciz: faturalar, sayi: function () { return JP.db.logo.faturalar.length; },
           sicak: function () { return JP.db.logo.faturalar.some(function (f) { return f.gib === 'Kesilmedi'; }); } },
-        { id: 'stok', ad: 'Stok kartları', baslik: 'Stok kartları (LG_025_ITEMS)',
-          aciklama: 'Ana veri burada durur. Portal bu kartları yalnızca okur; kart oluşturmaz.', ciz: stok,
+        { id: 'stok', ad: 'Stok kartları', ciz: stok,
           sayi: function () { return JP.db.logo.stok.length; } },
-        { id: 'cari', ad: 'Cari kartlar', baslik: 'Cari kartlar (LG_025_CLCARD)',
-          aciklama: 'Bayiler cari kartlara bağlanır. Kartı pasife alıp portalda ne olduğunu görebilirsiniz.', ciz: cari,
+        { id: 'cari', ad: 'Cari kartlar', ciz: cari,
           sayi: function () { return JP.db.logo.cari.length; } }
       ]
     });
@@ -4402,8 +4380,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       });
     }));
 
-    UI.modal({
-      baslik: 'Fatura kes', etiket: f.fisNo + ' · ' + cariAd(f.cariKod), genis: true,
+    UI.modal({ etiket: f.fisNo + ' · ' + cariAd(f.cariKod), genis: true,
       icerik: h('div.stack', {}, [
         h('div.row', {}, [h('span.small.muted', { text: 'Fatura tipi' }), turSec]),
         UI.tablo(['Stok', { t: 'Fiş miktarı', num: true }, { t: 'Kalan', num: true }, 'Faturalanacak'], girdiler),
@@ -4445,8 +4422,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var stokSec = h('select', {}, db.logo.stok.map(function (s) { return h('option', { value: s.kod, text: s.kod + ' — ' + s.ad }); }));
     var mik = h('input', { type: 'number', min: '0', step: '10', value: '50' });
 
-    UI.modal({
-      baslik: 'Serbest fatura', etiket: 'Sipariş bağlantısı yok',
+    UI.modal({ etiket: 'Sipariş bağlantısı yok',
       icerik: h('div.stack', {}, [
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Cari', cariSec]),
@@ -4539,8 +4515,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var birim = h('select', {}, ['MTR', 'ADET'].map(function (b) { return h('option', { value: b, text: b }); }));
     var renk = h('input', { type: 'text', value: '#9AA0A3' });
 
-    UI.modal({
-      baslik: 'Stok kartı ekle', etiket: 'Logo ana verisi',
+    UI.modal({ etiket: 'Logo ana verisi',
       icerik: h('div.grid.k2', {}, [
         h('label.f', {}, ['Stok kodu', kod]), h('label.f', {}, ['Ad', ad]),
         h('label.f', {}, ['Grup', grup]), h('label.f', {}, ['Birim', birim]),
