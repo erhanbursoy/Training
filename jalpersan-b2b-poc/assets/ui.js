@@ -32,6 +32,49 @@
   }
   UI.h = h;
 
+  /* ------------------------------------------------------------------ ikon */
+  var IKON = {
+    sepet: '<path d="M1.6 2.2h1.9l1.7 7.6h6.6l1.4-5.3H4.3"/><circle cx="6.4" cy="12.6" r="1.15"/><circle cx="11.2" cy="12.6" r="1.15"/>',
+    zil: '<path d="M8 2.1a3.9 3.9 0 0 0-3.9 3.9v2.4L2.7 11h10.6l-1.4-2.6V6A3.9 3.9 0 0 0 8 2.1z"/><path d="M6.4 13.1a1.75 1.75 0 0 0 3.2 0"/>',
+    profil: '<circle cx="8" cy="5.6" r="2.6"/><path d="M2.9 13.6a5.4 5.4 0 0 1 10.2 0"/>',
+    ok: '<path d="M6 3.5 10.5 8 6 12.5"/>',
+    kutu: '<path d="M2.4 5.2 8 2.3l5.6 2.9v5.6L8 13.7 2.4 10.8z"/><path d="M2.4 5.2 8 8.1l5.6-2.9M8 8.1v5.6"/>'
+  };
+  UI.ikon = function (ad, boy) {
+    var d = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    d.setAttribute('viewBox', '0 0 16 16');
+    d.setAttribute('width', boy || 16); d.setAttribute('height', boy || 16);
+    d.setAttribute('fill', 'none'); d.setAttribute('stroke', 'currentColor');
+    d.setAttribute('stroke-width', '1.4'); d.setAttribute('stroke-linecap', 'round');
+    d.setAttribute('stroke-linejoin', 'round'); d.setAttribute('aria-hidden', 'true');
+    d.innerHTML = IKON[ad] || '';
+    return d;
+  };
+
+  /* -------------------------------------------------------- açılır menü */
+  var acikMenu = null;
+  UI.acilir = function (tetik, yap) {
+    if (acikMenu) { acikMenu.kapat(); if (acikMenu.tetik === tetik) { acikMenu = null; return; } }
+    var kutu = h('div.acilir', { role: 'dialog' }, yap(kapat));
+    var yer = tetik.getBoundingClientRect();
+    document.body.appendChild(kutu);
+    var g = kutu.offsetWidth;
+    kutu.style.top = (yer.bottom + 8) + 'px';
+    kutu.style.left = Math.max(10, Math.min(yer.right - g, window.innerWidth - g - 10)) + 'px';
+    tetik.setAttribute('aria-expanded', 'true');
+    function disari(e) { if (!kutu.contains(e.target) && !tetik.contains(e.target)) kapat(); }
+    function esc(e) { if (e.key === 'Escape') kapat(); }
+    function kapat() {
+      kutu.remove(); acikMenu = null;
+      tetik.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('mousedown', disari); document.removeEventListener('keydown', esc);
+    }
+    setTimeout(function () { document.addEventListener('mousedown', disari); }, 0);
+    document.addEventListener('keydown', esc);
+    acikMenu = { kapat: kapat, tetik: tetik };
+    return { kapat: kapat };
+  };
+
   /* -------------------------------------------------------------- bildirim */
   var kutu = null;
   UI.toast = function (baslik, metin, tip) {
@@ -148,58 +191,94 @@
   };
 
   /* ------------------------------------------------------------------ kabuk */
+  /* İki yerleşim: varsayılan sol ray (firma, Logo) ve ustMenu (bayi portalı,
+     standart web uygulaması gibi üst gezinme + sağ üstte eylem ikonları).
+     Bir bölüm yan() döndürürse içerik alanı yan panel + ana alan olarak bölünür. */
   UI.kabuk = function (o) {
     document.title = o.baslik + ' · Jalpersan B2B';
     document.documentElement.classList.toggle('logo-world', !!o.karanlik);
     if (JP.aboneSifirla) JP.aboneSifirla();
 
     var kok = document.getElementById('app');
-    var railEl = h('nav.rail', { 'aria-label': 'Bölümler' });
+    var basEl = h('header.topbar' + (o.ustMenu ? '.ust-menu' : ''));
+    var gezEl = h('nav.rail', { 'aria-label': 'Bölümler' });
+    var kabukEl = h('div.shell');
     var anaEl = h('main.main');
-    var aktif = sessionStorage.getItem('jp.bolum.' + o.rol) || o.bolumler[0].id;
-    if (!o.bolumler.some(function (b) { return b.id === aktif; })) aktif = o.bolumler[0].id;
 
-    function railCiz() {
-      railEl.textContent = '';
-      railEl.appendChild(h('div.eyebrow', { text: o.railBaslik || 'Bölümler' }));
-      o.bolumler.forEach(function (b) {
-        var n = b.sayi ? b.sayi() : null;
-        railEl.appendChild(h('button', {
-          'aria-current': String(b.id === aktif),
-          onclick: function () { aktif = b.id; sessionStorage.setItem('jp.bolum.' + o.rol, b.id); ciz(); }
-        }, [h('span', { text: b.ad }), n ? h('span.count' + (b.sicak && b.sicak() ? '.hot' : ''), { text: n }) : null]));
-      });
+    var gorunur = o.bolumler.filter(function (b) { return !b.gizli; });
+    var aktif = sessionStorage.getItem('jp.bolum.' + o.rol) || gorunur[0].id;
+    if (!o.bolumler.some(function (b) { return b.id === aktif; })) aktif = gorunur[0].id;
+
+    function dugme(b, ustte) {
+      var n = b.sayi ? b.sayi() : null;
+      return h('button', {
+        'aria-current': String(b.id === aktif),
+        onclick: function () { git(b.id); }
+      }, [
+        h('span', { text: b.ad }),
+        n ? h('span.count' + (b.sicak && b.sicak() ? '.hot' : ''), { text: String(n) }) : null
+      ]);
+    }
+
+    function basCiz() {
+      basEl.textContent = '';
+      ekle(basEl, [
+        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: o.altBaslik })]),
+        o.ustMenu ? null : h('span.role-chip', {}, [h('span.dot'), o.rolAdi]),
+        JP.rolSecici ? JP.rolSecici() : null,
+        o.ustMenu ? h('nav.ust-gez', { 'aria-label': 'Bölümler' }, gorunur.map(function (b) { return dugme(b, true); })) : null,
+        h('div.spacer'),
+        o.ustSag ? o.ustSag({ git: git, ciz: ciz }) : null,
+        o.ustMenu ? null : h('span.poc-flag', { text: 'Prototip · demo verisi', title: JP.SURUM })
+      ]);
+    }
+
+    function gezCiz() {
+      gezEl.textContent = '';
+      gezEl.appendChild(h('div.eyebrow', { text: o.railBaslik || 'Bölümler' }));
+      gorunur.forEach(function (b) { gezEl.appendChild(dugme(b)); });
     }
 
     function ciz() {
-      railCiz();
-      anaEl.textContent = '';
+      var kaydirma = window.scrollY;
       var b = o.bolumler.find(function (x) { return x.id === aktif; });
+      basCiz();
+      kabukEl.textContent = '';
+      if (o.ustMenu) {
+        var yan = b.yan ? b.yan() : null;
+        if (yan) kabukEl.appendChild(h('aside.yan', { 'aria-label': b.yanBaslik || 'Filtre' }, yan));
+      } else {
+        gezCiz();
+        kabukEl.appendChild(gezEl);
+      }
+      kabukEl.appendChild(anaEl);
+
+      anaEl.textContent = '';
       anaEl.appendChild(h('header', {}, [
         h('h1', { text: b.baslik || b.ad }),
         b.aciklama ? h('p', { text: b.aciklama }) : null
       ]));
-      try { anaEl.appendChild(b.ciz()); }
+      try { anaEl.appendChild(b.ciz({ git: git, ciz: ciz })); }
       catch (e) { console.error(e); anaEl.appendChild(h('div.note.bad', { text: 'Ekran çizilemedi: ' + e.message })); }
+      if (kaydirma) window.scrollTo(0, kaydirma);
+    }
+
+    function git(id) {
+      if (!o.bolumler.some(function (x) { return x.id === id; })) return;
+      aktif = id; sessionStorage.setItem('jp.bolum.' + o.rol, id); ciz();
+      window.scrollTo(0, 0);
     }
 
     kok.textContent = '';
     kok.appendChild(h('div.app', {}, [
-      h('header.topbar', {}, [
-        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: o.altBaslik })]),
-        h('span.role-chip', {}, [h('span.dot'), o.rolAdi]),
-        JP.rolSecici ? JP.rolSecici() : null,
-        h('div.spacer'),
-        o.ustSag ? o.ustSag() : null,
-        h('span.poc-flag', { text: 'Prototip · demo verisi', title: JP.SURUM })
-      ]),
+      basEl,
       JP.depoEngeli ? h('div.note.warn', { style: { margin: '10px 14px 0' }, html: '<b>Tarayıcı depolaması kapalı.</b> Ekranlar arası paylaşım çalışmaz; sayfayı normal bir sekmede (veya yayındaki adreste) açın.' }) : null,
-      h('div.shell', {}, [railEl, anaEl])
+      kabukEl
     ]));
 
     ciz();
     JP.abone(function () { ciz(); });
-    return { ciz: ciz };
+    return { ciz: ciz, git: git, aktif: function () { return aktif; } };
   };
 
   /* ------------------------------------------------ küçük bileşen kısayolları */
@@ -216,6 +295,28 @@
       baslik ? h('div.panel-head', {}, [h('h2', { text: baslik }), h('div.spacer'), aksiyonlar]) : null,
       h('div.panel-body' + (duz ? '.flush' : ''), {}, govde)
     ]);
+  };
+
+  /** Adet sayacı: − [ 50 ] +  · deger() ile okunur. */
+  UI.sayac = function (o) {
+    o = o || {};
+    var adim = o.adim || 1, enAz = o.enAz === undefined ? 0 : o.enAz;
+    var girdi = h('input', {
+      type: 'number', min: String(enAz), step: String(adim), value: String(o.deger === undefined ? adim : o.deger),
+      'aria-label': o.etiket || 'Miktar',
+      onchange: function () { duzelt(); if (o.onDegisim) o.onDegisim(oku()); }
+    });
+    function oku() { var v = parseFloat(girdi.value); return isNaN(v) ? 0 : v; }
+    function duzelt() { var v = oku(); if (v < enAz) { v = enAz; girdi.value = String(v); } }
+    function kaydir(y) { girdi.value = String(Math.max(enAz, Math.round((oku() + y) * 100) / 100)); if (o.onDegisim) o.onDegisim(oku()); }
+    var el = h('div.stepper', {}, [
+      h('button', { type: 'button', text: '−', 'aria-label': 'Azalt', onclick: function () { kaydir(-adim); } }),
+      girdi,
+      h('button', { type: 'button', text: '+', 'aria-label': 'Artır', onclick: function () { kaydir(adim); } })
+    ]);
+    el.deger = oku;
+    el.girdi = girdi;
+    return el;
   };
 
   UI.senkronBilgi = function (s) {

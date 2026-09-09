@@ -19,7 +19,7 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
 ## Beş dakikalık demo
 
 1. **Firma → Panel** · "Ürünleri Logo'dan al" + "Bayileri Logo'dan al". Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili grupları açın.
-2. **Bayi → Ürün kataloğu** · Bayiyi seçin, miktar girip talebi gönderin. Havuza `dTalep` giriş hareketi yazılır.
+2. **Bayi → Ürün kataloğu** · Sol yan paneldeki ürün ağacından kırılım seçin, ürünleri sepete ekleyin. **Sepetim → Sepeti onayla** dediğinizde satın alma talebi oluşur ve havuza `dTalep` giriş hareketi yazılır.
 3. **Firma → Gelen talepler** · Kalem bazında miktarı düşürerek sipariş oluşturun; kalan havuzda açık kalır.
 4. **Firma → Siparişler** · "Logo'ya gönder". İsterseniz önce gönderim hatası simüle edip yeniden gönderin.
 5. **Logo → Sipariş fişleri** · Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci faturayı kesin, GİB'e gönderin.
@@ -28,6 +28,20 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
 
 Panel üstündeki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
 böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön** başlangıç örneğini geri yükler.
+
+## Bayi portalı yerleşimi
+
+Standart web uygulaması düzeni: üstte **Dashboard**, **Ürün kataloğu**, **Taleplerim**;
+sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
+
+- **Dashboard** · dört bakiye, son talepler, havuz dağılımı ve hareket dökümü.
+- **Ürün kataloğu** · e-ticaret kartları (küçük kartela görseli, stok kodu, teknik özellik, adet sayacı, sepete ekle).
+  Sol yan panel **ürün ağacıdır**: grup → seri → renk varyantı. Kırılım Logo stok kodundan türetilir
+  (`ZEB-1200-KREM` → Zebra / 1200 serisi / Krem).
+- **Sepet** · taslaktır, havuza dokunmaz. Aynı ürün ikinci kez eklenirse miktar üstüne eklenir.
+  Talep ancak sepet onaylandığında oluşur; o anda `dTalep` hareketleri yazılır.
+- Ürün kartına tıklayınca detay penceresi açılır: büyük kartela, teknik özellik ve uzun açıklama.
+  Bu iki alan firma panelindeki ürün listesinden düzenlenir.
 
 ## Havuz mantığı
 

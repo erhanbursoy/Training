@@ -450,7 +450,7 @@
     var db = JP.db;
     if (!db.urunler.length) return h('div.note.warn', { html: '<b>Ürün yok.</b> Panel ekranından “Ürünleri Logo’dan al” işlemini çalıştırın.' });
     return UI.panel('Stok kartları', h('span.small.muted', { text: 'Kod, ad, birim ve grup Logo’dan gelir — salt okunur' }),
-      UI.tablo(['', 'Ürün', 'Grup', 'Birim', 'Logo', 'Siparişe', 'Açıklama (portal)'],
+      UI.tablo(['', 'Ürün', 'Grup', 'Birim', 'Logo', 'Siparişe', 'Teknik özellik (portal)', 'Açıklama (portal)'],
         db.urunler.slice().sort(function (a, b) { return a.grup.localeCompare(b.grup) || a.sira - b.sira; }).map(function (u) {
           return h('tr', {}, [
             h('td', { style: { width: '54px' } }, UI.kartela(u, '34px')),
@@ -462,8 +462,14 @@
               type: 'checkbox', checked: u.siparieAcik, disabled: !u.logoAktif,
               onchange: function (e) { var v = e.target.checked; JP.tx(function (d) { d.urunler.find(function (x) { return x.kod === u.kod; }).siparieAcik = v; }); }
             }), h('span.small', { text: u.siparieAcik ? 'Açık' : 'Kapalı' })])),
-            h('td', { style: { minWidth: '260px' } }, h('input', {
+            h('td', { style: { minWidth: '190px' } }, h('input', {
+              type: 'text', value: u.ozellik || '', placeholder: 'Örn. 280 cm en · leke tutmaz apre',
+              title: 'Bayi kataloğunda ürün kartında görünür',
+              onchange: function (e) { var v = e.target.value; JP.tx(function (d) { d.urunler.find(function (x) { return x.kod === u.kod; }).ozellik = v; }); }
+            })),
+            h('td', { style: { minWidth: '230px' } }, h('input', {
               type: 'text', value: u.aciklama || '', placeholder: JP.aciklamaOf(u.grup),
+              title: 'Ürün detay penceresinde görünür',
               onchange: function (e) { var v = e.target.value; JP.tx(function (d) { d.urunler.find(function (x) { return x.kod === u.kod; }).aciklama = v; }); }
             }))
           ]);

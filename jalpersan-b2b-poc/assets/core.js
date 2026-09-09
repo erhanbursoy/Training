@@ -14,7 +14,7 @@
   'use strict';
   var JP = (window.JP = window.JP || {});
 
-  JP.KEY = 'jalpersan.poc.v3';
+  JP.KEY = 'jalpersan.poc.v4';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
 
   /* ---------------------------------------------------------------- yardımcı */
@@ -99,21 +99,21 @@
   /* --------------------------------------------------------- ana veri (Logo) */
   function logoStok() {
     var s = [
-      ['ZEB-1200-KREM', 'Zebra Perde Kumaşı 1200 · Krem', 'Zebra', 'MTR', '#D8C9AC', 'zebra'],
-      ['ZEB-1200-ANTR', 'Zebra Perde Kumaşı 1200 · Antrasit', 'Zebra', 'MTR', '#5A6068', 'zebra'],
-      ['ZEB-2400-BEJ', 'Zebra Perde Kumaşı 2400 · Bej', 'Zebra', 'MTR', '#C9B394', 'zebra'],
-      ['STR-3000-BEYAZ', 'Stor Perde Kumaşı 3000 · Beyaz', 'Stor', 'MTR', '#EDE9E1', 'stor'],
-      ['STR-3000-GRI', 'Stor Perde Kumaşı 3000 · Gri', 'Stor', 'MTR', '#9AA0A3', 'stor'],
-      ['TUL-0500-EKRU', 'Tül Stor 0500 · Ekru', 'Tül Stor', 'MTR', '#E7E2D6', 'tul'],
-      ['SSC-0310-GUMUS', 'Sun Screen %3 Açıklık · Gümüş', 'Sun Screen', 'MTR', '#A9AEB2', 'screen'],
-      ['SSC-0510-BEYAZ', 'Sun Screen %5 Açıklık · Beyaz', 'Sun Screen', 'MTR', '#DDD9D2', 'screen'],
-      ['PLS-0900-VIZON', 'Plise Perde Kumaşı 0900 · Vizon', 'Plise', 'MTR', '#B9A791', 'plise'],
-      ['SNK-1800-SIYAH', 'Sineklik Tülü 1800 · Siyah', 'Sineklik', 'MTR', '#3C4145', 'sineklik'],
-      ['ZEB-1200-KARTELA', 'Zebra Kartela Seti (12 renk)', 'Zebra', 'ADET', '#C2A87C', 'diger']
+      ['ZEB-1200-KREM', 'Zebra Perde Kumaşı 1200 · Krem', 'Zebra', 'MTR', '#D8C9AC', 'zebra', '200 cm en · çift kat gündüz/gece'],
+      ['ZEB-1200-ANTR', 'Zebra Perde Kumaşı 1200 · Antrasit', 'Zebra', 'MTR', '#5A6068', 'zebra', '200 cm en · çift kat gündüz/gece'],
+      ['ZEB-2400-BEJ', 'Zebra Perde Kumaşı 2400 · Bej', 'Zebra', 'MTR', '#C9B394', 'zebra', '280 cm en · çift kat gündüz/gece'],
+      ['STR-3000-BEYAZ', 'Stor Perde Kumaşı 3000 · Beyaz', 'Stor', 'MTR', '#EDE9E1', 'stor', '280 cm en · leke tutmaz apre'],
+      ['STR-3000-GRI', 'Stor Perde Kumaşı 3000 · Gri', 'Stor', 'MTR', '#9AA0A3', 'stor', '280 cm en · leke tutmaz apre'],
+      ['TUL-0500-EKRU', 'Tül Stor 0500 · Ekru', 'Tül Stor', 'MTR', '#E7E2D6', 'tul', '300 cm en · şeffaf dokuma'],
+      ['SSC-0310-GUMUS', 'Sun Screen %3 Açıklık · Gümüş', 'Sun Screen', 'MTR', '#A9AEB2', 'screen', '%3 açıklık · 280 cm en · PVC/cam elyaf'],
+      ['SSC-0510-BEYAZ', 'Sun Screen %5 Açıklık · Beyaz', 'Sun Screen', 'MTR', '#DDD9D2', 'screen', '%5 açıklık · 280 cm en · PVC/cam elyaf'],
+      ['PLS-0900-VIZON', 'Plise Perde Kumaşı 0900 · Vizon', 'Plise', 'MTR', '#B9A791', 'plise', '45 mm katlama · cam üstü montaj'],
+      ['SNK-1800-SIYAH', 'Sineklik Tülü 1800 · Siyah', 'Sineklik', 'MTR', '#3C4145', 'sineklik', '180 cm en · 18×16 göz fiberglas'],
+      ['ZEB-1200-KARTELA', 'Zebra Kartela Seti (12 renk)', 'Zebra', 'ADET', '#C2A87C', 'diger', '12 renk · sunum kutusu']
     ];
     return s.map(function (x, i) {
       return {
-        kod: x[0], ad: x[1], grup: x[2], birim: x[3], renk: x[4], doku: x[5],
+        kod: x[0], ad: x[1], grup: x[2], birim: x[3], renk: x[4], doku: x[5], ozellik: x[6],
         aktif: x[0] !== 'SNK-1800-SIYAH',      // Logo'da bir kart pasif — senkron davranışı gösterilsin
         sira: i
       };
@@ -134,7 +134,7 @@
     return {
       meta: { rev: 0, kuruldu: now(), sonYazma: now() },
       sayac: { talep: 0, siparis: 0, logoFis: 0, fatura: 0 },
-      urunler: [], bayiler: [], talepler: [], siparisler: [],
+      urunler: [], bayiler: [], talepler: [], siparisler: [], sepet: {},
       havuz: [], talepDisi: [], log: [], bildirim: [],
       senkron: { urun: null, cari: null, siparis: null, fatura: null },
       logo: { stok: logoStok(), cari: logoCari(), fisler: [], faturalar: [] }
@@ -214,7 +214,7 @@
     if (db.log.length > 400) db.log.length = 400;
   }
   function bildir(db, kime, baslik, metin) {
-    db.bildirim.unshift({ id: uid('n'), ts: now(), kime: kime, baslik: baslik, metin: metin });
+    db.bildirim.unshift({ id: uid('n'), ts: now(), kime: kime, baslik: baslik, metin: metin, okundu: false });
     if (db.bildirim.length > 120) db.bildirim.length = 120;
   }
   JP.log = log;
@@ -229,7 +229,8 @@
           db.urunler.push({
             kod: s.kod, ad: s.ad, grup: s.grup, birim: s.birim, renk: s.renk, doku: s.doku,
             logoAktif: s.aktif, logodaYok: false,
-            siparieAcik: s.aktif, aciklama: '', gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
+            siparieAcik: s.aktif, ozellik: s.ozellik || '', aciklama: aciklamaOf(s.grup),
+            gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
           });
           yeni++;
         } else {
@@ -283,6 +284,112 @@
       if (b.kisit.tip === 'urunler') return b.kisit.urunler.indexOf(u.kod) >= 0;
       return true;
     }).sort(function (a, b2) { return a.grup.localeCompare(b2.grup) || a.sira - b2.sira; });
+  };
+
+  /* ------------------------------------------------------------------ sepet */
+  /* Bayi sepeti taslak bir listedir; havuza dokunmaz. Talep ancak sepet
+     onaylandığında oluşur ve o anda dTalep hareketleri yazılır. */
+  function sepetKutusu(db, bayiKod) {
+    db.sepet = db.sepet || {};
+    db.sepet[bayiKod] = db.sepet[bayiKod] || [];
+    return db.sepet[bayiKod];
+  }
+
+  JP.sepetOku = function (bayiKod) {
+    var db = JP.db;
+    return ((db.sepet || {})[bayiKod] || []).map(function (s) {
+      var u = db.urunler.find(function (x) { return x.kod === s.urunKod; });
+      return { urunKod: s.urunKod, miktar: s.miktar, urun: u || null, gecersiz: !u || !u.siparieAcik || !u.logoAktif };
+    });
+  };
+
+  JP.sepetSayisi = function (bayiKod) { return ((JP.db.sepet || {})[bayiKod] || []).length; };
+
+  /** Aynı ürün ikinci kez eklenirse miktar üstüne eklenir (e-ticaret davranışı). */
+  JP.sepetEkle = function (bayiKod, urunKod, miktar) {
+    return JP.tx(function (db) {
+      miktar = r2(miktar);
+      if (!(miktar > 0)) throw new Error('Miktar girin.');
+      var bayi = db.bayiler.find(function (b) { return b.kod === bayiKod; });
+      if (!bayi) throw new Error('Bayi bulunamadı.');
+      if (!bayi.siparisAcik) throw new Error('Bu bayi siparişe kapalı; sepete ürün eklenemez.');
+      if (!JP.bayiUrunleri(bayiKod).some(function (u) { return u.kod === urunKod; })) {
+        throw new Error('Bu ürün bayinin kataloğunda değil.');
+      }
+      var kutu = sepetKutusu(db, bayiKod);
+      var satir = kutu.find(function (x) { return x.urunKod === urunKod; });
+      if (satir) satir.miktar = r2(satir.miktar + miktar); else kutu.push({ urunKod: urunKod, miktar: miktar });
+      return satir ? satir.miktar : miktar;
+    });
+  };
+
+  JP.sepetMiktar = function (bayiKod, urunKod, miktar) {
+    return JP.tx(function (db) {
+      var kutu = sepetKutusu(db, bayiKod);
+      var i = kutu.findIndex(function (x) { return x.urunKod === urunKod; });
+      if (i < 0) return;
+      miktar = r2(miktar);
+      if (miktar > 0) kutu[i].miktar = miktar; else kutu.splice(i, 1);
+    });
+  };
+
+  JP.sepetCikar = function (bayiKod, urunKod) {
+    return JP.tx(function (db) {
+      var kutu = sepetKutusu(db, bayiKod);
+      var i = kutu.findIndex(function (x) { return x.urunKod === urunKod; });
+      if (i >= 0) kutu.splice(i, 1);
+    });
+  };
+
+  JP.sepetTemizle = function (bayiKod) {
+    return JP.tx(function (db) { sepetKutusu(db, bayiKod).length = 0; });
+  };
+
+  /** Sepeti onaylar: talebi oluşturur ve sepeti boşaltır. */
+  JP.sepetOnayla = function (bayiKod, not, teslimTarihi) {
+    var kutu = JP.sepetOku(bayiKod);
+    if (!kutu.length) throw new Error('Sepetiniz boş.');
+    var gecersiz = kutu.filter(function (s) { return s.gecersiz; });
+    if (gecersiz.length) {
+      throw new Error(gecersiz.map(function (s) { return s.urunKod; }).join(', ') + ' artık siparişe kapalı. Sepetten çıkarın.');
+    }
+    var talep = JP.talepOlustur(bayiKod, kutu.map(function (s) { return { urunKod: s.urunKod, miktar: s.miktar }; }), not, teslimTarihi);
+    JP.sepetTemizle(bayiKod);
+    return talep;
+  };
+
+  /** Katalog ağacı: grup → seri (stok kodunun orta bölümü) → renk varyantları.
+      Logo kodlama yapısı ZEB-1200-KREM biçiminde olduğu için seri koddan türetilir. */
+  JP.urunAgaci = function (bayiKod) {
+    var urunler = JP.bayiUrunleri(bayiKod);
+    var gruplar = [];
+    urunler.forEach(function (u) {
+      var g = gruplar.find(function (x) { return x.ad === u.grup; });
+      if (!g) { g = { ad: u.grup, adet: 0, seriler: [] }; gruplar.push(g); }
+      g.adet++;
+      var parca = u.kod.split('-');
+      var seriKod = parca.length > 1 ? parca[1] : 'DIGER';
+      var seriAd = u.birim === 'ADET' ? 'Kartela ve aksesuar' : seriKod + ' serisi';
+      var se = g.seriler.find(function (x) { return x.kod === seriKod && x.ad === seriAd; });
+      if (!se) { se = { kod: seriKod, ad: seriAd, adet: 0 }; g.seriler.push(se); }
+      se.adet++;
+    });
+    gruplar.forEach(function (g) { g.seriler.sort(function (a, b) { return a.ad.localeCompare(b.ad, 'tr'); }); });
+    return { toplam: urunler.length, gruplar: gruplar };
+  };
+
+  /** Ağaç düğümüne göre süzme: {grup, seri} */
+  JP.urunSuz = function (bayiKod, dugum, arama) {
+    var q = (arama || '').trim().toLocaleLowerCase('tr');
+    return JP.bayiUrunleri(bayiKod).filter(function (u) {
+      if (dugum && dugum.grup && u.grup !== dugum.grup) return false;
+      if (dugum && dugum.seri) {
+        var parca = u.kod.split('-');
+        if ((parca.length > 1 ? parca[1] : 'DIGER') !== dugum.seri) return false;
+      }
+      if (!q) return true;
+      return (u.ad + ' ' + u.kod + ' ' + (u.ozellik || '')).toLocaleLowerCase('tr').indexOf(q) >= 0;
+    });
   };
 
   /* --------------------------------------------------- 3.4 satın alma talebi */
@@ -802,7 +909,7 @@
     db.logo.stok.forEach(function (s) {
       db.urunler.push({
         kod: s.kod, ad: s.ad, grup: s.grup, birim: s.birim, renk: s.renk, doku: s.doku,
-        logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif,
+        logoAktif: s.aktif, logodaYok: false, siparieAcik: s.aktif, ozellik: s.ozellik,
         aciklama: aciklamaOf(s.grup), gosterimBirimi: s.birim === 'MTR' ? 'metre' : 'adet', sira: s.sira
       });
     });
