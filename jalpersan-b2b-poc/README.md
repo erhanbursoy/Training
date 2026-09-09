@@ -179,6 +179,10 @@ dist/               üretilen tek dosya sürümleri
 Portal ekranları her zaman açık renktir; tarayıcının koyu tema tercihini izlemez.
 Yalnızca Logo ERP simülatörü koyu terminal görünümündedir.
 
+Dar ekranda üst çubuk sarar, bölüm rayı yatay şeride döner, tablolar kendi kabında
+yatay kayar ve ürün ağacı kısa bir kaydırılır kutuya iner. Sayfanın kendisi hiçbir
+genişlikte yatay kaymaz.
+
 Veri yalnızca tarayıcının `localStorage` alanında tutulur; sunucuya hiçbir şey gönderilmez.
 Sekmeler `BroadcastChannel` ve `storage` olayıyla senkronlanır.
 

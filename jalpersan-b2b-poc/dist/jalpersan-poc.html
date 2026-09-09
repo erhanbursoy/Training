@@ -157,14 +157,34 @@ a { color: var(--accent); }
 .main > header p { color: var(--text-2); max-width: 68ch; margin: 4px 0 0; }
 
 @media (max-width: 860px) {
-  .shell { flex-direction: column; }
+  /* Üst çubuk sabit yükseklikte kalırsa düğmeler dışarı taşıyor; sarmasına izin ver. */
+  .topbar { height: auto; min-height: 56px; flex-wrap: wrap; row-gap: 8px; padding: 8px 14px; }
+  .brand span { display: none; }
+  /* align-items: flex-start sütun yerleşiminde içeriği genişletip sayfayı yatay kaydırıyordu. */
+  .shell { flex-direction: column; align-items: stretch; }
   .rail {
     width: 100%; position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line);
     display: flex; gap: 4px; overflow-x: auto; padding: 8px 10px;
   }
   .rail .eyebrow { display: none; }
   .rail button { width: auto; white-space: nowrap; }
-  .main { padding: 16px 14px 56px; }
+  .main { width: 100%; min-width: 0; padding: 16px 14px 56px; }
+}
+
+@media (max-width: 700px) {
+  /* Dar ekranda sütunları sıkıştırıp belge numarasını kırmak yerine
+     tabloyu kendi kabında yatay kaydır. */
+  table.tbl { min-width: 620px; }
+  table.tbl td.mono, table.tbl td .mono { white-space: nowrap; }
+}
+
+@media (max-width: 560px) {
+  .topbar .poc-flag { display: none; }
+  .filtre { padding: 10px 12px; }
+  .filtre .filtre-alan input[type=date], .filtre .filtre-alan select { min-width: 132px; }
+  .filtre .filtre-alan input.filtre-ara { min-width: 0; }
+  .filtre .filtre-son { margin-left: 0; width: 100%; justify-content: space-between; }
+  .cat-bar .ara { flex-basis: 100%; }
 }
 
 /* ---------- yüzeyler ---------- */
@@ -195,7 +215,7 @@ a { color: var(--accent); }
 .kpi.on-accent .v, .kpi.on-accent .k { color: var(--accent-2); }
 
 /* ---------- tablo ---------- */
-.tbl-wrap { overflow-x: auto; }
+.tbl-wrap { overflow-x: auto; max-width: 100%; }
 table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.tbl th {
   font-family: var(--font-display); font-size: 10.5px; font-weight: 600;
@@ -587,11 +607,16 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .yan .yan-alt { margin-top: 14px; padding: 10px 9px 0; border-top: 1px solid var(--line); }
 
 @media (max-width: 860px) {
+  /* Dar ekranda ağaç tüm sayfayı kaplayıp kataloğu aşağı itmesin:
+     kendi içinde kaydırılan kısa bir kutu olsun. */
   .yan {
-    width: 100%; position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line);
+    width: 100%; position: static; border-right: 0; border-bottom: 1px solid var(--line);
+    max-height: 232px; overflow-y: auto;
   }
-  .ust-gez { margin-left: 0; }
+  .yan .yan-alt { display: none; }
+  .ust-gez { margin-left: 0; width: 100%; }
   .topbar.ust-menu { height: auto; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+  .topbar.ust-menu .eylemler { margin-left: auto; }
 }
 
 /* talep numarası çipi (dashboard'da tıklanabilir) */
