@@ -34,30 +34,32 @@ böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön**
 Standart web uygulaması düzeni: üstte **Dashboard**, **Ürün kataloğu**, **Taleplerim**;
 sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
 
-- **Dashboard** · yalnızca iki şey: kaç talep açık ve açık taleplerde hangi üründen ne kadar
-  temin bekliyor. Talep numarasına tıklayınca o talebin detayı açılır.
-- **Ürün kataloğu** · e-ticaret kartları (küçük kartela görseli, stok kodu, teknik özellik, adet sayacı, sepete ekle).
-  Sol yan panel **ürün ağacıdır**: grup → seri → renk varyantı. Kırılım Logo stok kodundan türetilir
-  (`ZEB-1200-KREM` → Zebra / 1200 serisi / Krem).
-- **Sepet** · taslaktır, havuza dokunmaz. Aynı ürün ikinci kez eklenirse miktar üstüne eklenir.
-  Talep ancak sepet onaylandığında oluşur; o anda `dTalep` hareketleri yazılır.
-- Ürün kartına tıklayınca detay penceresi açılır: büyük kartela, teknik özellik ve uzun açıklama.
-  Bu iki alan firma panelindeki ürün listesinden düzenlenir.
-- **Taleplerim** · liste (tarih, talep no, durum) ve talep detayı. Detayda üç görünüm var:
-  **Ürünler** (kalem bazında talep edilen / sipariş oluşturulan / tahsis edilen / temin bekleyen),
-  **İşlemler** (talepten doğan siparişler ve faturalar) ve **Hareketler** (havuz hareket defteri).
+- **Dashboard** · tek ölçüm: kaç talep açık. Altında açık taleplerdeki ürünler
+  talep edilen / sevk edilen / bekleyen olarak listelenir. Talep numarasına
+  tıklayınca o talebin detayı açılır.
+- **Taleplerim** · liste (tarih, talep no, durum, talep edilen, sevk edilen) ve talep detayı.
+  Detayda üç görünüm var: **Ürünler**, **İşlemler** (talepten doğan siparişler ve faturalar)
+  ve **Hareketler** (talep geçmişi).
 
-### Kalem sayılarının anlamı
+### Bayi tarafında havuz görünmez
 
-| Sütun | Nasıl hesaplanır |
+Havuz, rezerv, tahsis, eşleşme kademesi ve hareket tipleri (`dTalep` / `dRezerv` / `dFatura`)
+iç muhasebe kavramlarıdır ve bayi ekranlarında hiçbir yerde geçmez. Bayi talep oluşturur ve
+talebinin ne kadarının sevk edildiğini görür. Motor aynıdır; yalnızca sunum farklıdır.
+
+| Bayi ne görür | Arkada ne var |
 | --- | --- |
 | Talep edilen | Σ `dTalep` |
-| Sipariş oluşturulan | Σ `dRezerv`, faturayla çözülen rezerv hariç — kümülatif, faturalanınca sıfırlanmaz |
-| Tahsis edilen | Σ `dFatura` |
-| Temin bekleyen | Talep edilen − açık rezerv − tahsis edilen |
+| Sipariş oluşturulan | Σ `dRezerv`, faturayla çözülen rezerv hariç (kümülatif) |
+| Sevk edilen | Σ `dFatura` — fatura kesildiğinde sevkiyat gerçekleşmiş sayılır |
+| Bekleyen | Talep edilen − sevk edilen |
 
-Sipariş oluşturulan kümülatif tutulur; aksi halde fatura kesildiğinde rezerv çözüldüğü için
-sayı sıfıra düşer ve bayi siparişinin oluştuğunu göremezdi.
+Talep geçmişinde hareket tipleri iş diline çevrilir: *Talep oluşturuldu*, *Talep azaltıldı*,
+*Siparişe alındı*, *Sipariş miktarı düşürüldü*, *Sevk edildi*. Faturayla birlikte yazılan
+rezerv çözümü teknik bir kayıt olduğu için bayiye gösterilmez.
+
+Sipariş birimi (metre / adet) yalnızca talep detayında kalem satırının yanında yazar;
+dashboard ve listelerde miktarlar birimsiz gösterilir.
 
 ## Havuz mantığı
 
