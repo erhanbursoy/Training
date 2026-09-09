@@ -78,9 +78,10 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
 - **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, gönderim hatası,
   gecikmiş sipariş. Karta tıklayınca ilgili ekrana gider.
 - **Talepler** ve **Siparişler** · tarih aralığı, arama ve durum filtresi olan liste;
-  satıra tıklayınca detay. Talep detayında Ürünler / İşlemler / Geçmiş görünümleri,
-  siparişe dönüştürme detayın içinde. Sipariş ekranında **Logo'dan sorgula** düğmesi
-  açık siparişlerin fiş ve fatura durumunu okur.
+  satıra tıklayınca detay. Talep listesinde **İstenen teslim** sütunu bayinin talebinde
+  belirttiği tarihi gösterir (belirtilmemişse “—”). Talep detayında Ürünler / İşlemler /
+  Geçmiş görünümleri, siparişe dönüştürme detayın içinde. Sipariş ekranında
+  **Logo'dan sorgula** düğmesi açık siparişlerin fiş ve fatura durumunu okur.
 - **Ürünler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekrandır: solda
   salt okunur Logo alanları ve altında **Görseller**, sağda düzenlenebilir portal
   alanları (siparişe açıklık, bayiye gösterilen birim, katalog sırası, teknik özellik,
@@ -89,7 +90,17 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   Bilgiler (Logo alanları salt okunur; siparişe açıklık, teslimat notu ve katalog
   kısıtı düzenlenebilir), Talepler ve Siparişler geçmişi.
 
-Talep ve sipariş listeleri Excel'e kopyalanabilir.
+### Teslim tarihi
+
+Bayi sepeti onaylarken istediği teslim tarihini opsiyonel olarak girer. Bu tarih talep
+listesinde ayrı bir sütun, talep detayında etiket olarak görünür.
+
+Siparişe dönüştürürken **talep edilen teslim tarihi** yine opsiyoneldir: bayinin talebinde
+tarih varsa öneri olarak gelir, muhasebe değiştirebilir ya da boş bırakabilir. Girilen tarih
+sipariş detayında etiket olarak durur ve sipariş Logo'ya gönderildiğinde fişe taşınır;
+Logo simülatöründe fiş başlığında görünür.
+
+Talep ve sipariş listeleri Excel'e kopyalanabilir; iki çıktı da teslim tarihi sütununu taşır.
 
 ### Havuz görünmez, birimler karışmaz
 

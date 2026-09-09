@@ -26,6 +26,11 @@
     var d = new Date(); d.setDate(d.getDate() - gun); d.setHours(9, 30, 0, 0);
     return d.toISOString();
   }
+  /** Tohumdaki istenen teslim tarihleri — input[type=date] biçiminde (YYYY-AA-GG). */
+  function ileriGun(gun) {
+    var d = new Date(); d.setDate(d.getDate() + gun);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1, 2) + '-' + pad(d.getDate(), 2);
+  }
   function pad(n, w) { return String(n).padStart(w, '0'); }
   function yil() { return new Date().getFullYear(); }
   function r2(n) { return Math.round(n * 100) / 100; }
@@ -830,7 +835,8 @@
   };
 
   /* ------------------------------------------- 3.5 talep → sipariş dönüşümü */
-  JP.siparisOlustur = function (bayiKod, secim, kullanici) {
+  /** teslimTarihi: bayinin talebinde istediği teslim tarihi; siparişte opsiyoneldir. */
+  JP.siparisOlustur = function (bayiKod, secim, kullanici, teslimTarihi) {
     return JP.tx(function (db) {
       var temiz = secim.filter(function (s) { return s.miktar > 0; });
       if (!temiz.length) throw new Error('Siparişe dönüştürmek için en az bir kaleme miktar girin.');
@@ -846,6 +852,7 @@
       var no = 'S-' + yil() + '-' + pad(db.sayac.siparis, 6);
       var siparis = {
         no: no, bayiKod: bayiKod, tarih: now(), durum: 'Taslak',
+        teslimTarihi: teslimTarihi || null,
         logoFisNo: null, logoRef: 'PORTAL-' + no, hataMetni: null,
         kalemler: temiz.map(function (s) {
           var t = db.talepler.find(function (x) { return x.no === s.talepNo; });
@@ -892,7 +899,7 @@
         mevcut = {
           fisNo: 'SIP-' + yil() + '-' + pad(db.sayac.logoFis, 6),
           portalRef: s.logoRef, portalSiparisNo: s.no, cariKod: s.bayiKod,
-          tarih: now(), durum: 'Açık', iptal: false,
+          tarih: now(), teslimTarihi: s.teslimTarihi || null, durum: 'Açık', iptal: false,
           satirlar: s.kalemler.map(function (k, i) {
             return { id: 'r' + (i + 1), portalKalemId: k.id, stokKod: k.urunKod, miktar: k.miktar, surum: 1 };
           })
@@ -1333,14 +1340,14 @@
       { urunKod: U.stor2, miktar: 150 },
       { urunKod: U.tul1, miktar: 90 },
       { urunKod: U.aksesuar, miktar: 24 }
-    ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', null);
+    ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', ileriGun(6));
 
     _ts = gecmis(21);
     var t1 = db.talepler[0];
     JP.siparisOlustur('BYI-0001', [
       { talepNo: t1.no, kalemId: t1.kalemler[0].id, miktar: 200 },
       { talepNo: t1.no, kalemId: t1.kalemler[1].id, miktar: 150 }
-    ], 'muhasebe');
+    ], 'muhasebe', t1.teslimTarihi);
     JP.siparisLogoyaGonder(db.siparisler[0].no);
 
     _ts = gecmis(18);
@@ -1353,20 +1360,20 @@
     JP.talepOlustur('BYI-0002', [
       { urunKod: U.dikey1, miktar: 240 },
       { urunKod: U.trend1, miktar: 180 }
-    ], 'Ofis projesi — teslim tarihi kritik.', null);
+    ], 'Ofis projesi — teslim tarihi kritik.', ileriGun(12));
 
     _ts = gecmis(3);
     JP.talepOlustur('BYI-0004', [
       { urunKod: tohumUrun(db, 'Stor Perde Kumaşı', 12), miktar: 400 },
       { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
-    ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', null);
+    ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21));
 
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
     _ts = gecmis(2);
     var t2 = db.talepler.find(function (t) { return t.bayiKod === 'BYI-0002'; });
     JP.siparisOlustur('BYI-0002', [
       { talepNo: t2.no, kalemId: t2.kalemler[0].id, miktar: 150 }
-    ], 'muhasebe');
+    ], 'muhasebe', t2.teslimTarihi);
     JP.siparisLogoyaGonder(db.siparisler[0].no);
 
     _ts = null;

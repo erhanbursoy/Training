@@ -172,13 +172,15 @@
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(UI.panel(null, null, UI.tablo(
-        ['Tarih', 'Talep no', 'Bayi', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+        ['Tarih', 'Talep no', 'Bayi', 'İstenen teslim', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
         liste.map(function (t) {
           var s = sevkSayim(JP.talepKalemDurum(t), 'talep', 'fatura');
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { talepAc(t.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
             h('td.mono', { text: t.no, style: { fontWeight: '600' } }),
             h('td.small', { text: bayiAd(t.bayiKod) }),
+            h('td.small.nowrap', { text: t.teslimTarihi ? JP.fmt.tarih(t.teslimTarihi) : '—',
+              style: t.teslimTarihi ? null : { color: 'var(--text-3)' } }),
             h('td', {}, UI.rozet(JP.talepDurumu(t))),
             h('td.num.mono', { text: String(s.toplam) }),
             h('td', {}, ilerleme(s)),
@@ -205,10 +207,11 @@
   }
 
   function talepKopyala(liste) {
-    var satir = [['Talep no', 'Tarih', 'Bayi', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Bekleyen']];
+    var satir = [['Talep no', 'Tarih', 'Bayi', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Bekleyen']];
     liste.forEach(function (t) {
       JP.talepKalemDurum(t).forEach(function (k) {
-        satir.push([t.no, JP.fmt.tarih(t.tarih), bayiAd(t.bayiKod), JP.talepDurumu(t),
+        satir.push([t.no, JP.fmt.tarih(t.tarih), bayiAd(t.bayiKod),
+          t.teslimTarihi ? JP.fmt.tarih(t.teslimTarihi) : '', JP.talepDurumu(t),
           k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura, Math.max(0, k.talep - k.fatura)]);
       });
     });
@@ -362,10 +365,21 @@
     });
     ozetGuncelle();
 
+    /* Talep edilen teslim tarihi opsiyoneldir; bayinin talebinde bir tarih varsa
+       öneri olarak gelir, muhasebe değiştirebilir ya da boş bırakabilir. */
+    var teslim = h('input', { type: 'date', value: t.teslimTarihi || '' });
+
     UI.modal({ etiket: t.no + ' · ' + bayiAd(t.bayiKod), genis: true,
       icerik: h('div.stack', {}, [
         UI.tablo(['Kalem', 'Kod', 'Birim', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], satirlar),
         ozet,
+        h('div.grid.k2', {}, [
+          h('label.f', {}, ['Talep edilen teslim tarihi (opsiyonel)', teslim]),
+          h('div.small.muted', { style: { alignSelf: 'end', paddingBottom: '8px' },
+            text: t.teslimTarihi
+              ? 'Bayinin talebindeki tarih önerildi; değiştirebilir veya boş bırakabilirsiniz.'
+              : 'Bayi talebinde tarih belirtmemiş. Boş bırakılabilir.' })
+        ]),
         h('div.note', { text: 'Sipariş portalda “Taslak” olarak oluşur. Logo’ya gönderim ayrı bir adımdır.' })
       ]),
       aksiyonlar: function (kapat) {
@@ -375,7 +389,8 @@
             onclick: function () {
               UI.dene(function () {
                 var s = JP.siparisOlustur(t.bayiKod, kalemler.filter(function (k) { return secim[k.kalem.id].dahil; })
-                  .map(function (k) { return { talepNo: t.no, kalemId: k.kalem.id, miktar: secim[k.kalem.id].miktar }; }), 'muhasebe');
+                  .map(function (k) { return { talepNo: t.no, kalemId: k.kalem.id, miktar: secim[k.kalem.id].miktar }; }),
+                  'muhasebe', teslim.value || null);
                 kapat(); UI.toast('Sipariş oluşturuldu', s.no + ' · Logo’ya göndermek için sipariş detayını açın.', 'ok');
                 secTalep = null; siparisAc(s.no);
               });
@@ -463,10 +478,11 @@
   }
 
   function siparisKopyala(liste) {
-    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Sipariş', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
+    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Sipariş', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
     liste.forEach(function (s) {
       JP.siparisKalemDurum(s).forEach(function (k) {
-        satir.push([s.no, JP.fmt.tarih(s.tarih), bayiAd(s.bayiKod), s.durum, s.logoFisNo || '',
+        satir.push([s.no, JP.fmt.tarih(s.tarih), bayiAd(s.bayiKod),
+          s.teslimTarihi ? JP.fmt.tarih(s.teslimTarihi) : '', s.durum, s.logoFisNo || '',
           k.kalem.talepNo, k.kalem.urunKod, k.urun.ad, k.urun.birim, k.siparis, k.logoMiktar, k.sevk, k.kalan]);
       });
     });
@@ -506,7 +522,8 @@
           h('button.btn.ghost.sm', { text: bayiAd(s.bayiKod), onclick: function () { bayiAc(s.bayiKod); } }),
           s.logoFisNo ? h('span.tag', { text: 'Logo fiş ' + s.logoFisNo }) : null,
           h('span.tag', { text: 'ref ' + s.logoRef }),
-          h('span.small.muted', { text: JP.fmt.tarih(s.tarih) })
+          h('span.small.muted', { text: JP.fmt.tarih(s.tarih) }),
+          s.teslimTarihi ? h('span.tag', { text: 'Talep edilen teslim ' + JP.fmt.tarih(s.teslimTarihi) }) : null
         ]),
         h('div.grid.k4', {}, [
           UI.kpi('Kalem', String(sayim.toplam), 'ürün'),

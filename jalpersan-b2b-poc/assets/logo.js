@@ -56,6 +56,7 @@
         h('span', { text: cariAd(f.cariKod) }),
         h('span.tag', { text: 'portal ref ' + f.portalRef }),
         h('span.small.muted', { text: JP.fmt.tarih(f.tarih) }),
+        f.teslimTarihi ? h('span.tag', { text: 'teslim ' + JP.fmt.tarih(f.teslimTarihi) }) : null,
         h('div.spacer'),
         (!f.iptal && kalan > 0.001) ? h('button.btn.primary.sm', { text: 'Fatura kes', onclick: function () { faturaKip(f); } }) : null,
         (!f.iptal && !faturalar.length) ? h('button.btn.ghost.sm', { text: 'Fişi iptal et', onclick: function () { UI.onay('Fişi iptal et', f.fisNo + ' iptal edilecek. Portal, durum sorgusunda siparişi iptale çeker.', function () { JP.logo.fisIptal(f.fisNo); UI.toast('Fiş iptal edildi', null, 'ok'); }, true); } }) : null
