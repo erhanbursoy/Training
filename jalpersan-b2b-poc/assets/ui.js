@@ -640,28 +640,20 @@
   /* ---------------------------------------------------------------- grafik */
   /* Satır içi SVG çubuk grafik: gün başına üç seri. Kütüphane yüklenmez
      (artifact CSP'si dış betiği de engelliyor), viewBox ile ölçeklenir. */
+  /* Seçenekler:
+       seriler   [{ad, renk, veri[]}]
+       etiketler gün/bucket etiketleri (veri ile aynı uzunlukta)
+       tip       'cubuk' (öntanımlı) | 'cizgi'
+       tamsayi   eksende kesirli değer olmasın (sayım ölçüleri)
+       olcu      ipucunda ve göstergede yazan ölçü adı ('talep' gibi)
+       topla     kova birleştirilirken değerler toplanabilir (sayım ölçüsü);
+                 dar ekranda 30 gün 30 sütuna sığmadığı için haftaya toplanır
+     Gruplu çubuk öntanımlıdır: günlük sayım kesikli bir ölçüdür, çizgi ara
+     günlerde olmayan bir süreklilik ima eder. */
   UI.grafik = function (o) {
     var seriler = o.seriler || [];
     var etiketler = o.etiketler || [];
-    var n = etiketler.length || 1;
-    var enBuyuk = 0;
-    seriler.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyuk) enBuyuk = v; }); });
-
-    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. Sayım ölçülerinde (belge adedi)
-       ızgara kesirli olmasın diye tepe dört tam adıma bölünür. */
-    var kademe = 4;
-    var tepe = enBuyuk > 0 ? enBuyuk : 1;
-    if (o.tamsayi) {
-      var adimTam = Math.ceil(tepe / kademe);
-      var b10 = Math.pow(10, Math.floor(Math.log(adimTam) / Math.LN10));
-      var c = adimTam / b10;
-      adimTam = (c <= 1 ? 1 : c <= 2 ? 2 : c <= 5 ? 5 : 10) * b10;
-      tepe = adimTam * kademe;
-    } else {
-      var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
-      var carpan = tepe / basamak;
-      tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
-    }
+    var tip = o.tip || 'cubuk';
 
     var ns = 'http://www.w3.org/2000/svg';
     function el(ad, nitelik, cocuk) {
@@ -670,100 +662,164 @@
       (cocuk || []).forEach(function (c) { if (c) e.appendChild(c); });
       return e;
     }
+    /* Yuvarlak bir tepe: 1-2-5 basamakları; sayımda kesirli ızgara olmasın. */
+    function tepeSec(enBuyuk) {
+      var kademe = 4, tepe = enBuyuk > 0 ? enBuyuk : 1;
+      if (o.tamsayi) {
+        var a = Math.ceil(tepe / kademe);
+        var b10 = Math.pow(10, Math.floor(Math.log(a) / Math.LN10));
+        var c = a / b10;
+        var adim = (c <= 1 ? 1 : c <= 2 ? 2 : c <= 5 ? 5 : 10) * b10;
+        /* Küçük sayılarda dört kademe boş bant bırakıyor (en yüksek 2 iken
+           eksen 4'e çıkıyordu); kademe sayısı veriye göre kısılır. */
+        var kk = Math.max(2, Math.min(kademe, Math.ceil(tepe / adim)));
+        return { kademe: kk, tepe: adim * kk };
+      }
+      var bas = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
+      var carp = tepe / bas;
+      return { kademe: kademe, tepe: (carp <= 1 ? 1 : carp <= 2 ? 2 : carp <= 5 ? 5 : 10) * bas };
+    }
+    /* Dar ekranda günleri haftaya topla: 30 sütun sığmaz. */
+    function kovala(kova) {
+      if (kova <= 1) return { etiketler: etiketler, ipucular: etiketler, seriler: seriler };
+      /* Eksende kısa etiket (kovanın ilk günü) durur, aralığın tamamı ipucunda
+         yazar; uzun aralık yazıları dar ekranda üst üste biniyordu. */
+      var kisa = [], uzun = [], yeniSeri = seriler.map(function (s) { return { ad: s.ad, renk: s.renk, veri: [] }; });
+      for (var i = 0; i < etiketler.length; i += kova) {
+        var son = Math.min(etiketler.length - 1, i + kova - 1);
+        kisa.push(etiketler[i]);
+        uzun.push(etiketler[i] + (son > i ? '–' + etiketler[son] : ''));
+        seriler.forEach(function (s, si) {
+          var t = 0;
+          for (var j = i; j <= son; j++) t += s.veri[j] || 0;
+          yeniSeri[si].veri.push(t);
+        });
+      }
+      return { etiketler: kisa, ipucular: uzun, seriler: yeniSeri };
+    }
 
-    /* Telefonda 1000x210 viewBox ekrana sığdırılırken çizim 70 px'e iniyor;
-       dar ekranda daha kare bir kutu ve daha büyük yazı kullanılır. */
     function ciz() {
       var dar = false;
       try { dar = window.matchMedia('(max-width: 700px)').matches; } catch (e) {}
-      var G = dar ? 560 : 1000, Y = dar ? 320 : 236;
-      var solPay = dar ? 64 : 52, altPay = dar ? 34 : 26, ustPay = dar ? 12 : 8;
-      var etiketAdim = dar ? 7 : 5;
+      /* Dar ekranda çubuklar için haftalık kova; çizgide gün gün kalır. */
+      var kova = (dar && tip === 'cubuk' && o.topla && etiketler.length > 10) ? 7 : 1;
+      var veri = kovala(kova);
+      var et = veri.etiketler, ip = veri.ipucular || veri.etiketler, sr = veri.seriler, n = et.length || 1;
+
+      var enBuyuk = 0;
+      sr.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyuk) enBuyuk = v; }); });
+      var ts = tepeSec(enBuyuk), tepe = ts.tepe, kademe = ts.kademe;
+
+      /* viewBox genişliği sütun sayısına göre: 7 günlük grafik 1000 birime
+         yayılırsa yazılar ekranda 7 px'e iner. */
+      var G = dar ? 560 : (n <= 10 ? 620 : 1000), Y = dar ? 320 : (n <= 10 ? 250 : 236);
+      var solPay = dar ? 64 : 52, altPay = dar ? 38 : 26, ustPay = dar ? 12 : 8;
       var alanG = G - solPay - 8, alanY = Y - altPay - ustPay;
-      var adim = n > 1 ? alanG / (n - 1) : 0;
-      var x = function (i) { return solPay + adim * i; };
-      var y = function (v) { return ustPay + alanY - alanY * (v / tepe); };
+      var taban = ustPay + alanY;
+      var y = function (v) { return taban - alanY * (v / tepe); };
       function yazi(px, py, metin, sinif, hiza) {
         var t = el('text', { x: px, y: py, class: sinif || 'gx', 'text-anchor': hiza || 'middle' });
         t.textContent = metin;
         return t;
       }
+      function ipucuAl(i, s, v) {
+        var t = el('title');
+        t.textContent = ip[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.olcu ? ' ' + o.olcu : '');
+        return t;
+      }
 
       var cocuklar = [];
-      // yatay ızgara ve eksen değerleri
       for (var i = 0; i <= kademe; i++) {
-        var cizgiY = ustPay + alanY * (i / kademe);
+        var cy = ustPay + alanY * (i / kademe);
         var deger = tepe * (1 - i / kademe);
-        cocuklar.push(el('line', { x1: solPay, y1: cizgiY, x2: G - 8, y2: cizgiY, class: 'gizgi' }));
-        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5),
+        cocuklar.push(el('line', { x1: solPay, y1: cy, x2: G - 8, y2: cy, class: 'gizgi' }));
+        cocuklar.push(yazi(solPay - 8, cy + (dar ? 6 : 3.5),
           o.tamsayi ? String(Math.round(deger)) : JP.fmt.miktar(Math.round(deger)), 'gx', 'end'));
       }
-      /* Her seri bir çizgi. Hareketsiz günler sıfır olarak çizilseydi çizgi
-         her değerden sonra tabana inip testere gibi görünürdü; onun yerine
-         değeri olan noktalar birbirine bağlanır, boş günler atlanır.
-         Seriler aynı değere sık sık denk geldiği için her çizgi kendi zemin
-         rengi hâlesiyle çizilir: üsttteki çizgi alttakini keser, ikisi tek
-         çizgiye karışmaz. Bu yüzden çizgi ve işaretler seri seri, sırayla
-         eklenir. */
-      var kalinlik = dar ? 2.8 : 2.2;
-      seriler.forEach(function (s) {
-        var noktalar = [];
-        s.veri.forEach(function (v, i) {
-          if (!v) return;
-          noktalar.push(x(i).toFixed(2) + ',' + y(v).toFixed(2));
+
+      var etiketAdim, xEtiket;
+      if (tip === 'cizgi') {
+        /* Çizgi: değeri olan noktalar birleşir, boş günler atlanır. Seriler aynı
+           değere sık bindiği için her çizgi zemin rengi hâlesiyle çizilir. */
+        var adim = n > 1 ? alanG / (n - 1) : 0;
+        var x = function (k) { return solPay + adim * k; };
+        xEtiket = x;
+        var kalinlik = dar ? 2.8 : 2.2;
+        sr.forEach(function (s) {
+          var noktalar = [];
+          s.veri.forEach(function (v, k) { if (v) noktalar.push(x(k).toFixed(2) + ',' + y(v).toFixed(2)); });
+          if (!noktalar.length) return;
+          var ortak = { points: noktalar.join(' '), fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' };
+          cocuklar.push(el('polyline', Object.assign({}, ortak, { stroke: 'var(--surface)', 'stroke-width': kalinlik + 3 })));
+          cocuklar.push(el('polyline', Object.assign({}, ortak, { stroke: s.renk, 'stroke-width': kalinlik })));
+          s.veri.forEach(function (v, k) {
+            if (!v) return;
+            cocuklar.push(el('circle', {
+              cx: x(k).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.6 : 4,
+              fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.8
+            }, [ipucuAl(k, s, v)]));
+          });
         });
-        if (!noktalar.length) return;
-        var ortak = {
-          points: noktalar.join(' '), fill: 'none',
-          'stroke-linejoin': 'round', 'stroke-linecap': 'round'
-        };
-        cocuklar.push(el('polyline', Object.assign({}, ortak, {
-          stroke: 'var(--surface)', 'stroke-width': kalinlik + 3
-        })));
-        cocuklar.push(el('polyline', Object.assign({}, ortak, {
-          stroke: s.renk, 'stroke-width': kalinlik
-        })));
-        s.veri.forEach(function (v, i) {
-          if (!v) return;
-          var ipucu = el('title');
-          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.olcu ? ' ' + o.olcu : '');
-          cocuklar.push(el('circle', {
-            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.6 : 4,
-            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.8
-          }, [ipucu]));
+        etiketAdim = Math.max(1, Math.ceil(n / (dar ? 5 : 8)));
+      } else {
+        /* Gruplu çubuk: her gün için seri başına bir çubuk. Sıfır günde çubuk
+           çizilmez — o gün boş kalır, uydurma bir süreklilik oluşmaz. */
+        var grupG = alanG / n;
+        var ic = Math.min(grupG * 0.82, grupG - 1.5);
+        var cubukG = Math.max(1.6, (ic - (sr.length - 1) * 1) / sr.length);
+        var bosluk = (grupG - (cubukG * sr.length + (sr.length - 1))) / 2;
+        xEtiket = function (k) { return solPay + grupG * k + grupG / 2; };
+        et.forEach(function (etiket, k) {
+          var x0 = solPay + grupG * k + bosluk;
+          sr.forEach(function (s, si) {
+            var v = s.veri[k] || 0;
+            if (!v) return;
+            var yuk = Math.max(2, alanY * (v / tepe));
+            cocuklar.push(el('rect', {
+              x: (x0 + si * (cubukG + 1)).toFixed(2), y: (taban - yuk).toFixed(2),
+              width: cubukG.toFixed(2), height: yuk.toFixed(2),
+              rx: Math.min(1.5, cubukG / 3), fill: s.renk
+            }, [ipucuAl(k, s, v)]));
+          });
         });
-      });
-      /* Her günü yazmak sığmaz; belirli aralıkta tarih yazılır. İlk ve son
-         etiket kenara yapıştığı için hizası içe çevrilir. */
-      var sonIndeks = etiketler.length - 1;
-      etiketler.forEach(function (etiket, gi) {
-        if (gi !== sonIndeks) {
-          if (gi % etiketAdim !== 0) return;
-          // son etikete çok yakın periyodik etiket üst üste biner
-          if (sonIndeks - gi < Math.ceil(etiketAdim / 2)) return;
+        etiketAdim = kova > 1 ? 1 : Math.max(1, Math.ceil(n / (dar ? 5 : 8)));
+      }
+
+      /* Her günü yazmak sığmaz; belirli aralıkta etiket yazılır. Kenardaki
+         etiketler içe hizalanır. */
+      var sonI = et.length - 1;
+      et.forEach(function (etiket, k) {
+        if (k !== sonI) {
+          if (k % etiketAdim !== 0) return;
+          if (sonI - k < Math.ceil(etiketAdim / 2)) return;
         }
-        var hiza = gi === 0 ? 'start' : (gi === sonIndeks ? 'end' : 'middle');
-        cocuklar.push(yazi(x(gi), Y - (dar ? 10 : 8), etiket, 'gx', hiza));
+        var hiza = k === 0 ? 'start' : (k === sonI ? 'end' : 'middle');
+        cocuklar.push(yazi(xEtiket(k), Y - (dar ? 12 : 8), etiket, 'gx', hiza));
       });
-      cocuklar.push(el('line', { x1: solPay, y1: ustPay + alanY, x2: G - 8, y2: ustPay + alanY, class: 'geksen' }));
+      cocuklar.push(el('line', { x1: solPay, y1: taban, x2: G - 8, y2: taban, class: 'geksen' }));
 
       return el('svg', {
-        class: 'grafik' + (dar ? ' dar' : ''), viewBox: '0 0 ' + G + ' ' + Y, role: 'img',
+        class: 'grafik' + (dar ? ' dar' : '') + (tip === 'cizgi' ? ' cizgi' : ' cubuk'),
+        viewBox: '0 0 ' + G + ' ' + Y, role: 'img',
         'aria-label': o.baslik || 'Grafik', preserveAspectRatio: 'xMidYMid meet'
       }, cocuklar);
     }
 
+    var enBuyukTum = 0;
+    seriler.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyukTum) enBuyukTum = v; }); });
     var svg = ciz();
     var kutu = h('div.grafik-kutu', {}, [
       h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
-        /* Gösterge, çizginin kendisini örnekler: renkli çizgi ve üstünde nokta. */
+        /* Gösterge çubuk ya da çizgi örneği verir. */
         return h('span.gosterge', {}, [
-          h('i.g-cizgi', { style: { background: s.renk } }, h('b', { style: { background: s.renk } })),
+          tip === 'cizgi'
+            ? h('i.g-cizgi', { style: { background: s.renk } }, h('b', { style: { background: s.renk } }))
+            : h('i', { style: { background: s.renk } }),
           h('span', { text: s.ad })
         ]);
       }).concat([h('div.spacer'), o.olcu ? h('span.small.muted', { text: o.olcu }) : null])),
       svg,
-      enBuyuk > 0 ? null : h('div.small.muted', { text: o.bos || 'Bu aralıkta hareket yok.' })
+      enBuyukTum > 0 ? null : h('div.small.muted', { text: o.bos || 'Bu aralıkta hareket yok.' })
     ]);
 
     /* Ekran genişliği eşiği geçtiğinde (telefon döndürme) yeniden çizilir;
@@ -780,6 +836,65 @@
     } catch (e) {}
 
     return kutu;
+  };
+
+  /* ------------------------------------------------------------------ pasta */
+  /* Halka (donut) grafik: az sayıda kategorinin anlık dağılımı. Dilimler SVG
+     çemberinde stroke-dasharray ile çizilir; kütüphane yüklenmez. Ortada
+     toplam, altında sayı ve yüzdeyle gösterge durur. */
+  UI.pasta = function (o) {
+    var dilimler = (o.dilimler || []).map(function (d) {
+      return { ad: d.ad, deger: Math.max(0, d.deger || 0), renk: d.renk };
+    });
+    var toplam = dilimler.reduce(function (t, d) { return t + d.deger; }, 0);
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(ad, nitelik, cocuk) {
+      var e = document.createElementNS(ns, ad);
+      Object.keys(nitelik || {}).forEach(function (k) { e.setAttribute(k, String(nitelik[k])); });
+      (cocuk || []).forEach(function (c) { if (c) e.appendChild(c); });
+      return e;
+    }
+    var R = 54, KAL = 22, C = 2 * Math.PI * R, M = 80;
+    var cocuklar = [el('circle', {
+      cx: M, cy: M, r: R, fill: 'none', stroke: 'var(--sunk)', 'stroke-width': KAL
+    })];
+    var kayma = 0;
+    dilimler.forEach(function (d) {
+      if (!d.deger || !toplam) return;
+      var boy = C * (d.deger / toplam);
+      var ipucu = el('title');
+      ipucu.textContent = d.ad + ': ' + JP.fmt.miktar(d.deger) + (o.olcu ? ' ' + o.olcu : '') +
+        ' · %' + Math.round(d.deger / toplam * 100);
+      cocuklar.push(el('circle', {
+        cx: M, cy: M, r: R, fill: 'none', stroke: d.renk, 'stroke-width': KAL,
+        'stroke-dasharray': boy.toFixed(2) + ' ' + (C - boy).toFixed(2),
+        'stroke-dashoffset': (-kayma).toFixed(2), 'stroke-linecap': 'butt'
+      }, [ipucu]));
+      kayma += boy;
+    });
+    var orta = el('text', { x: M, y: M - 2, class: 'pi-sayi', 'text-anchor': 'middle' });
+    orta.textContent = JP.fmt.miktar(toplam);
+    var altYazi = el('text', { x: M, y: M + 16, class: 'pi-alt', 'text-anchor': 'middle' });
+    altYazi.textContent = o.ortaAlt || (o.olcu || '');
+    cocuklar.push(orta, altYazi);
+
+    var svg = el('svg', {
+      class: 'pasta', viewBox: '0 0 160 160', role: 'img',
+      'aria-label': o.baslik || 'Dağılım', preserveAspectRatio: 'xMidYMid meet'
+    }, [el('g', { transform: 'rotate(-90 ' + M + ' ' + M + ')' }, cocuklar.slice(0, cocuklar.length - 2)), orta, altYazi]);
+
+    return h('div.pasta-kutu', {}, [
+      svg,
+      h('div.pasta-gosterge', {}, dilimler.map(function (d) {
+        return h('div.pi-satir', {}, [
+          h('i', { style: { background: d.renk } }),
+          h('span.pi-ad', { text: d.ad }),
+          h('b.mono', { text: JP.fmt.miktar(d.deger) }),
+          h('span.pi-yuzde.mono', { text: toplam ? '%' + Math.round(d.deger / toplam * 100) : '—' })
+        ]);
+      })),
+      toplam ? null : h('div.small.muted', { text: o.bos || 'Şu an kayıt yok.' })
+    ]);
   };
 
   UI.kpi = function (etiket, deger, birim, alt, vurgu) {

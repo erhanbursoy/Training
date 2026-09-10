@@ -210,37 +210,59 @@
         ])
       ]));
     }
-    kap.appendChild(otuzGunGrafigi());
+    /* Üstte iki grafik yan yana: solda son 7 günün akışı, sağda anlık açık
+       iş yükü. Dar ekranda alt alta düşer. */
+    kap.appendChild(h('div.grafik-ikili', {}, [yediGunGrafigi(), acikPastasi()]));
     kap.appendChild(h('div.grid.k4', {}, [
       /* Üç durum artı bir istisna: Logo'da miktarı değişmiş siparişler. */
-      kart('Talep edilen', acikTalep, 'talep', "Logo'ya gönderilmeyi bekliyor", 'talepler', acikTalep > 0),
-      kart('İşleme alınan', islemdeTalep + acikSiparis, 'belge', islemdeTalep + ' talep · ' + acikSiparis + " sipariş, GİB'i bekliyor", 'siparisler'),
+      kart('Talep edilen', acikTalep, 'talep', 'İşlem bekliyor', 'talepler', acikTalep > 0),
+      /* Pasta grafikle aynı sayı: ölçü talep adedi, siparişler alt satırda. */
+      kart('İşleme alınan', islemdeTalep, 'talep', acikSiparis + ' siparişi Logo’da, fatura bekliyor', 'siparisler'),
       kart("Logo'da değişen", degisen, 'sipariş', degisen ? 'Miktar Logo tarafında değişti' : 'Fark yok', 'siparisler', degisen > 0),
       kart('Gecikmiş', gecikmis, 'sipariş', '7 günden uzun süredir tamamlanmadı', 'siparisler', gecikmis > 0)
     ]));
     return kap;
   }
 
-  /* Son 30 günün talep hunisi: açılan talep, siparişe dönüşen talep ve kapatılan
-     talep sayısı. Ölçü talep adedidir; kaleme ve ürün birimine (metre/adet)
-     inilmediği için üç seri doğrudan karşılaştırılabilir. */
-  function otuzGunGrafigi() {
-    var o = JP.gunlukOzet(30);
+  /* Son 7 günün talep akışı: açılan talep, siparişe dönüşen (işleme alınan) ve
+     kapatılan talep sayısı. Ölçü talep adedidir; kaleme ve ürün birimine
+     (metre/adet) inilmediği için üç seri doğrudan karşılaştırılabilir. */
+  function yediGunGrafigi() {
+    var o = JP.gunlukOzet(7);
     var etiketler = o.gunler.map(function (g) {
       var p = g.gun.split('-');
       return p[2] + '.' + p[1];
     });
-    return UI.panel('Son 30 gün', h('span.small.muted', { text: 'Talep sayısı · siparişe dönüşen · kapatılan' }),
+    return UI.panel('Son 7 gün', h('span.small.muted', { text: 'Talep sayısı · işleme alınan · kapatılan' }),
       UI.grafik({
-        baslik: 'Son 30 gün · açılan, siparişe dönüşen ve kapatılan talep sayısı',
-        olcu: 'talep', tamsayi: true,
+        baslik: 'Son 7 gün · açılan, işleme alınan ve kapatılan talep sayısı',
+        /* Günlük sayım kesikli bir ölçü: gruplu çubuk, çizginin ima ettiği
+           ara gün sürekliliğini uydurmaz. Dar ekranda haftaya toplanır. */
+        tip: 'cubuk', olcu: 'talep', tamsayi: true, topla: true,
         etiketler: etiketler,
-        bos: 'Son 30 günde talep yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
+        bos: 'Son 7 günde talep yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
         seriler: [
           /* Üç aşama üç renk: açılan kırmızı, işlemde sarı, tamamlanan yeşil. */
           { ad: 'Talep edilen', renk: 'var(--accent)', veri: o.gunler.map(function (g) { return g.talep; }) },
           { ad: 'İşleme alınan', renk: 'var(--grafik-sari)', veri: o.gunler.map(function (g) { return g.isleme; }) },
           { ad: 'Tamamlanan', renk: 'var(--ok)', veri: o.gunler.map(function (g) { return g.tamam; }) }
+        ]
+      }));
+  }
+
+  /* Anlık açık iş yükü: şu an Logo'ya gitmeyi bekleyen talepler ile siparişi
+     Logo'da olup GİB gönderimini bekleyenler. Tamamlananlar buraya girmez —
+     bu grafik "elimizde ne var" sorusunu yanıtlar. */
+  function acikPastasi() {
+    var d = JP.anlikDurum();
+    return UI.panel('Anlık açık talep', h('span.small.muted', { text: 'Tamamlananlar hariç' }),
+      UI.pasta({
+        baslik: 'Açık taleplerin dağılımı',
+        olcu: 'talep', ortaAlt: 'açık talep',
+        bos: 'Şu an açık talep yok.',
+        dilimler: [
+          { ad: 'Talep edilen', deger: d.talep, renk: 'var(--accent)' },
+          { ad: 'İşleme alınan', deger: d.isleme, renk: 'var(--grafik-sari)' }
         ]
       }));
   }

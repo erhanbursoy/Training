@@ -1598,6 +1598,22 @@
     return { gunler: gunler };
   };
 
+  /** Anlık talep durumu: şu an kaç talep açık (Logo'ya gitmedi), kaçı işleme
+   *  alındı (siparişi Logo'da, fatura bekliyor), kaçı kapandı. Tarih süzgeci
+   *  yoktur — panelin "şu an ne var" görünümüdür. */
+  JP.anlikDurum = function () {
+    var sonuc = { talep: 0, isleme: 0, tamam: 0, iptal: 0 };
+    JP.db.talepler.forEach(function (t) {
+      var d = JP.talepDurumu(t);
+      if (d === JP.DURUM.talep) sonuc.talep++;
+      else if (d === JP.DURUM.isleme) sonuc.isleme++;
+      else if (d === JP.DURUM.tamam) sonuc.tamam++;
+      else sonuc.iptal++;
+    });
+    sonuc.acik = sonuc.talep + sonuc.isleme;
+    return sonuc;
+  };
+
   /** 1 — Ürün raporu: ürün bazında kaç talep gelmiş, kaçı sevk edilmiş, kaçı
    *  tamamlanmış. Sayımlar talep kalemi düzeyinde, miktarlar ürünün kendi
    *  biriminde. Aralık talep tarihine bakar. */

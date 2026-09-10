@@ -35,7 +35,7 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
 7. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
    işlenir, sipariş kapanır. Tekrar sorgulayın — mükerrer hareket yazılmaz.
 8. **Firma → Raporlar** · Üç raporu tarih aralığıyla süzün: ürün raporu, bayi raporu ve
-   performans raporu. Panelde son 30 günün talep grafiği durur.
+   performans raporu. Panelde son 7 günün talep akışı ve anlık açık talep halkası durur.
 9. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
    görsel bayi kataloğunda görünür.
 
@@ -287,23 +287,43 @@ besleyen talepleri ekler. Talep kalemi satırında **Sipariş** sütunu vardır:
 sipariş numaraları rozet olarak yazar ve tıklanınca sipariş açılır. Böylece kaldırılan
 "İşlemler" sekmesindeki bilgi satırın kendisine taşınmış olur.
 
-Panelde son 30 günün talep hunisi çizgi grafiği olarak durur (`JP.gunlukOzet` +
-`UI.grafik`): gün gün **kaç talep açıldı**, **kaçı işleme alındı** ve **kaçı kapatıldı**.
+Panelde iki grafik yan yana durur: solda **son 7 günün akışı**, sağda **anlık açık talep**
+dağılımı; dar ekranda alt alta düşerler.
+
+Akış grafiği (`JP.gunlukOzet(7)` + `UI.grafik`) gün gün **kaç talep açıldı**, **kaçı işleme
+alındı** ve **kaçı kapatıldı** sorusunu yanıtlar.
 Ölçü talep adedidir — kaleme ve ürün birimine (metre/adet) inilmediği için üç seri
 doğrudan karşılaştırılabilir ve birim seçicisine gerek kalmaz. Bir talep her seriye en çok
 bir kez girer: açılış talebin tarihine, işleme alınma o talepten ilk siparişin açıldığı güne,
 kapanış son tamamlanma (GİB) hareketinin gününe yazılır. İptal edilen talep sayılmaz.
 
 Üç aşama üç renkle ayrışır: **açılan kırmızı** (`--accent`), **işlemde sarı**
-(`--grafik-sari`), **tamamlanan yeşil** (`--ok`). Çizgi yalnızca değeri olan günlerden
-geçer; hareketsiz gün sıfır sayılıp çizgiyi tabana indirmez, komşu noktalar doğrudan
-birleştirilir. Sayılar küçükken seriler aynı değere bindiği için her çizgi kendi zemin
-rengi hâlesiyle çizilir — üstteki çizgi alttakini keser, ikisi tek çizgiye karışmaz.
-Değeri olan her nokta serinin renginde dolu işaretlenir ve üzerine gelince gün, seri ve
-sayı ipuçta yazar.
+(`--grafik-sari`), **tamamlanan yeşil** (`--ok`).
+
+**Neden gruplu çubuk, neden çizgi ya da yığın değil.** Günlük sayım *kesikli* bir ölçüdür:
+1. günde 1, 5. günde 2 talep varsa aradaki günlerde bir değer yoktur, çizgi bunları
+birleştirerek olmayan bir süreklilik ima eder. Bu yüzden her gün için seri başına bir çubuk
+çizilir; sıfır günde çubuk yoktur, o gün boş kalır. **Yığın çubuk kullanılmaz**, çünkü üç
+seri aynı talebin farklı aşamalarıdır: 1. günde açılıp 10. günde kapanan talep hem kırmızıda
+hem yeşilde birer kez sayılır, dolayısıyla üçünün toplamı bir şey ifade etmez — yığın, olmayan
+bir "günün toplamı" okumasına davet eder. Çubuğun üzerine gelince gün, seri ve sayı ipuçta
+yazar. Çizgi görünümü `UI.grafik({ tip: 'cizgi' })` ile hâlâ kullanılabilir.
+
+Eksen tam sayıdır ve kademe veriye göre kısılır: en yüksek değer 2 ise eksen 4'e kadar boş
+bant bırakmaz. Sütun sayısı azken viewBox daralır, böylece yazılar ekranda küçülmez. Daha
+uzun bir pencere seçilirse (`JP.gunlukOzet(30)`) telefon genişliğinde günler **haftalık
+kovaya** toplanır (sayım ölçüsü olduğu için toplama geçerlidir); eksende kovanın ilk günü
+yazar, aralığın tamamı ipucunda görünür.
+
 Grafik satır içi SVG'dir, kütüphane yüklenmez — artifact ortamının içerik güvenlik kuralı
 dış betiğe izin vermez. Telefon genişliğinde grafik daha kare bir kutuya geçer ve ekran
 eşiği aşıldığında yeniden çizilir.
+
+Halka grafik (`JP.anlikDurum` + `UI.pasta`) tarih süzmez, "şu an elimizde ne var" sorusunu
+yanıtlar: Logo'ya gönderilmeyi bekleyen talepler ile siparişi Logo'da olup GİB gönderimini
+bekleyenler. Tamamlananlar bu grafiğe girmez; ortadaki sayı açık talep toplamıdır, gösterge
+sayı ve yüzdeyi verir. Panelin "Talep edilen" ve "İşleme alınan" kartları halkayla aynı
+sayıları gösterir — ölçü ikisinde de talep adedidir.
 
 Örnek veri bunu besleyecek şekilde kurulur: son 30 güne yayılmış 30 talep açılır, bir kısmı
 1–3 gün içinde siparişe döner, bir kısmı da fatura GİB'e gönderilerek kapanır. Desen
