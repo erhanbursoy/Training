@@ -34,13 +34,15 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
    faturayı kesin, GİB'e gönderin.
 7. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
    işlenir, sipariş kapanır. Tekrar sorgulayın — mükerrer hareket yazılmaz.
-8. **Firma → Raporlar** · Dört raporu tarih aralığıyla süzün: en çok sipariş edilenler,
-   karşılanmayı bekleyenler, bayi bazında sipariş sayıları, talepten karşılanmaya süre.
+8. **Firma → Raporlar** · Üç raporu tarih aralığıyla süzün: ürün raporu, bayi raporu ve
+   performans raporu. Panelde son 30 günün talep grafiği durur.
 9. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
    görsel bayi kataloğunda görünür.
 
-Panel üstündeki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
-böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön** başlangıç örneğini geri yükler.
+Giriş sayfasındaki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
+böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön** başlangıç örneğini
+geri yükler. Bu iki düğme demo aracı olduğu için portal ekranlarında değil, giriş
+sayfasındadır.
 
 ## Kullanıcılar ve giriş
 
@@ -64,7 +66,8 @@ Bu yüzden veri okunurken göç uygulanır: `tip` alanı olmayan eski kayıtlar 
 etkin bir firma yöneticisi yoksa biri ayağa kaldırılır (pasif yönetici aktife çekilir,
 yoksa bir firma kullanıcısı yöneticiye alınır, o da yoksa varsayılan yönetici hesabı
 açılır). **Demoyu baştan başlat** portal tarafını boşaltırken de bu hesabı bırakır.
-Giriş ekranının altındaki **Örnek veriye dön** ise veri bozulursa çıkış kapısıdır.
+Giriş ekranındaki **Giriş sayfasına dön →** bağlantısı ana sayfaya çıkarır; veri bozulursa
+oradaki **Örnek veriye dön** çıkış kapısıdır.
 
 **Kullanıcı yönetimi Yönetici rolündedir.** Muhasebe rolü diğer bütün ekranları görür ama
 iki kullanıcı bölümü ona hiç görünmez. Sağ üstteki hesap menüsü rolü ve yetkiyi yazar.
@@ -284,12 +287,24 @@ besleyen talepleri ekler. Talep kalemi satırında **Sipariş** sütunu vardır:
 sipariş numaraları rozet olarak yazar ve tıklanınca sipariş açılır. Böylece kaldırılan
 "İşlemler" sekmesindeki bilgi satırın kendisine taşınmış olur.
 
-Panelde son 30 günün çizgi grafiği vardır: talep edilen, işleme alınan ve tamamlanan
-miktarlar üç seri olarak çizilir (`JP.gunlukOzet` + `UI.grafik`). Grafik satır içi SVG'dir;
-kütüphane yüklenmez, çünkü artifact ortamının içerik güvenlik kuralı dış betiğe izin
-vermez. Miktarlar ürünün kendi biriminden geldiği için seriler **tek birim** üzerinden
-çizilir; birden çok birimde hareket varsa sağ üstte birim seçici çıkar. Telefon
-genişliğinde grafik daha kare bir kutuya geçer ve ekran eşiği aşıldığında yeniden çizilir.
+Panelde son 30 günün talep hunisi çizgi grafiği olarak durur (`JP.gunlukOzet` +
+`UI.grafik`): gün gün **kaç talep açıldı**, **kaçı işleme alındı** ve **kaçı kapatıldı**.
+Ölçü talep adedidir — kaleme ve ürün birimine (metre/adet) inilmediği için üç seri
+doğrudan karşılaştırılabilir ve birim seçicisine gerek kalmaz. Bir talep her seriye en çok
+bir kez girer: açılış talebin tarihine, işleme alınma o talepten ilk siparişin açıldığı güne,
+kapanış son tamamlanma (GİB) hareketinin gününe yazılır. İptal edilen talep sayılmaz.
+
+Çizgi yalnızca değeri olan günlerden geçer; hareketsiz gün sıfır sayılıp çizgiyi tabana
+indirmez, komşu noktalar doğrudan birleştirilir. Sayılar küçükken seriler aynı değere
+bindiği için ikisi kesikli desenle çizilir ve işaretler serinin renginde dolu gösterilir.
+Grafik satır içi SVG'dir, kütüphane yüklenmez — artifact ortamının içerik güvenlik kuralı
+dış betiğe izin vermez. Telefon genişliğinde grafik daha kare bir kutuya geçer ve ekran
+eşiği aşıldığında yeniden çizilir.
+
+Örnek veri bunu besleyecek şekilde kurulur: son 30 güne yayılmış 30 talep açılır, bir kısmı
+1–3 gün içinde siparişe döner, bir kısmı da fatura GİB'e gönderilerek kapanır. Desen
+sabittir (rastgele yok), böylece her yüklemede aynı geçmiş çıkar. Siparişe kapalı bayi
+(Lefkoşa) bu akışta yer almaz; kapalı bayi davranışı ayrıca görünür.
 
 ### Miktar sözlüğü
 

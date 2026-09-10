@@ -1545,53 +1545,57 @@
     return Math.round(dizi.reduce(function (t, v) { return t + v; }, 0) / dizi.length * 10) / 10;
   }
 
-  /** Son N günün günlük miktar özeti: talep edilen / işleme alınan / tamamlanan.
-   *  Hareket defterinden okunur; birimler karışmasın diye ürünün gösterim
-   *  birimine göre ayrılır ve istenen birim süzülür. Birim verilmezse hareketi
-   *  en çok olan birim kullanılır. */
-  JP.gunlukOzet = function (gun, birim) {
+  /** Son N günün talep hunisi: her gün kaç talep açıldı, kaçı siparişe dönüştü,
+   *  kaçı kapandı. Ölçü **talep adedidir** — kaleme ve ürün birimine (metre/adet)
+   *  inilmez, bu yüzden üç seri doğrudan karşılaştırılabilir.
+   *
+   *  Bir talep her seriye en çok bir kez girer:
+   *    açılış   → talebin tarihi
+   *    dönüşüm  → o talepten ilk siparişin açıldığı gün
+   *    kapanış  → talebin son tamamlanma (GİB) hareketinin günü
+   */
+  JP.gunlukOzet = function (gun) {
     gun = gun || 30;
     var db = JP.db;
     var bugun = new Date(); bugun.setHours(0, 0, 0, 0);
     var bas = new Date(bugun.getTime() - (gun - 1) * 86400000);
-    var anahtar = function (d) { return d.toISOString().slice(0, 10); };
+    var basAnahtar = bas.toISOString().slice(0, 10);
 
-    /* Aralıktaki hareketleri birime göre topla; birim seçilmemişse en yoğun olanı
-       seç. Hareket kaydına alan yazılmaz — birim yanında ayrı tutulur. */
-    var birimToplam = {}, son = new Date(bugun.getTime() + 86400000 - 1);
-    var urunBirim = {};
-    db.urunler.forEach(function (u) { urunBirim[u.kod] = u.gosterimBirimi || u.birim || '—'; });
-    var ilgili = [];
-    db.havuz.forEach(function (hr) {
-      if (hr.rezervKapanis) return;                 // fatura ile çözülen rezerv sayılmaz
-      if (hr.miktar <= 0) return;                   // düzeltme/iptal hareketleri seriye girmez
-      var t = new Date(hr.ts);
-      if (isNaN(t) || t < bas || t > son) return;
-      var b = urunBirim[hr.urunKod] || '—';
-      birimToplam[b] = (birimToplam[b] || 0) + hr.miktar;
-      ilgili.push({ hareket: hr, birim: b });
-    });
-    var birimler = Object.keys(birimToplam).sort(function (a, b) { return birimToplam[b] - birimToplam[a]; });
-    var secili = birim || birimler[0] || '';
-
-    var gunler = [];
+    var gunler = [], indeks = {};
     for (var i = 0; i < gun; i++) {
-      var d = new Date(bas.getTime() + i * 86400000);
-      gunler.push({ gun: anahtar(d), talep: 0, isleme: 0, tamam: 0 });
+      var anahtar = new Date(bas.getTime() + i * 86400000).toISOString().slice(0, 10);
+      indeks[anahtar] = i;
+      gunler.push({ gun: anahtar, talep: 0, isleme: 0, tamam: 0 });
     }
-    var indeks = {};
-    gunler.forEach(function (g, i) { indeks[g.gun] = i; });
+    function say(ts, alan) {
+      var g = String(ts || '').slice(0, 10);
+      if (!g || g < basAnahtar) return;
+      var i = indeks[g];
+      if (i !== undefined) gunler[i][alan]++;
+    }
 
-    ilgili.forEach(function (kayit) {
-      if (secili && kayit.birim !== secili) return;
-      var hr = kayit.hareket;
-      var i = indeks[String(hr.ts).slice(0, 10)];
-      if (i === undefined) return;
-      if (hr.tip === 'dTalep') gunler[i].talep = r2(gunler[i].talep + hr.miktar);
-      else if (hr.tip === 'dRezerv') gunler[i].isleme = r2(gunler[i].isleme + hr.miktar);
-      else if (hr.tip === 'dFatura') gunler[i].tamam = r2(gunler[i].tamam + hr.miktar);
+    /* Talep başına ilk sipariş günü ve son tamamlanma günü. */
+    var ilkSiparis = {}, sonTamam = {};
+    db.siparisler.forEach(function (s) {
+      if (s.durum === JP.DURUM.iptal) return;
+      s.kalemler.forEach(function (k) {
+        if (!k.talepNo) return;
+        if (!ilkSiparis[k.talepNo] || s.tarih < ilkSiparis[k.talepNo]) ilkSiparis[k.talepNo] = s.tarih;
+      });
     });
-    return { gunler: gunler, birim: secili, birimler: birimler };
+    db.havuz.forEach(function (h) {
+      if (h.tip !== 'dFatura' || h.miktar <= 0 || !h.talepNo) return;
+      if (!sonTamam[h.talepNo] || h.ts > sonTamam[h.talepNo]) sonTamam[h.talepNo] = h.ts;
+    });
+
+    db.talepler.forEach(function (t) {
+      var durum = JP.talepDurumu(t);
+      if (durum === JP.DURUM.iptal) return;              // iptal talep sayılmaz
+      say(t.tarih, 'talep');
+      if (ilkSiparis[t.no]) say(ilkSiparis[t.no], 'isleme');
+      if (durum === JP.DURUM.tamam) say(sonTamam[t.no] || t.tarih, 'tamam');
+    });
+    return { gunler: gunler };
   };
 
   /** 1 — Ürün raporu: ürün bazında kaç talep gelmiş, kaçı sevk edilmiş, kaçı
@@ -1864,12 +1868,100 @@
       { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
     ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21), yetkili('BYI-0004'), 'bayi');
 
+    /* Baştan sona kapanmış bir talep: huni grafiğinin üçüncü serisi ve
+       "Tamamlandı" durumu demoda görünsün. */
+    _ts = gecmis(14);
+    JP.talepOlustur('BYI-0001', [
+      { urunKod: U.tul1, miktar: 60 }
+    ], 'Numune siparişi — tek kalem.', ileriGun(4), yetkili('BYI-0001'), 'bayi');
+    _ts = gecmis(13);
+    var tk = db.talepler.find(function (t) { return t.not && t.not.indexOf('Numune') === 0; });
+    var sk = JP.siparisOlustur('BYI-0001', [
+      { talepNo: tk.no, kalemId: tk.kalemler[0].id, miktar: 60 }
+    ], 'muhasebe', tk.teslimTarihi);
+    _ts = gecmis(11);
+    var fisk = db.logo.fisler.find(function (f) { return f.portalSiparisNo === sk.no; });
+    var fatk = JP.logo.faturaKes(fisk.fisNo, fisk.satirlar.map(function (r) { return { fisSatirId: r.id, miktar: r.miktar }; }), 'e-Arşiv');
+    JP.logo.gibGonder(fatk.no, true);
+    JP.durumSorgula(sk.no);
+
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
     _ts = gecmis(2);
     var t2 = db.talepler.find(function (t) { return t.bayiKod === 'BYI-0002'; });
     JP.siparisOlustur('BYI-0002', [
       { talepNo: t2.no, kalemId: t2.kalemler[0].id, miktar: 150 }
     ], 'muhasebe', t2.teslimTarihi);
+
+    /* --- son 30 günün akışı ---------------------------------------------
+       Panel grafiği ve raporlar boş görünmesin diye gerçekçi bir geçmiş
+       kurulur: gün gün talep açılır, bir kısmı siparişe döner, bir kısmı
+       GİB gönderimiyle kapanır. Desen sabittir; her yüklemede aynı geçmiş
+       çıkar (rastgele yok). */
+    function gecmisAkis(gunOnce, bayiKod, satirlar, donusumGun, kapanisGun, not) {
+      _ts = gecmis(gunOnce);
+      var t = JP.talepOlustur(bayiKod, satirlar, not || null,
+        gunOnce > 10 ? null : ileriGun(14 - gunOnce), yetkili(bayiKod), 'bayi');
+      if (donusumGun === null) return;
+      var dGun = Math.max(0, gunOnce - donusumGun);
+      _ts = gecmis(dGun);
+      var tam = db.talepler.find(function (x) { return x.no === t.no; });
+      var secim = JP.talepKalemDurum(tam)
+        .filter(function (k) { return k.donusturulebilir > 0.001; })
+        .map(function (k) {
+          return { talepNo: t.no, kalemId: k.kalem.id, urunKod: k.kalem.urunKod, miktar: k.donusturulebilir };
+        });
+      if (!secim.length) return;
+      var sip = JP.siparisOlustur(bayiKod, secim, 'muhasebe', tam.teslimTarihi);
+      if (kapanisGun === null) return;
+      _ts = gecmis(Math.max(0, dGun - kapanisGun));
+      var fis = db.logo.fisler.find(function (f) { return f.portalSiparisNo === sip.no; });
+      if (!fis) return;
+      var fat = JP.logo.faturaKes(fis.fisNo,
+        fis.satirlar.map(function (r) { return { fisSatirId: r.id, miktar: r.miktar }; }), 'e-Fatura');
+      JP.logo.gibGonder(fat.no, true);
+      JP.durumSorgula(sip.no);
+    }
+
+    /* Lefkoşa (BYI-0005) cari kartı Logo'da pasif; siparişe kapalı olduğu için
+       geçmiş akışta yer almaz — kapalı bayi davranışı demoda ayrıca görünür. */
+    var P = function (grup, sira) { return tohumUrun(db, grup, sira); };
+    var STOR = 'Stor Perde Kumaşı', TUL = 'Tül Stor Perde Kumaşı';
+    var DIKEY = 'Dikey Perde Kumaşı', TREND = 'Jalpersan Trendleri', RONCO = 'Ronco';
+    /* [gün önce, bayi, kalemler, dönüşüm gecikmesi, kapanış gecikmesi] */
+    [
+      [29, 'BYI-0001', [[STOR, 2, 180], [TUL, 3, 60]], 1, 3],
+      [28, 'BYI-0003', [[DIKEY, 1, 240]], 2, 4],
+      [27, 'BYI-0002', [[STOR, 4, 90], [TREND, 2, 120]], 1, null],
+      [26, 'BYI-0001', [[RONCO, 1, 18]], null, null],
+      [25, 'BYI-0002', [[TUL, 5, 150], [STOR, 7, 200]], 3, 5],
+      [25, 'BYI-0003', [[STOR, 9, 75]], 1, 2],
+      [23, 'BYI-0002', [[DIKEY, 2, 120]], 1, 3],
+      [22, 'BYI-0001', [[STOR, 11, 260], [TUL, 6, 90], [RONCO, 2, 24]], 2, null],
+      [22, 'BYI-0004', [[STOR, 3, 300]], null, null],
+      [21, 'BYI-0001', [[TREND, 3, 60]], 1, 4],
+      [19, 'BYI-0003', [[TUL, 8, 130], [STOR, 13, 110]], 2, 3],
+      [18, 'BYI-0001', [[DIKEY, 4, 95]], 1, null],
+      [17, 'BYI-0002', [[STOR, 15, 220]], 2, 5],
+      [16, 'BYI-0004', [[TUL, 10, 160]], 1, 2],
+      [15, 'BYI-0001', [[STOR, 17, 140], [TREND, 5, 70]], 2, null],
+      [15, 'BYI-0003', [[RONCO, 3, 12]], 1, 3],
+      [13, 'BYI-0003', [[DIKEY, 6, 185]], 1, null],
+      [12, 'BYI-0002', [[STOR, 19, 95], [TUL, 12, 105]], 3, 4],
+      [12, 'BYI-0001', [[TUL, 14, 80]], 1, 2],
+      [10, 'BYI-0002', [[STOR, 21, 175]], 2, null],
+      [9, 'BYI-0003', [[TREND, 7, 130]], 1, 3],
+      [8, 'BYI-0004', [[STOR, 23, 210]], null, null],
+      [7, 'BYI-0002', [[DIKEY, 8, 145], [RONCO, 4, 30]], 2, 2],
+      [6, 'BYI-0001', [[STOR, 25, 190]], 1, null],
+      [5, 'BYI-0001', [[TUL, 16, 120]], 2, null],
+      [5, 'BYI-0003', [[STOR, 27, 85]], 1, 1],
+      [4, 'BYI-0002', [[TREND, 9, 110]], null, null],
+      [3, 'BYI-0001', [[DIKEY, 10, 165], [TUL, 18, 70]], 1, null],
+      [2, 'BYI-0004', [[TUL, 20, 140]], 1, null],
+      [1, 'BYI-0003', [[STOR, 29, 125]], null, null]
+    ].forEach(function (x) {
+      gecmisAkis(x[0], x[1], x[2].map(function (k) { return { urunKod: P(k[0], k[1]), miktar: k[2] }; }), x[3], x[4]);
+    });
 
     _ts = null;
     db.meta.rev = 0;

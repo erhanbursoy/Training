@@ -221,37 +221,27 @@
     return kap;
   }
 
-  /* Son 30 günün üç serisi: talep edilen, işleme alınan, tamamlanan miktar.
-     Miktarlar ürünün kendi biriminden geldiği için birimler karıştırılmaz —
-     birden çok birimde hareket varsa üstte seçici çıkar. */
-  var grafikBirim = null;
+  /* Son 30 günün talep hunisi: açılan talep, siparişe dönüşen talep ve kapatılan
+     talep sayısı. Ölçü talep adedidir; kaleme ve ürün birimine (metre/adet)
+     inilmediği için üç seri doğrudan karşılaştırılabilir. */
   function otuzGunGrafigi() {
-    var o = JP.gunlukOzet(30, grafikBirim);
-    if (!o.birimler.length) grafikBirim = null;
-    else if (grafikBirim && o.birimler.indexOf(grafikBirim) < 0) { grafikBirim = null; o = JP.gunlukOzet(30, null); }
-
+    var o = JP.gunlukOzet(30);
     var etiketler = o.gunler.map(function (g) {
       var p = g.gun.split('-');
       return p[2] + '.' + p[1];
     });
-    var grafik = UI.grafik({
-      baslik: 'Son 30 gün · talep edilen, işleme alınan ve tamamlanan miktar',
-      birim: o.birim,
-      etiketler: etiketler,
-      bos: 'Son 30 günde hareket yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
-      seriler: [
-        { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
-        { ad: 'İşleme alınan', renk: 'var(--info)', veri: o.gunler.map(function (g) { return g.isleme; }) },
-        { ad: 'Tamamlanan', renk: 'var(--ok)', veri: o.gunler.map(function (g) { return g.tamam; }) }
-      ]
-    });
-    var secici = o.birimler.length > 1
-      ? h('div.seg', {}, o.birimler.map(function (b) {
-          return h('button', { 'aria-pressed': String(b === o.birim), text: b,
-            onclick: function () { grafikBirim = b; kabuk.ciz(); } });
-        }))
-      : null;
-    return UI.panel('Son 30 gün', secici, grafik);
+    return UI.panel('Son 30 gün', h('span.small.muted', { text: 'Talep sayısı · siparişe dönüşen · kapatılan' }),
+      UI.grafik({
+        baslik: 'Son 30 gün · açılan, siparişe dönüşen ve kapatılan talep sayısı',
+        olcu: 'talep', tamsayi: true,
+        etiketler: etiketler,
+        bos: 'Son 30 günde talep yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
+        seriler: [
+          { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
+          { ad: 'İşleme alınan', renk: 'var(--info)', desen: '7 4', veri: o.gunler.map(function (g) { return g.isleme; }) },
+          { ad: 'Tamamlanan', renk: 'var(--ok)', desen: '2 4', veri: o.gunler.map(function (g) { return g.tamam; }) }
+        ]
+      }));
   }
 
   /* ------------------------------------------------- talepler: liste + detay */

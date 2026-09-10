@@ -2429,53 +2429,57 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     return Math.round(dizi.reduce(function (t, v) { return t + v; }, 0) / dizi.length * 10) / 10;
   }
 
-  /** Son N günün günlük miktar özeti: talep edilen / işleme alınan / tamamlanan.
-   *  Hareket defterinden okunur; birimler karışmasın diye ürünün gösterim
-   *  birimine göre ayrılır ve istenen birim süzülür. Birim verilmezse hareketi
-   *  en çok olan birim kullanılır. */
-  JP.gunlukOzet = function (gun, birim) {
+  /** Son N günün talep hunisi: her gün kaç talep açıldı, kaçı siparişe dönüştü,
+   *  kaçı kapandı. Ölçü **talep adedidir** — kaleme ve ürün birimine (metre/adet)
+   *  inilmez, bu yüzden üç seri doğrudan karşılaştırılabilir.
+   *
+   *  Bir talep her seriye en çok bir kez girer:
+   *    açılış   → talebin tarihi
+   *    dönüşüm  → o talepten ilk siparişin açıldığı gün
+   *    kapanış  → talebin son tamamlanma (GİB) hareketinin günü
+   */
+  JP.gunlukOzet = function (gun) {
     gun = gun || 30;
     var db = JP.db;
     var bugun = new Date(); bugun.setHours(0, 0, 0, 0);
     var bas = new Date(bugun.getTime() - (gun - 1) * 86400000);
-    var anahtar = function (d) { return d.toISOString().slice(0, 10); };
+    var basAnahtar = bas.toISOString().slice(0, 10);
 
-    /* Aralıktaki hareketleri birime göre topla; birim seçilmemişse en yoğun olanı
-       seç. Hareket kaydına alan yazılmaz — birim yanında ayrı tutulur. */
-    var birimToplam = {}, son = new Date(bugun.getTime() + 86400000 - 1);
-    var urunBirim = {};
-    db.urunler.forEach(function (u) { urunBirim[u.kod] = u.gosterimBirimi || u.birim || '—'; });
-    var ilgili = [];
-    db.havuz.forEach(function (hr) {
-      if (hr.rezervKapanis) return;                 // fatura ile çözülen rezerv sayılmaz
-      if (hr.miktar <= 0) return;                   // düzeltme/iptal hareketleri seriye girmez
-      var t = new Date(hr.ts);
-      if (isNaN(t) || t < bas || t > son) return;
-      var b = urunBirim[hr.urunKod] || '—';
-      birimToplam[b] = (birimToplam[b] || 0) + hr.miktar;
-      ilgili.push({ hareket: hr, birim: b });
-    });
-    var birimler = Object.keys(birimToplam).sort(function (a, b) { return birimToplam[b] - birimToplam[a]; });
-    var secili = birim || birimler[0] || '';
-
-    var gunler = [];
+    var gunler = [], indeks = {};
     for (var i = 0; i < gun; i++) {
-      var d = new Date(bas.getTime() + i * 86400000);
-      gunler.push({ gun: anahtar(d), talep: 0, isleme: 0, tamam: 0 });
+      var anahtar = new Date(bas.getTime() + i * 86400000).toISOString().slice(0, 10);
+      indeks[anahtar] = i;
+      gunler.push({ gun: anahtar, talep: 0, isleme: 0, tamam: 0 });
     }
-    var indeks = {};
-    gunler.forEach(function (g, i) { indeks[g.gun] = i; });
+    function say(ts, alan) {
+      var g = String(ts || '').slice(0, 10);
+      if (!g || g < basAnahtar) return;
+      var i = indeks[g];
+      if (i !== undefined) gunler[i][alan]++;
+    }
 
-    ilgili.forEach(function (kayit) {
-      if (secili && kayit.birim !== secili) return;
-      var hr = kayit.hareket;
-      var i = indeks[String(hr.ts).slice(0, 10)];
-      if (i === undefined) return;
-      if (hr.tip === 'dTalep') gunler[i].talep = r2(gunler[i].talep + hr.miktar);
-      else if (hr.tip === 'dRezerv') gunler[i].isleme = r2(gunler[i].isleme + hr.miktar);
-      else if (hr.tip === 'dFatura') gunler[i].tamam = r2(gunler[i].tamam + hr.miktar);
+    /* Talep başına ilk sipariş günü ve son tamamlanma günü. */
+    var ilkSiparis = {}, sonTamam = {};
+    db.siparisler.forEach(function (s) {
+      if (s.durum === JP.DURUM.iptal) return;
+      s.kalemler.forEach(function (k) {
+        if (!k.talepNo) return;
+        if (!ilkSiparis[k.talepNo] || s.tarih < ilkSiparis[k.talepNo]) ilkSiparis[k.talepNo] = s.tarih;
+      });
     });
-    return { gunler: gunler, birim: secili, birimler: birimler };
+    db.havuz.forEach(function (h) {
+      if (h.tip !== 'dFatura' || h.miktar <= 0 || !h.talepNo) return;
+      if (!sonTamam[h.talepNo] || h.ts > sonTamam[h.talepNo]) sonTamam[h.talepNo] = h.ts;
+    });
+
+    db.talepler.forEach(function (t) {
+      var durum = JP.talepDurumu(t);
+      if (durum === JP.DURUM.iptal) return;              // iptal talep sayılmaz
+      say(t.tarih, 'talep');
+      if (ilkSiparis[t.no]) say(ilkSiparis[t.no], 'isleme');
+      if (durum === JP.DURUM.tamam) say(sonTamam[t.no] || t.tarih, 'tamam');
+    });
+    return { gunler: gunler };
   };
 
   /** 1 — Ürün raporu: ürün bazında kaç talep gelmiş, kaçı sevk edilmiş, kaçı
@@ -2748,12 +2752,100 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
     ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21), yetkili('BYI-0004'), 'bayi');
 
+    /* Baştan sona kapanmış bir talep: huni grafiğinin üçüncü serisi ve
+       "Tamamlandı" durumu demoda görünsün. */
+    _ts = gecmis(14);
+    JP.talepOlustur('BYI-0001', [
+      { urunKod: U.tul1, miktar: 60 }
+    ], 'Numune siparişi — tek kalem.', ileriGun(4), yetkili('BYI-0001'), 'bayi');
+    _ts = gecmis(13);
+    var tk = db.talepler.find(function (t) { return t.not && t.not.indexOf('Numune') === 0; });
+    var sk = JP.siparisOlustur('BYI-0001', [
+      { talepNo: tk.no, kalemId: tk.kalemler[0].id, miktar: 60 }
+    ], 'muhasebe', tk.teslimTarihi);
+    _ts = gecmis(11);
+    var fisk = db.logo.fisler.find(function (f) { return f.portalSiparisNo === sk.no; });
+    var fatk = JP.logo.faturaKes(fisk.fisNo, fisk.satirlar.map(function (r) { return { fisSatirId: r.id, miktar: r.miktar }; }), 'e-Arşiv');
+    JP.logo.gibGonder(fatk.no, true);
+    JP.durumSorgula(sk.no);
+
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
     _ts = gecmis(2);
     var t2 = db.talepler.find(function (t) { return t.bayiKod === 'BYI-0002'; });
     JP.siparisOlustur('BYI-0002', [
       { talepNo: t2.no, kalemId: t2.kalemler[0].id, miktar: 150 }
     ], 'muhasebe', t2.teslimTarihi);
+
+    /* --- son 30 günün akışı ---------------------------------------------
+       Panel grafiği ve raporlar boş görünmesin diye gerçekçi bir geçmiş
+       kurulur: gün gün talep açılır, bir kısmı siparişe döner, bir kısmı
+       GİB gönderimiyle kapanır. Desen sabittir; her yüklemede aynı geçmiş
+       çıkar (rastgele yok). */
+    function gecmisAkis(gunOnce, bayiKod, satirlar, donusumGun, kapanisGun, not) {
+      _ts = gecmis(gunOnce);
+      var t = JP.talepOlustur(bayiKod, satirlar, not || null,
+        gunOnce > 10 ? null : ileriGun(14 - gunOnce), yetkili(bayiKod), 'bayi');
+      if (donusumGun === null) return;
+      var dGun = Math.max(0, gunOnce - donusumGun);
+      _ts = gecmis(dGun);
+      var tam = db.talepler.find(function (x) { return x.no === t.no; });
+      var secim = JP.talepKalemDurum(tam)
+        .filter(function (k) { return k.donusturulebilir > 0.001; })
+        .map(function (k) {
+          return { talepNo: t.no, kalemId: k.kalem.id, urunKod: k.kalem.urunKod, miktar: k.donusturulebilir };
+        });
+      if (!secim.length) return;
+      var sip = JP.siparisOlustur(bayiKod, secim, 'muhasebe', tam.teslimTarihi);
+      if (kapanisGun === null) return;
+      _ts = gecmis(Math.max(0, dGun - kapanisGun));
+      var fis = db.logo.fisler.find(function (f) { return f.portalSiparisNo === sip.no; });
+      if (!fis) return;
+      var fat = JP.logo.faturaKes(fis.fisNo,
+        fis.satirlar.map(function (r) { return { fisSatirId: r.id, miktar: r.miktar }; }), 'e-Fatura');
+      JP.logo.gibGonder(fat.no, true);
+      JP.durumSorgula(sip.no);
+    }
+
+    /* Lefkoşa (BYI-0005) cari kartı Logo'da pasif; siparişe kapalı olduğu için
+       geçmiş akışta yer almaz — kapalı bayi davranışı demoda ayrıca görünür. */
+    var P = function (grup, sira) { return tohumUrun(db, grup, sira); };
+    var STOR = 'Stor Perde Kumaşı', TUL = 'Tül Stor Perde Kumaşı';
+    var DIKEY = 'Dikey Perde Kumaşı', TREND = 'Jalpersan Trendleri', RONCO = 'Ronco';
+    /* [gün önce, bayi, kalemler, dönüşüm gecikmesi, kapanış gecikmesi] */
+    [
+      [29, 'BYI-0001', [[STOR, 2, 180], [TUL, 3, 60]], 1, 3],
+      [28, 'BYI-0003', [[DIKEY, 1, 240]], 2, 4],
+      [27, 'BYI-0002', [[STOR, 4, 90], [TREND, 2, 120]], 1, null],
+      [26, 'BYI-0001', [[RONCO, 1, 18]], null, null],
+      [25, 'BYI-0002', [[TUL, 5, 150], [STOR, 7, 200]], 3, 5],
+      [25, 'BYI-0003', [[STOR, 9, 75]], 1, 2],
+      [23, 'BYI-0002', [[DIKEY, 2, 120]], 1, 3],
+      [22, 'BYI-0001', [[STOR, 11, 260], [TUL, 6, 90], [RONCO, 2, 24]], 2, null],
+      [22, 'BYI-0004', [[STOR, 3, 300]], null, null],
+      [21, 'BYI-0001', [[TREND, 3, 60]], 1, 4],
+      [19, 'BYI-0003', [[TUL, 8, 130], [STOR, 13, 110]], 2, 3],
+      [18, 'BYI-0001', [[DIKEY, 4, 95]], 1, null],
+      [17, 'BYI-0002', [[STOR, 15, 220]], 2, 5],
+      [16, 'BYI-0004', [[TUL, 10, 160]], 1, 2],
+      [15, 'BYI-0001', [[STOR, 17, 140], [TREND, 5, 70]], 2, null],
+      [15, 'BYI-0003', [[RONCO, 3, 12]], 1, 3],
+      [13, 'BYI-0003', [[DIKEY, 6, 185]], 1, null],
+      [12, 'BYI-0002', [[STOR, 19, 95], [TUL, 12, 105]], 3, 4],
+      [12, 'BYI-0001', [[TUL, 14, 80]], 1, 2],
+      [10, 'BYI-0002', [[STOR, 21, 175]], 2, null],
+      [9, 'BYI-0003', [[TREND, 7, 130]], 1, 3],
+      [8, 'BYI-0004', [[STOR, 23, 210]], null, null],
+      [7, 'BYI-0002', [[DIKEY, 8, 145], [RONCO, 4, 30]], 2, 2],
+      [6, 'BYI-0001', [[STOR, 25, 190]], 1, null],
+      [5, 'BYI-0001', [[TUL, 16, 120]], 2, null],
+      [5, 'BYI-0003', [[STOR, 27, 85]], 1, 1],
+      [4, 'BYI-0002', [[TREND, 9, 110]], null, null],
+      [3, 'BYI-0001', [[DIKEY, 10, 165], [TUL, 18, 70]], 1, null],
+      [2, 'BYI-0004', [[TUL, 20, 140]], 1, null],
+      [1, 'BYI-0003', [[STOR, 29, 125]], null, null]
+    ].forEach(function (x) {
+      gecmisAkis(x[0], x[1], x[2].map(function (k) { return { urunKod: P(k[0], k[1]), miktar: k[2] }; }), x[3], x[4]);
+    });
 
     _ts = null;
     db.meta.rev = 0;
@@ -3418,11 +3510,21 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var enBuyuk = 0;
     seriler.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyuk) enBuyuk = v; }); });
 
-    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. */
+    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. Sayım ölçülerinde (belge adedi)
+       ızgara kesirli olmasın diye tepe dört tam adıma bölünür. */
+    var kademe = 4;
     var tepe = enBuyuk > 0 ? enBuyuk : 1;
-    var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
-    var carpan = tepe / basamak;
-    tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
+    if (o.tamsayi) {
+      var adimTam = Math.ceil(tepe / kademe);
+      var b10 = Math.pow(10, Math.floor(Math.log(adimTam) / Math.LN10));
+      var c = adimTam / b10;
+      adimTam = (c <= 1 ? 1 : c <= 2 ? 2 : c <= 5 ? 5 : 10) * b10;
+      tepe = adimTam * kademe;
+    } else {
+      var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
+      var carpan = tepe / basamak;
+      tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
+    }
 
     var ns = 'http://www.w3.org/2000/svg';
     function el(ad, nitelik, cocuk) {
@@ -3452,28 +3554,43 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
       var cocuklar = [];
       // yatay ızgara ve eksen değerleri
-      for (var i = 0; i <= 4; i++) {
-        var cizgiY = ustPay + alanY * (i / 4);
+      for (var i = 0; i <= kademe; i++) {
+        var cizgiY = ustPay + alanY * (i / kademe);
+        var deger = tepe * (1 - i / kademe);
         cocuklar.push(el('line', { x1: solPay, y1: cizgiY, x2: G - 8, y2: cizgiY, class: 'gizgi' }));
-        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5), JP.fmt.miktar(Math.round(tepe * (1 - i / 4))), 'gx', 'end'));
+        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5),
+          o.tamsayi ? String(Math.round(deger)) : JP.fmt.miktar(Math.round(deger)), 'gx', 'end'));
       }
-      // her seri bir çizgi
+      /* Her seri bir çizgi. Hareketsiz günler sıfır olarak çizilseydi çizgi
+         her değerden sonra tabana inip testere gibi görünürdü; onun yerine
+         değeri olan noktalar birbirine bağlanır, boş günler atlanır. */
       seriler.forEach(function (s) {
-        cocuklar.push(el('polyline', {
-          points: s.veri.map(function (v, i) { return x(i).toFixed(2) + ',' + y(v || 0).toFixed(2); }).join(' '),
+        var noktalar = [];
+        s.veri.forEach(function (v, i) {
+          if (!v) return;
+          noktalar.push(x(i).toFixed(2) + ',' + y(v).toFixed(2));
+        });
+        /* Sayım grafiğinde seriler aynı değere sık sık denk gelir; desen
+           verilmişse üst üste binen çizgiler birbirinin altından görünür. */
+        var cizgi = {
+          points: noktalar.join(' '),
           fill: 'none', stroke: s.renk, 'stroke-width': dar ? 2.6 : 2,
           'stroke-linejoin': 'round', 'stroke-linecap': 'round'
-        }));
+        };
+        if (s.desen) cizgi['stroke-dasharray'] = s.desen;
+        cocuklar.push(el('polyline', cizgi));
       });
       // değeri olan noktalara ipuçlu işaret
       seriler.forEach(function (s) {
         s.veri.forEach(function (v, i) {
           if (!v) return;
           var ipucu = el('title');
-          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.birim ? ' ' + o.birim : '');
+          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.olcu ? ' ' + o.olcu : '');
+          /* Sayım küçükken seriler aynı değere biner; işaret serinin renginde
+             dolu çizilir, ince açık kenar üst üste binenleri ayırır. */
           cocuklar.push(el('circle', {
-            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4 : 3.2,
-            fill: 'var(--surface)', stroke: s.renk, 'stroke-width': 2
+            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.4 : 3.8,
+            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.6
           }, [ipucu]));
         });
       });
@@ -3500,8 +3617,14 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var svg = ciz();
     var kutu = h('div.grafik-kutu', {}, [
       h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
-        return h('span.gosterge', {}, [h('i', { style: { background: s.renk } }), h('span', { text: s.ad })]);
-      }).concat([h('div.spacer'), o.birim ? h('span.small.muted', { text: 'miktar · ' + o.birim }) : null])),
+        /* Gösterge çizgi parçası: deseni de gösterir. */
+        return h('span.gosterge', {}, [
+          h('i', { style: s.desen
+            ? { background: 'transparent', borderTop: '3px ' + (s.desen.indexOf('2 ') === 0 ? 'dotted' : 'dashed') + ' ' + s.renk, height: '0', borderRadius: '0' }
+            : { background: s.renk } }),
+          h('span', { text: s.ad })
+        ]);
+      }).concat([h('div.spacer'), o.olcu ? h('span.small.muted', { text: o.olcu }) : null])),
       svg,
       enBuyuk > 0 ? null : h('div.small.muted', { text: o.bos || 'Bu aralıkta hareket yok.' })
     ]);
@@ -4442,37 +4565,27 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     return kap;
   }
 
-  /* Son 30 günün üç serisi: talep edilen, işleme alınan, tamamlanan miktar.
-     Miktarlar ürünün kendi biriminden geldiği için birimler karıştırılmaz —
-     birden çok birimde hareket varsa üstte seçici çıkar. */
-  var grafikBirim = null;
+  /* Son 30 günün talep hunisi: açılan talep, siparişe dönüşen talep ve kapatılan
+     talep sayısı. Ölçü talep adedidir; kaleme ve ürün birimine (metre/adet)
+     inilmediği için üç seri doğrudan karşılaştırılabilir. */
   function otuzGunGrafigi() {
-    var o = JP.gunlukOzet(30, grafikBirim);
-    if (!o.birimler.length) grafikBirim = null;
-    else if (grafikBirim && o.birimler.indexOf(grafikBirim) < 0) { grafikBirim = null; o = JP.gunlukOzet(30, null); }
-
+    var o = JP.gunlukOzet(30);
     var etiketler = o.gunler.map(function (g) {
       var p = g.gun.split('-');
       return p[2] + '.' + p[1];
     });
-    var grafik = UI.grafik({
-      baslik: 'Son 30 gün · talep edilen, işleme alınan ve tamamlanan miktar',
-      birim: o.birim,
-      etiketler: etiketler,
-      bos: 'Son 30 günde hareket yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
-      seriler: [
-        { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
-        { ad: 'İşleme alınan', renk: 'var(--info)', veri: o.gunler.map(function (g) { return g.isleme; }) },
-        { ad: 'Tamamlanan', renk: 'var(--ok)', veri: o.gunler.map(function (g) { return g.tamam; }) }
-      ]
-    });
-    var secici = o.birimler.length > 1
-      ? h('div.seg', {}, o.birimler.map(function (b) {
-          return h('button', { 'aria-pressed': String(b === o.birim), text: b,
-            onclick: function () { grafikBirim = b; kabuk.ciz(); } });
-        }))
-      : null;
-    return UI.panel('Son 30 gün', secici, grafik);
+    return UI.panel('Son 30 gün', h('span.small.muted', { text: 'Talep sayısı · siparişe dönüşen · kapatılan' }),
+      UI.grafik({
+        baslik: 'Son 30 gün · açılan, siparişe dönüşen ve kapatılan talep sayısı',
+        olcu: 'talep', tamsayi: true,
+        etiketler: etiketler,
+        bos: 'Son 30 günde talep yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
+        seriler: [
+          { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
+          { ad: 'İşleme alınan', renk: 'var(--info)', desen: '7 4', veri: o.gunler.map(function (g) { return g.isleme; }) },
+          { ad: 'Tamamlanan', renk: 'var(--ok)', desen: '2 4', veri: o.gunler.map(function (g) { return g.tamam; }) }
+        ]
+      }));
   }
 
   /* ------------------------------------------------- talepler: liste + detay */

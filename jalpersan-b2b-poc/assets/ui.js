@@ -647,11 +647,21 @@
     var enBuyuk = 0;
     seriler.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyuk) enBuyuk = v; }); });
 
-    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. */
+    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. Sayım ölçülerinde (belge adedi)
+       ızgara kesirli olmasın diye tepe dört tam adıma bölünür. */
+    var kademe = 4;
     var tepe = enBuyuk > 0 ? enBuyuk : 1;
-    var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
-    var carpan = tepe / basamak;
-    tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
+    if (o.tamsayi) {
+      var adimTam = Math.ceil(tepe / kademe);
+      var b10 = Math.pow(10, Math.floor(Math.log(adimTam) / Math.LN10));
+      var c = adimTam / b10;
+      adimTam = (c <= 1 ? 1 : c <= 2 ? 2 : c <= 5 ? 5 : 10) * b10;
+      tepe = adimTam * kademe;
+    } else {
+      var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
+      var carpan = tepe / basamak;
+      tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
+    }
 
     var ns = 'http://www.w3.org/2000/svg';
     function el(ad, nitelik, cocuk) {
@@ -681,28 +691,43 @@
 
       var cocuklar = [];
       // yatay ızgara ve eksen değerleri
-      for (var i = 0; i <= 4; i++) {
-        var cizgiY = ustPay + alanY * (i / 4);
+      for (var i = 0; i <= kademe; i++) {
+        var cizgiY = ustPay + alanY * (i / kademe);
+        var deger = tepe * (1 - i / kademe);
         cocuklar.push(el('line', { x1: solPay, y1: cizgiY, x2: G - 8, y2: cizgiY, class: 'gizgi' }));
-        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5), JP.fmt.miktar(Math.round(tepe * (1 - i / 4))), 'gx', 'end'));
+        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5),
+          o.tamsayi ? String(Math.round(deger)) : JP.fmt.miktar(Math.round(deger)), 'gx', 'end'));
       }
-      // her seri bir çizgi
+      /* Her seri bir çizgi. Hareketsiz günler sıfır olarak çizilseydi çizgi
+         her değerden sonra tabana inip testere gibi görünürdü; onun yerine
+         değeri olan noktalar birbirine bağlanır, boş günler atlanır. */
       seriler.forEach(function (s) {
-        cocuklar.push(el('polyline', {
-          points: s.veri.map(function (v, i) { return x(i).toFixed(2) + ',' + y(v || 0).toFixed(2); }).join(' '),
+        var noktalar = [];
+        s.veri.forEach(function (v, i) {
+          if (!v) return;
+          noktalar.push(x(i).toFixed(2) + ',' + y(v).toFixed(2));
+        });
+        /* Sayım grafiğinde seriler aynı değere sık sık denk gelir; desen
+           verilmişse üst üste binen çizgiler birbirinin altından görünür. */
+        var cizgi = {
+          points: noktalar.join(' '),
           fill: 'none', stroke: s.renk, 'stroke-width': dar ? 2.6 : 2,
           'stroke-linejoin': 'round', 'stroke-linecap': 'round'
-        }));
+        };
+        if (s.desen) cizgi['stroke-dasharray'] = s.desen;
+        cocuklar.push(el('polyline', cizgi));
       });
       // değeri olan noktalara ipuçlu işaret
       seriler.forEach(function (s) {
         s.veri.forEach(function (v, i) {
           if (!v) return;
           var ipucu = el('title');
-          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.birim ? ' ' + o.birim : '');
+          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.olcu ? ' ' + o.olcu : '');
+          /* Sayım küçükken seriler aynı değere biner; işaret serinin renginde
+             dolu çizilir, ince açık kenar üst üste binenleri ayırır. */
           cocuklar.push(el('circle', {
-            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4 : 3.2,
-            fill: 'var(--surface)', stroke: s.renk, 'stroke-width': 2
+            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.4 : 3.8,
+            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.6
           }, [ipucu]));
         });
       });
@@ -729,8 +754,14 @@
     var svg = ciz();
     var kutu = h('div.grafik-kutu', {}, [
       h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
-        return h('span.gosterge', {}, [h('i', { style: { background: s.renk } }), h('span', { text: s.ad })]);
-      }).concat([h('div.spacer'), o.birim ? h('span.small.muted', { text: 'miktar · ' + o.birim }) : null])),
+        /* Gösterge çizgi parçası: deseni de gösterir. */
+        return h('span.gosterge', {}, [
+          h('i', { style: s.desen
+            ? { background: 'transparent', borderTop: '3px ' + (s.desen.indexOf('2 ') === 0 ? 'dotted' : 'dashed') + ' ' + s.renk, height: '0', borderRadius: '0' }
+            : { background: s.renk } }),
+          h('span', { text: s.ad })
+        ]);
+      }).concat([h('div.spacer'), o.olcu ? h('span.small.muted', { text: o.olcu }) : null])),
       svg,
       enBuyuk > 0 ? null : h('div.small.muted', { text: o.bos || 'Bu aralıkta hareket yok.' })
     ]);
