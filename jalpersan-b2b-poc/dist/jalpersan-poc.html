@@ -4721,13 +4721,15 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     /* Üstte iki grafik yan yana: solda son 7 günün akışı, sağda anlık açık
        iş yükü. Dar ekranda alt alta düşer. */
     kap.appendChild(h('div.grafik-ikili', {}, [yediGunGrafigi(), acikPastasi()]));
+    /* Kartlarda etiket ve sayı yeter; açıklama satırı yok. Ne anlama geldikleri
+       başlıklarında ve grafiklerde yazıyor, kartlar tıklanınca ilgili bölüme
+       gidiyor. Sayılar: açık talep, işleme alınan talep, Logo'da miktarı
+       değişmiş sipariş ve 7 günden uzun süredir kapanmayan sipariş. */
     kap.appendChild(h('div.grid.k4', {}, [
-      /* Üç durum artı bir istisna: Logo'da miktarı değişmiş siparişler. */
-      kart('Talep edilen', acikTalep, 'talep', 'İşlem bekliyor', 'talepler', acikTalep > 0),
-      /* Pasta grafikle aynı sayı: ölçü talep adedi, siparişler alt satırda. */
-      kart('İşleme alınan', islemdeTalep, 'talep', acikSiparis + ' siparişi Logo’da, fatura bekliyor', 'siparisler'),
-      kart("Logo'da değişen", degisen, 'sipariş', degisen ? 'Miktar Logo tarafında değişti' : 'Fark yok', 'siparisler', degisen > 0),
-      kart('Gecikmiş', gecikmis, 'sipariş', '7 günden uzun süredir tamamlanmadı', 'siparisler', gecikmis > 0)
+      kart('Talep edilen', acikTalep, 'talep', null, 'talepler', acikTalep > 0),
+      kart('İşleme alınan', islemdeTalep, 'talep', null, 'siparisler'),
+      kart("Logo'da değişen", degisen, 'sipariş', null, 'siparisler', degisen > 0),
+      kart('Gecikmiş', gecikmis, 'sipariş', null, 'siparisler', gecikmis > 0)
     ]));
     return kap;
   }

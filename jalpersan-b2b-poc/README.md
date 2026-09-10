@@ -320,10 +320,14 @@ dış betiğe izin vermez. Telefon genişliğinde grafik daha kare bir kutuya ge
 eşiği aşıldığında yeniden çizilir.
 
 Halka grafik (`JP.anlikDurum` + `UI.pasta`) tarih süzmez, "şu an elimizde ne var" sorusunu
-yanıtlar: Logo'ya gönderilmeyi bekleyen talepler ile siparişi Logo'da olup GİB gönderimini
-bekleyenler. Tamamlananlar bu grafiğe girmez; ortadaki sayı açık talep toplamıdır, gösterge
-sayı ve yüzdeyi verir. Panelin "Talep edilen" ve "İşleme alınan" kartları halkayla aynı
-sayıları gösterir — ölçü ikisinde de talep adedidir.
+yanıtlar: işlem bekleyen talepler ile siparişi Logo'da olup fatura bekleyenler.
+Tamamlananlar bu grafiğe girmez; ortadaki sayı açık talep toplamıdır, gösterge sayı ve
+yüzdeyi verir.
+
+Grafiklerin altındaki dört kart yalnızca etiket ve sayı taşır, açıklama satırı yoktur:
+açık talep, işleme alınan talep, Logo'da miktarı değişmiş sipariş ve yedi günden uzun
+süredir kapanmayan sipariş. Kart tıklanınca ilgili bölüme gider. "Talep edilen" ve
+"İşleme alınan" kartları halkayla aynı sayıyı gösterir — ölçü ikisinde de talep adedidir.
 
 Örnek veri bunu besleyecek şekilde kurulur: son 30 güne yayılmış 30 talep açılır, bir kısmı
 1–3 gün içinde siparişe döner, bir kısmı da fatura GİB'e gönderilerek kapanır. Desen
