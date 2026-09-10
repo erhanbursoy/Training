@@ -17,6 +17,16 @@
   JP.KEY = 'jalpersan.poc.v7';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
 
+  /* Kurulum ayarları. reCAPTCHA anahtarı burada tanımlıysa giriş ekranı gerçek
+     Google bileşenini yükler; boşsa prototip yer tutucusu gösterilir.
+     UYARI: reCAPTCHA yalnızca sunucu tarafında doğrulanınca koruma sağlar
+     (siteverify + secret key). İstemci tarafı tek başına atlatılabilir. */
+  JP.AYAR = {
+    recaptchaSiteKey: '',        // ör. '6Lc...' — gerçek kurulumda doldurulur
+    girisEnFazlaDeneme: 5,       // bu kadar hatalı denemeden sonra bekleme
+    girisBeklemeSaniye: 60
+  };
+
   /* ---------------------------------------------------------------- yardımcı */
   var _ts = null;                              // seed sırasında tarih geriye alınır
   function now() { return _ts || new Date().toISOString(); }
@@ -443,16 +453,64 @@
   };
 
   /** Prototip girişi: e-posta ile. Kayıt formu yoktur; hesap firma tarafından açılır. */
+  /* ------------------------------------------------------- giriş denemeleri
+   * Hatalı denemeleri sayar ve eşiği aşınca bekleme koyar. Prototipte sayaç
+   * tarayıcıda durur; gerçek kurulumda bu sayaç ve bekleme sunucu tarafındadır
+   * (ASP.NET Core Identity hesap kilitleme), çünkü istemci sayacı temizlenebilir.
+   */
+  var KKEY = function () { return JP.KEY + '.giris'; };
+
+  function kOku() {
+    try { return JSON.parse(localStorage.getItem(KKEY()) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function kYaz(v) { try { localStorage.setItem(KKEY(), JSON.stringify(v)); } catch (e) {} }
+
+  /** { deneme, kilitli, kalan } — kalan saniye cinsindendir. */
+  JP.girisDurumu = function () {
+    var d = kOku();
+    var kalan = d.kilitBitis ? Math.max(0, Math.ceil((d.kilitBitis - Date.now()) / 1000)) : 0;
+    if (d.kilitBitis && kalan === 0) { kYaz({ deneme: 0 }); return { deneme: 0, kilitli: false, kalan: 0 }; }
+    return { deneme: d.deneme || 0, kilitli: kalan > 0, kalan: kalan };
+  };
+
+  JP.girisSifirla = function () { kYaz({ deneme: 0 }); };
+
+  function girisBasarisiz() {
+    var d = kOku();
+    var n = (d.deneme || 0) + 1;
+    if (n >= JP.AYAR.girisEnFazlaDeneme) {
+      kYaz({ deneme: n, kilitBitis: Date.now() + JP.AYAR.girisBeklemeSaniye * 1000 });
+    } else {
+      kYaz({ deneme: n });
+    }
+    return JP.girisDurumu();
+  }
+
   JP.kullaniciGiris = function (eposta) {
+    var durum = JP.girisDurumu();
+    if (durum.kilitli) {
+      throw new Error('Çok fazla hatalı deneme. ' + durum.kalan + ' saniye sonra tekrar deneyin.');
+    }
+    var e = (eposta || '').trim().toLowerCase();
+    var k = (JP.db.kullanicilar || []).find(function (x) { return x.eposta === e; });
+    if (!k || k.durum === 'Pasif') {
+      var yeni = girisBasarisiz();
+      /* Hesabın var olup olmadığını sızdırmamak için iki durumda aynı mesaj. */
+      var ek = yeni.kilitli
+        ? ' Çok fazla hatalı deneme; ' + yeni.kalan + ' saniye bekleyin.'
+        : (JP.AYAR.girisEnFazlaDeneme - yeni.deneme > 0
+            ? ' Kalan deneme: ' + (JP.AYAR.girisEnFazlaDeneme - yeni.deneme) + '.'
+            : '');
+      throw new Error('E-posta tanımlı değil ya da hesap kullanıma kapalı. Hesaplar firma tarafından oluşturulur.' + ek);
+    }
+    JP.girisSifirla();
     return JP.tx(function (db) {
-      var e = (eposta || '').trim().toLowerCase();
-      var k = (db.kullanicilar || []).find(function (x) { return x.eposta === e; });
-      if (!k) throw new Error('Bu e-posta ile tanımlı bir kullanıcı yok. Hesaplar firma tarafından oluşturulur.');
-      if (k.durum === 'Pasif') throw new Error('Bu hesap pasif durumda. Firma ile iletişime geçin.');
-      k.durum = 'Aktif';
-      k.sonGiris = now();
-      log(db, 'portal', 'Bayi girişi', k.ad + ' <' + k.eposta + '> · ' + k.bayiKod);
-      return k;
+      var kk = db.kullanicilar.find(function (x) { return x.id === k.id; });
+      kk.durum = 'Aktif';
+      kk.sonGiris = now();
+      log(db, 'portal', 'Bayi girişi', kk.ad + ' <' + kk.eposta + '> · ' + kk.bayiKod);
+      return kk;
     });
   };
 

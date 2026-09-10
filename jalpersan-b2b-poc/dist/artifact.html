@@ -692,6 +692,14 @@ button.urun-link:hover .small { color: var(--accent); text-decoration: underline
 .giris-hesap .spacer { flex: 1 1 auto; }
 .giris-hesap > .small { white-space: nowrap; flex: none; }
 
+/* robot doğrulaması — gerçek reCAPTCHA bileşeni ya da prototip yer tutucusu */
+.dogrula { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.dogrula.yer-tutucu {
+  padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.dogrula.yer-tutucu .chk { font-size: 13.5px; }
+
 /* ---------- ürün görsel yönetimi ---------- */
 .gorsel-serit { display: flex; gap: 10px; flex-wrap: wrap; }
 .gorsel-kart {
@@ -810,6 +818,16 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
   JP.KEY = 'jalpersan.poc.v7';
   JP.SURUM = 'PoC 1.0 · doküman v0.6';
+
+  /* Kurulum ayarları. reCAPTCHA anahtarı burada tanımlıysa giriş ekranı gerçek
+     Google bileşenini yükler; boşsa prototip yer tutucusu gösterilir.
+     UYARI: reCAPTCHA yalnızca sunucu tarafında doğrulanınca koruma sağlar
+     (siteverify + secret key). İstemci tarafı tek başına atlatılabilir. */
+  JP.AYAR = {
+    recaptchaSiteKey: '',        // ör. '6Lc...' — gerçek kurulumda doldurulur
+    girisEnFazlaDeneme: 5,       // bu kadar hatalı denemeden sonra bekleme
+    girisBeklemeSaniye: 60
+  };
 
   /* ---------------------------------------------------------------- yardımcı */
   var _ts = null;                              // seed sırasında tarih geriye alınır
@@ -1237,16 +1255,64 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   };
 
   /** Prototip girişi: e-posta ile. Kayıt formu yoktur; hesap firma tarafından açılır. */
+  /* ------------------------------------------------------- giriş denemeleri
+   * Hatalı denemeleri sayar ve eşiği aşınca bekleme koyar. Prototipte sayaç
+   * tarayıcıda durur; gerçek kurulumda bu sayaç ve bekleme sunucu tarafındadır
+   * (ASP.NET Core Identity hesap kilitleme), çünkü istemci sayacı temizlenebilir.
+   */
+  var KKEY = function () { return JP.KEY + '.giris'; };
+
+  function kOku() {
+    try { return JSON.parse(localStorage.getItem(KKEY()) || '{}') || {}; }
+    catch (e) { return {}; }
+  }
+  function kYaz(v) { try { localStorage.setItem(KKEY(), JSON.stringify(v)); } catch (e) {} }
+
+  /** { deneme, kilitli, kalan } — kalan saniye cinsindendir. */
+  JP.girisDurumu = function () {
+    var d = kOku();
+    var kalan = d.kilitBitis ? Math.max(0, Math.ceil((d.kilitBitis - Date.now()) / 1000)) : 0;
+    if (d.kilitBitis && kalan === 0) { kYaz({ deneme: 0 }); return { deneme: 0, kilitli: false, kalan: 0 }; }
+    return { deneme: d.deneme || 0, kilitli: kalan > 0, kalan: kalan };
+  };
+
+  JP.girisSifirla = function () { kYaz({ deneme: 0 }); };
+
+  function girisBasarisiz() {
+    var d = kOku();
+    var n = (d.deneme || 0) + 1;
+    if (n >= JP.AYAR.girisEnFazlaDeneme) {
+      kYaz({ deneme: n, kilitBitis: Date.now() + JP.AYAR.girisBeklemeSaniye * 1000 });
+    } else {
+      kYaz({ deneme: n });
+    }
+    return JP.girisDurumu();
+  }
+
   JP.kullaniciGiris = function (eposta) {
+    var durum = JP.girisDurumu();
+    if (durum.kilitli) {
+      throw new Error('Çok fazla hatalı deneme. ' + durum.kalan + ' saniye sonra tekrar deneyin.');
+    }
+    var e = (eposta || '').trim().toLowerCase();
+    var k = (JP.db.kullanicilar || []).find(function (x) { return x.eposta === e; });
+    if (!k || k.durum === 'Pasif') {
+      var yeni = girisBasarisiz();
+      /* Hesabın var olup olmadığını sızdırmamak için iki durumda aynı mesaj. */
+      var ek = yeni.kilitli
+        ? ' Çok fazla hatalı deneme; ' + yeni.kalan + ' saniye bekleyin.'
+        : (JP.AYAR.girisEnFazlaDeneme - yeni.deneme > 0
+            ? ' Kalan deneme: ' + (JP.AYAR.girisEnFazlaDeneme - yeni.deneme) + '.'
+            : '');
+      throw new Error('E-posta tanımlı değil ya da hesap kullanıma kapalı. Hesaplar firma tarafından oluşturulur.' + ek);
+    }
+    JP.girisSifirla();
     return JP.tx(function (db) {
-      var e = (eposta || '').trim().toLowerCase();
-      var k = (db.kullanicilar || []).find(function (x) { return x.eposta === e; });
-      if (!k) throw new Error('Bu e-posta ile tanımlı bir kullanıcı yok. Hesaplar firma tarafından oluşturulur.');
-      if (k.durum === 'Pasif') throw new Error('Bu hesap pasif durumda. Firma ile iletişime geçin.');
-      k.durum = 'Aktif';
-      k.sonGiris = now();
-      log(db, 'portal', 'Bayi girişi', k.ad + ' <' + k.eposta + '> · ' + k.bayiKod);
-      return k;
+      var kk = db.kullanicilar.find(function (x) { return x.id === k.id; });
+      kk.durum = 'Aktif';
+      kk.sonGiris = now();
+      log(db, 'portal', 'Bayi girişi', kk.ad + ' <' + kk.eposta + '> · ' + kk.bayiKod);
+      return kk;
     });
   };
 
@@ -2789,7 +2855,30 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
     var eposta = h('input', { type: 'text', placeholder: 'ad.soyad@bayi.example', inputmode: 'email', 'aria-label': 'E-posta' });
     var hata = h('div.note.bad.hidden');
+    var dogrulama = robotDogrulama(function () { dugmeTazele(); });
+    var girisDugmesi = h('button.btn.primary.block', { text: 'Giriş yap', onclick: function () { gir(); } });
+    var kilitBilgi = h('div.small.muted');
+    var sayacId = null;
+
+    function dugmeTazele() {
+      var d = JP.girisDurumu();
+      girisDugmesi.disabled = d.kilitli || !dogrulama.tamam();
+      girisDugmesi.textContent = d.kilitli ? 'Bekleyin (' + d.kalan + ' sn)' : 'Giriş yap';
+      girisDugmesi.title = d.kilitli ? 'Çok fazla hatalı deneme'
+        : (dogrulama.tamam() ? '' : 'Önce robot olmadığınızı doğrulayın');
+      kilitBilgi.textContent = d.kilitli
+        ? 'Hatalı deneme sınırı aşıldı. Sayaç sıfırlanınca tekrar deneyebilirsiniz.'
+        : (d.deneme ? d.deneme + ' hatalı deneme kaydedildi.' : '');
+      if (d.kilitli && !sayacId) sayacId = setInterval(dugmeTazele, 1000);
+      if (!d.kilitli && sayacId) { clearInterval(sayacId); sayacId = null; }
+    }
+
     function gir(adres) {
+      if (!dogrulama.tamam()) {
+        hata.textContent = 'Devam etmek için robot olmadığınızı doğrulayın.';
+        hata.classList.remove('hidden');
+        return;
+      }
       try {
         var k = JP.kullaniciGiris(adres !== undefined ? adres : eposta.value);
         oturumAc(k);
@@ -2797,6 +2886,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       } catch (e) {
         hata.textContent = e.message;
         hata.classList.remove('hidden');
+        dogrulama.sifirla();          // her denemede yeniden doğrulama istenir
+        dugmeTazele();
       }
     }
     eposta.addEventListener('keydown', function (e) { if (e.key === 'Enter') gir(); });
@@ -2811,8 +2902,10 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       h('h1', { text: 'Bayi girişi' }),
       h('p.small.muted', { text: 'Portal hesapları Jalpersan tarafından tanımlanır. Kayıt formu yoktur; erişim için firma ile iletişime geçin.' }),
       h('label.f', {}, ['E-posta adresi', eposta]),
+      dogrulama.el,
       hata,
-      h('button.btn.primary.block', { text: 'Giriş yap', onclick: function () { gir(); } }),
+      girisDugmesi,
+      kilitBilgi,
       hesaplar.length ? h('div.giris-demo', {}, [
         h('div.eyebrow', { text: 'Prototip · tanımlı hesaplar' }),
         h('div.stack', { style: { gap: '4px' } }, hesaplar.map(function (k) {
@@ -2832,6 +2925,84 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         }))
       ]) : h('div.note.warn', { text: 'Henüz kullanıcı tanımlanmamış. Firma panelindeki Kullanıcılar ekranından hesap açın.' })
     ])));
+    dugmeTazele();
+  }
+
+  /* ------------------------------------------------------- robot doğrulaması
+   * JP.AYAR.recaptchaSiteKey tanımlıysa gerçek Google reCAPTCHA v2 bileşeni
+   * yüklenir. Tanımlı değilse (prototip varsayılanı) yerine açıkça "prototip"
+   * etiketli bir yer tutucu konur — böylece ekran akışı demoda görünür.
+   *
+   * Önemli: reCAPTCHA koruma sağlamaz, yalnızca sunucu doğruladığında sağlar.
+   * Gerçek kurulumda giriş isteğinde gelen token sunucuda
+   * https://www.google.com/recaptcha/api/siteverify adresine secret key ile
+   * sorulur ve başarısızsa istek reddedilir. İstemcide biten bir kontrol
+   * atlatılabilir; bu yüzden hesap kilitleme de sunucu tarafında olmalıdır. */
+  function robotDogrulama(degisti) {
+    var anahtar = (JP.AYAR && JP.AYAR.recaptchaSiteKey) || '';
+    if (anahtar) return gercekRecaptcha(anahtar, degisti);
+    return yerTutucu(degisti);
+  }
+
+  function gercekRecaptcha(anahtar, degisti) {
+    var kutu = h('div.g-recaptcha', { 'data-sitekey': anahtar });
+    var uyari = h('div.small.muted', { text: 'reCAPTCHA yükleniyor…' });
+    var el = h('div.dogrula', {}, [kutu, uyari]);
+    var widget = null;
+
+    function ciz() {
+      try {
+        widget = window.grecaptcha.render(kutu, {
+          sitekey: anahtar,
+          callback: function () { uyari.textContent = ''; degisti(); },
+          'expired-callback': function () { degisti(); }
+        });
+        uyari.textContent = '';
+      } catch (e) { uyari.textContent = 'reCAPTCHA yüklenemedi: ' + e.message; }
+    }
+
+    if (window.grecaptcha && window.grecaptcha.render) ciz();
+    else {
+      window.jpRecaptchaHazir = ciz;
+      var sc = document.createElement('script');
+      sc.src = 'https://www.google.com/recaptcha/api.js?onload=jpRecaptchaHazir&render=explicit';
+      sc.async = true; sc.defer = true;
+      sc.onerror = function () {
+        uyari.textContent = 'reCAPTCHA betiği yüklenemedi (ağ ya da içerik güvenlik kuralı engelledi).';
+      };
+      document.head.appendChild(sc);
+    }
+
+    return {
+      el: el,
+      tamam: function () {
+        try { return !!(window.grecaptcha && window.grecaptcha.getResponse(widget)); }
+        catch (e) { return false; }
+      },
+      jeton: function () {
+        try { return window.grecaptcha.getResponse(widget) || null; } catch (e) { return null; }
+      },
+      sifirla: function () { try { window.grecaptcha.reset(widget); } catch (e) {} }
+    };
+  }
+
+  function yerTutucu(degisti) {
+    var kutu = h('input', { type: 'checkbox', id: 'jp-robot' });
+    kutu.addEventListener('change', function () { degisti(); });
+    var el = h('div.dogrula.yer-tutucu', {}, [
+      h('label.chk', {}, [kutu, h('span', { text: 'Robot değilim' })]),
+      h('div.spacer'),
+      h('span.poc-flag', { text: 'Prototip' })
+    ]);
+    return {
+      el: h('div.stack', { style: { gap: '6px' } }, [
+        el,
+        h('div.small.muted', { text: 'Prototipte yer tutucudur. Gerçek kurulumda Google reCAPTCHA bileşeni gelir ve gelen jeton sunucuda doğrulanır.' })
+      ]),
+      tamam: function () { return kutu.checked; },
+      jeton: function () { return kutu.checked ? 'prototip' : null; },
+      sifirla: function () { kutu.checked = false; }
+    };
   }
 
   function kisitMetni(b) {

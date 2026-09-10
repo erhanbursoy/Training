@@ -54,10 +54,38 @@ Firma tarafında: kullanıcı ekleme, ad/e-posta/rol/dil düzenleme, başka bayi
 daveti ve şifre sıfırlama bağlantısını yeniden gönderme, pasife alma ve silme.
 Bayi detayında da o bayinin kullanıcıları ayrı sekmede listelenir.
 
-Bayi portalı oturum yokken **giriş ekranı** gösterir. E-posta tanımlı değilse giriş
-reddedilir ve hesabın firma tarafından açıldığı belirtilir. Prototipte şifre sorulmaz;
+Bayi portalı oturum yokken **giriş ekranı** gösterir. Prototipte şifre sorulmaz;
 gerçek kurulumda ASP.NET Core Identity ile davet bağlantısı, şifre politikası, hesap
 kilitleme ve opsiyonel iki adımlı doğrulama kullanılır.
+
+### Giriş ekranı kötüye kullanım korumaları
+
+**Robot doğrulaması.** Giriş düğmesi doğrulama yapılmadan çalışmaz. `JP.AYAR.recaptchaSiteKey`
+tanımlıysa ekran gerçek **Google reCAPTCHA v2** bileşenini yükler; tanımlı değilse (prototip
+varsayılanı) yerine açıkça *Prototip* etiketli bir yer tutucu gelir, böylece akış demoda
+görünür. Her hatalı denemeden sonra doğrulama sıfırlanır.
+
+**Bunun gerçek koruma olması için sunucu şart.** reCAPTCHA yalnızca gelen jeton sunucuda
+`https://www.google.com/recaptcha/api/siteverify` adresine *secret key* ile sorulduğunda ve
+başarısız yanıtta istek reddedildiğinde koruma sağlar. İstemcide biten bir kontrol
+atlatılabilir — saldırgan bileşeni hiç çalıştırmadan doğrudan uç noktaya istek atar. Bu
+prototipte sunucu yoktur; ekrandaki doğrulama akışı gösterir, korumayı sağlamaz.
+
+Kurulum sırası: Google reCAPTCHA konsolunda alan adı için anahtar çifti alınır, site key
+`JP.AYAR.recaptchaSiteKey`e yazılır, secret key **yalnızca sunucuda** tutulur ve giriş uç
+noktası jetonu doğrulamadan hiçbir kimlik kontrolü yapmaz. v3 kullanılacaksa eşik puanı
+(ör. 0.5) da sunucuda değerlendirilir.
+
+**Hatalı deneme sınırı.** Beş hatalı denemeden sonra 60 saniye bekleme uygulanır; düğme
+geri sayımla kilitlenir (`JP.AYAR.girisEnFazlaDeneme` / `girisBeklemeSaniye`). Prototipte
+sayaç tarayıcıda durduğu için temizlenebilir; gerçek kurulumda sayaç ve kilit sunucu
+tarafındadır (Identity hesap kilitleme) ve ayrıca IP başına hız sınırı uygulanır.
+
+**Hesap sızdırmayan hata mesajı.** Tanımsız e-posta ile pasif hesap aynı mesajı alır, böylece
+giriş ekranı hangi adreslerin kayıtlı olduğunu doğrulamaya yaramaz.
+
+Artifact ortamında Google betiği içerik güvenlik kuralıyla engellenir; anahtar tanımlıysa
+ekran bunu yazar ve giriş kapalı kalır. Bu yüzden prototip yer tutucuyla yayınlanır.
 
 Talep oluşturma yetkisi rol ve bayi durumunu birlikte gözetir: görüntüleyici rolü,
 pasif hesap veya siparişe kapalı bayi sepete ekleme ve talep gönderme düğmelerini
