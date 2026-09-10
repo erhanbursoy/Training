@@ -364,28 +364,41 @@
      üzerinde, hızlı miktar girişi ve sepete ekleme. Açıklama ve teknik özellik
      kalabalık yapmasın diye yalnızca ürün detayında gösterilir. */
 
-  function sepeteEkle(u, bayi, miktar) {
-    UI.dene(function () {
-      var yeni = JP.sepetEkle(bayi.kod, u.kod, miktar);
-      UI.toast('Sepete eklendi', u.ad + ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim, 'ok');
-    });
-  }
-
   /** Miktar sayacı + sepete ekle düğmesi. Enter da ekler (hızlı giriş). */
+  /* Sayaç sepetteki miktarı gösterir. Ürün sepette değilse sayaç bir miktar
+     girişidir ve "Sepete ekle" onu yazar; sepetteyse her değişiklik doğrudan
+     sepete işlenir (0 satırı çıkarır) ve düğme "Çıkar" olur — sepet ekranındaki
+     davranışın aynısı. Böylece katalogdan ekleme üst üste toplanmaz. */
   function hizliEkle(u, bayi) {
     var yetki = JP.talepYetkisi(aktifKullanici());
     var sepette = sepetteMiktar(bayi.kod, u.kod);
-    var sayac = UI.sayac({ deger: varsayilan(u), adim: adim(u), enAz: 0, etiket: u.ad + ' miktarı' });
-    function ekle() { sepeteEkle(u, bayi, sayac.deger()); }
+    var sayac = UI.sayac({
+      deger: sepette || varsayilan(u), adim: adim(u), enAz: 0, etiket: u.ad + ' miktarı',
+      onDegisim: sepette ? function (v) { UI.dene(function () { JP.sepetAyarla(bayi.kod, u.kod, v); }); } : null
+    });
+    function ekle() {
+      UI.dene(function () {
+        var yeni = JP.sepetAyarla(bayi.kod, u.kod, sayac.deger());
+        UI.toast(yeni ? 'Sepete eklendi' : 'Sepetten çıkarıldı',
+          u.ad + (yeni ? ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim : ''), 'ok');
+      });
+    }
+    function cikar() {
+      UI.dene(function () {
+        JP.sepetAyarla(bayi.kod, u.kod, 0);
+        UI.toast('Sepetten çıkarıldı', u.ad, 'ok');
+      });
+    }
     sayac.girdi.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') { e.preventDefault(); ekle(); }
+      if (e.key === 'Enter') { e.preventDefault(); if (!sepette) ekle(); else sayac.girdi.blur(); }
     });
     return {
       sayac: sayac,
-      dugme: h('button.btn.primary.sm', {
-        text: sepette ? 'Ekle' : 'Sepete ekle', disabled: !yetki.olur,
-        title: yetki.olur ? 'Miktarı girip Enter’a da basabilirsiniz' : yetki.sebep, onclick: ekle
-      })
+      dugme: sepette
+        ? h('button.btn.sm', { text: 'Çıkar', disabled: !yetki.olur,
+            title: yetki.olur ? 'Ürünü sepetten çıkar' : yetki.sebep, onclick: cikar })
+        : h('button.btn.primary.sm', { text: 'Sepete ekle', disabled: !yetki.olur,
+            title: yetki.olur ? 'Miktarı girip Enter’a da basabilirsiniz' : yetki.sebep, onclick: ekle })
     };
   }
 
@@ -514,8 +527,8 @@
 
   /* --- ürün detayı: açıklama ve teknik özellik burada --- */
   function urunDetay(u, bayi) {
-    var sayac = UI.sayac({ deger: varsayilan(u), adim: adim(u), enAz: 0, etiket: 'Miktar' });
     var sepette = sepetteMiktar(bayi.kod, u.kod);
+    var sayac = UI.sayac({ deger: sepette || varsayilan(u), adim: adim(u), enAz: 0, etiket: 'Miktar' });
     UI.modal({
       baslik: u.ad, etiket: u.kod, genis: true,
       icerik: h('div.grid.k2', {}, [
@@ -532,7 +545,7 @@
             h('div.eyebrow', { text: 'Ürün açıklaması', style: { marginBottom: '4px' } }),
             h('p.small.muted', { text: u.aciklama || JP.aciklamaOf(u.grup) || 'Açıklama girilmemiş.' })
           ]),
-          sepette ? h('div.note', { text: 'Bu üründen sepetinizde ' + JP.fmt.miktar(sepette) + ' ' + u.birim + ' var. Ekleyeceğiniz miktar üstüne eklenir.' }) : null,
+          sepette ? h('div.note', { text: 'Bu üründen sepetinizde ' + JP.fmt.miktar(sepette) + ' ' + u.birim + ' var. Gireceğiniz miktar sepetteki miktarın yerine yazılır.' }) : null,
           h('div.small.muted', { text: 'Fiyat ve stok bilgisi bayi ekranında gösterilmez.' })
         ])
       ]),
@@ -542,9 +555,17 @@
           h('div.spacer'),
           h('button.btn', { text: 'Kapat', onclick: kapat }),
           h('button.btn.primary', {
-            text: 'Sepete ekle', disabled: !JP.talepYetkisi(aktifKullanici()).olur,
+            text: sepette ? 'Sepeti güncelle' : 'Sepete ekle',
+            disabled: !JP.talepYetkisi(aktifKullanici()).olur,
             title: JP.talepYetkisi(aktifKullanici()).sebep,
-            onclick: function () { kapat(); sepeteEkle(u, bayi, sayac.deger()); }
+            onclick: function () {
+              UI.dene(function () {
+                var yeni = JP.sepetAyarla(bayi.kod, u.kod, sayac.deger());
+                kapat();
+                UI.toast(yeni ? 'Sepete yazıldı' : 'Sepetten çıkarıldı',
+                  u.ad + (yeni ? ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim : ''), 'ok');
+              });
+            }
           })
         ];
       }

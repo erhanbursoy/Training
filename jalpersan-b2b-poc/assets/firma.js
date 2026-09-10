@@ -1321,18 +1321,34 @@
       h('div.yan-alt', {}, h('div.small.muted', { text: 'Yalnızca bu bayinin kataloğuna açık ürünler listelenir.' }))];
   }
 
-  /** Miktar sayacı + sepete ekle. Enter da ekler. */
+  /* Bayi kataloğuyla aynı davranış: sayaç sepetteki miktarı gösterir, sepetteki
+     ürünün miktarı doğrudan buradan değişir, düğme "Çıkar" olur. */
   function tgHizliEkle(u, bayiKod) {
-    var sayac = UI.sayac({ deger: tgVarsayilan(u), adim: tgAdim(u), enAz: 0, etiket: u.ad + ' miktarı' });
+    var kutu = talepGirisKutusu();
+    var sepette = tgSepetteMiktar(bayiKod, u.kod);
+    var sayac = UI.sayac({
+      deger: sepette || tgVarsayilan(u), adim: tgAdim(u), enAz: 0, etiket: u.ad + ' miktarı',
+      onDegisim: sepette ? function (v) { UI.dene(function () { JP.sepetAyarla(bayiKod, u.kod, v, kutu); }); } : null
+    });
     function ekle() {
       UI.dene(function () {
-        var yeni = JP.sepetEkle(bayiKod, u.kod, sayac.deger(), talepGirisKutusu());
-        UI.toast('Sepete eklendi', u.ad + ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim, 'ok');
+        var yeni = JP.sepetAyarla(bayiKod, u.kod, sayac.deger(), kutu);
+        UI.toast(yeni ? 'Sepete eklendi' : 'Sepetten çıkarıldı',
+          u.ad + (yeni ? ' · sepette ' + JP.fmt.miktar(yeni) + ' ' + u.birim : ''), 'ok');
       });
     }
-    sayac.girdi.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ekle(); } });
-    return { sayac: sayac, dugme: h('button.btn.primary.sm', { text: 'Sepete ekle',
-      title: 'Miktarı girip Enter’a da basabilirsiniz', onclick: ekle }) };
+    function cikar() {
+      UI.dene(function () { JP.sepetAyarla(bayiKod, u.kod, 0, kutu); UI.toast('Sepetten çıkarıldı', u.ad, 'ok'); });
+    }
+    sayac.girdi.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); if (!sepette) ekle(); else sayac.girdi.blur(); }
+    });
+    return {
+      sayac: sayac,
+      dugme: sepette
+        ? h('button.btn.sm', { text: 'Çıkar', title: 'Ürünü sepetten çıkar', onclick: cikar })
+        : h('button.btn.primary.sm', { text: 'Sepete ekle', title: 'Miktarı girip Enter’a da basabilirsiniz', onclick: ekle })
+    };
   }
 
   function tgSepetteMiktar(bayiKod, urunKod) {

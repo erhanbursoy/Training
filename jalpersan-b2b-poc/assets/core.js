@@ -673,6 +673,27 @@
     });
   };
 
+  /** Mutlak miktar yazar: satır yoksa açar, varsa değiştirir, 0 ise çıkarır.
+   *  Katalog sayacı sepetteki miktarı gösterdiği için üzerine ekleme değil
+   *  doğrudan atama gerekiyor. */
+  JP.sepetAyarla = function (bayiKod, urunKod, miktar, kutuKod) {
+    return JP.tx(function (db) {
+      miktar = r2(miktar);
+      var kutu = sepetKutusu(db, kutuKod || bayiKod);
+      var i = kutu.findIndex(function (x) { return x.urunKod === urunKod; });
+      if (!(miktar > 0)) { if (i >= 0) kutu.splice(i, 1); return 0; }
+
+      var bayi = db.bayiler.find(function (b) { return b.kod === bayiKod; });
+      if (!bayi) throw new Error('Bayi bulunamadı.');
+      if (!bayi.siparisAcik) throw new Error('Bu bayi siparişe kapalı; sepete ürün eklenemez.');
+      if (!JP.bayiUrunleri(bayiKod).some(function (u) { return u.kod === urunKod; })) {
+        throw new Error('Bu ürün bayinin kataloğunda değil.');
+      }
+      if (i >= 0) kutu[i].miktar = miktar; else kutu.push({ urunKod: urunKod, miktar: miktar });
+      return miktar;
+    });
+  };
+
   JP.sepetMiktar = function (bayiKod, urunKod, miktar, kutuKod) {
     return JP.tx(function (db) {
       var kutu = sepetKutusu(db, kutuKod || bayiKod);
