@@ -347,25 +347,47 @@
     });
   };
 
-  /* ------------------------------------------------------- bayi kullanıcıları
-   * Hesaplar yalnızca firma tarafından oluşturulur; portalda kayıt formu yoktur.
-   * Her kullanıcı bir cari karta (bayiye) bağlıdır ve yalnızca o bayinin
-   * taleplerini ve siparişlerini görür. (Teknik doküman 3.3 ve 4.4)
+  /* ----------------------------------------------------------- kullanıcılar
+   * İki tip vardır: bayi kullanıcısı bir cari karta bağlıdır ve yalnızca o
+   * bayinin talep/siparişlerini görür; firma kullanıcısı muhasebe panelini
+   * kullanır ve bayi kartına bağlı değildir. Hesapların ikisi de yalnızca
+   * firma tarafından açılır; portalda kayıt formu yoktur. (Doküman 3.3 / 4.4)
    */
   JP.ROLLER = [
-    { kod: 'yetkili', ad: 'Sipariş yetkilisi', aciklama: 'Katalogdan sepete ekler ve satın alma talebi gönderir.' },
-    { kod: 'izleyici', ad: 'Görüntüleyici', aciklama: 'Talepleri ve sevkiyatı görür, talep oluşturamaz.' }
+    { kod: 'yetkili', ad: 'Sipariş yetkilisi', tip: 'bayi', aciklama: 'Katalogdan sepete ekler ve satın alma talebi gönderir.' },
+    { kod: 'izleyici', ad: 'Görüntüleyici', tip: 'bayi', aciklama: 'Talepleri ve sevkiyatı görür, talep oluşturamaz.' },
+    { kod: 'yonetici', ad: 'Yönetici', tip: 'firma', aciklama: 'Tüm firma ekranları ve kullanıcı yönetimi.' },
+    { kod: 'muhasebe', ad: 'Muhasebe', tip: 'firma', aciklama: 'Talep, sipariş, ürün ve bayi ekranları; kullanıcı yönetimi kapalı.' }
   ];
   JP.KULLANICI_DURUM = ['Davet gönderildi', 'Aktif', 'Pasif'];
 
+  JP.roller = function (tip) {
+    return JP.ROLLER.filter(function (r) { return !tip || r.tip === tip; });
+  };
   JP.rolAdi = function (kod) {
     var r = JP.ROLLER.find(function (x) { return x.kod === kod; });
     return r ? r.ad : kod;
   };
-
-  JP.kullanicilar = function (bayiKod) {
-    return (JP.db.kullanicilar || []).filter(function (k) { return !bayiKod || k.bayiKod === bayiKod; });
+  /** Kaydın tipi: eski kayıtlarda tip alanı yoktur, bayiKod'a bakılır. */
+  JP.kullaniciTipi = function (k) {
+    if (!k) return null;
+    return k.tip === 'firma' ? 'firma' : (k.tip === 'bayi' ? 'bayi' : (k.bayiKod ? 'bayi' : 'firma'));
   };
+  /** Firma kullanıcı yönetimi yalnızca Yönetici rolündedir. */
+  JP.kullaniciYonetebilir = function (k) {
+    return JP.kullaniciTipi(k) === 'firma' && k.rol === 'yonetici' && k.durum !== 'Pasif';
+  };
+
+  /** tip verilmezse tümü; bayiKod verilirse o bayinin kullanıcıları. */
+  JP.kullanicilar = function (bayiKod, tip) {
+    return (JP.db.kullanicilar || []).filter(function (k) {
+      if (tip && JP.kullaniciTipi(k) !== tip) return false;
+      if (bayiKod && k.bayiKod !== bayiKod) return false;
+      return true;
+    });
+  };
+  JP.bayiKullanicilari = function (bayiKod) { return JP.kullanicilar(bayiKod, 'bayi'); };
+  JP.firmaKullanicilari = function () { return JP.kullanicilar(null, 'firma'); };
   JP.kullanici = function (id) {
     return (JP.db.kullanicilar || []).find(function (k) { return k.id === id; }) || null;
   };
@@ -379,15 +401,20 @@
       if (!(p.ad || '').trim()) throw new Error('Ad soyad girin.');
       if (!epostaGecerli(eposta)) throw new Error('Geçerli bir e-posta girin.');
       if (db.kullanicilar.some(function (k) { return k.eposta === eposta; })) throw new Error('Bu e-posta ile tanımlı bir kullanıcı zaten var.');
-      if (!db.bayiler.some(function (b) { return b.kod === p.bayiKod; })) throw new Error('Bayi seçin.');
+      var tip = p.tip === 'firma' ? 'firma' : 'bayi';
+      if (tip === 'bayi' && !db.bayiler.some(function (b) { return b.kod === p.bayiKod; })) throw new Error('Bayi seçin.');
+      var rol = p.rol || (tip === 'firma' ? 'muhasebe' : 'yetkili');
+      if (!JP.roller(tip).some(function (r) { return r.kod === rol; })) throw new Error('Bu rol ' + (tip === 'firma' ? 'firma' : 'bayi') + ' kullanıcısına verilemez.');
       var k = {
-        id: uid('u'), bayiKod: p.bayiKod, ad: p.ad.trim(), eposta: eposta,
-        dil: p.dil || 'tr', rol: p.rol || 'yetkili',
+        id: uid('u'), tip: tip, bayiKod: tip === 'bayi' ? p.bayiKod : null,
+        ad: p.ad.trim(), eposta: eposta,
+        dil: p.dil || 'tr', rol: rol,
         durum: 'Davet gönderildi', olusturuldu: now(), davetTs: now(), sonGiris: null
       };
       db.kullanicilar.push(k);
-      log(db, 'portal', 'Kullanıcı oluşturuldu', k.ad + ' <' + k.eposta + '> · ' + k.bayiKod);
-      bildir(db, k.bayiKod, 'Portal daveti gönderildi', k.ad + ' için ' + k.eposta + ' adresine davet bağlantısı gönderildi.');
+      log(db, 'portal', (tip === 'firma' ? 'Firma' : 'Bayi') + ' kullanıcısı oluşturuldu',
+        k.ad + ' <' + k.eposta + '>' + (k.bayiKod ? ' · ' + k.bayiKod : ' · ' + JP.rolAdi(k.rol)));
+      bildir(db, k.bayiKod || 'muhasebe', 'Portal daveti gönderildi', k.ad + ' için ' + k.eposta + ' adresine davet bağlantısı gönderildi.');
       return k;
     });
   };
@@ -407,21 +434,38 @@
         k.eposta = e;
       }
       if (alanlar.bayiKod !== undefined && alanlar.bayiKod !== k.bayiKod) {
+        if (JP.kullaniciTipi(k) === 'firma') throw new Error('Firma kullanıcısı bayi kartına bağlanmaz.');
         if (!db.bayiler.some(function (b) { return b.kod === alanlar.bayiKod; })) throw new Error('Bayi bulunamadı.');
         log(db, 'portal', 'Kullanıcı bayisi değişti', k.ad + ' · ' + k.bayiKod + ' → ' + alanlar.bayiKod);
         k.bayiKod = alanlar.bayiKod;
       }
-      if (alanlar.rol !== undefined) k.rol = alanlar.rol;
+      if (alanlar.rol !== undefined) {
+        if (!JP.roller(JP.kullaniciTipi(k)).some(function (r) { return r.kod === alanlar.rol; })) {
+          throw new Error('Bu rol kullanıcının tipine uygun değil.');
+        }
+        k.rol = alanlar.rol;
+      }
       if (alanlar.dil !== undefined) k.dil = alanlar.dil;
       log(db, 'portal', 'Kullanıcı güncellendi', k.ad + ' <' + k.eposta + '>');
       return k;
     });
   };
 
+  /* Paneli yönetecek kimse kalmasın diye son etkin yönetici korunur. */
+  function sonYoneticiMi(db, id) {
+    var etkin = (db.kullanicilar || []).filter(function (x) {
+      return JP.kullaniciTipi(x) === 'firma' && x.rol === 'yonetici' && x.durum !== 'Pasif';
+    });
+    return etkin.length === 1 && etkin[0].id === id;
+  }
+
   JP.kullaniciDurum = function (id, durum) {
     return JP.tx(function (db) {
       var k = (db.kullanicilar || []).find(function (x) { return x.id === id; });
       if (!k) throw new Error('Kullanıcı bulunamadı.');
+      if (durum === 'Pasif' && sonYoneticiMi(db, id)) {
+        throw new Error('Son etkin firma yöneticisi pasife alınamaz. Önce başka bir yönetici tanımlayın.');
+      }
       k.durum = durum;
       log(db, 'portal', 'Kullanıcı durumu', k.ad + ' → ' + durum);
       return k;
@@ -432,6 +476,9 @@
     return JP.tx(function (db) {
       var i = (db.kullanicilar || []).findIndex(function (x) { return x.id === id; });
       if (i < 0) throw new Error('Kullanıcı bulunamadı.');
+      if (sonYoneticiMi(db, id)) {
+        throw new Error('Son etkin firma yöneticisi silinemez. Önce başka bir yönetici tanımlayın.');
+      }
       var k = db.kullanicilar[i];
       db.kullanicilar.splice(i, 1);
       log(db, 'portal', 'Kullanıcı silindi', k.ad + ' <' + k.eposta + '>');
@@ -447,7 +494,7 @@
       if (tur !== 'sifre' && k.durum === 'Pasif') k.durum = 'Davet gönderildi';
       var baslik = tur === 'sifre' ? 'Şifre sıfırlama bağlantısı' : 'Portal daveti';
       log(db, 'portal', baslik, k.eposta + ' adresine gönderildi (simülasyon)');
-      bildir(db, k.bayiKod, baslik + ' gönderildi', k.ad + ' · ' + k.eposta);
+      bildir(db, k.bayiKod || 'muhasebe', baslik + ' gönderildi', k.ad + ' · ' + k.eposta);
       return k;
     });
   };
@@ -514,10 +561,39 @@
     });
   };
 
+  /* ------------------------------------------------------------------ oturum
+   * Oturum sekme başınadır ve tek anahtarda durur; iki portal aynı anahtarı
+   * okur, böylece giriş yapan kullanıcı tipine göre doğru ekrana yönlenir. */
+  var OKEY = 'jp.kullanici';
+
+  JP.oturumAc = function (k) { try { sessionStorage.setItem(OKEY, k.id); } catch (e) {} };
+  JP.oturumKapat = function () { try { sessionStorage.removeItem(OKEY); } catch (e) {} };
+  JP.oturumKullanici = function () {
+    var id = null;
+    try { id = sessionStorage.getItem(OKEY); } catch (e) {}
+    var k = id ? JP.kullanici(id) : null;
+    return k && k.durum !== 'Pasif' ? k : null;
+  };
+
+  /** Kullanıcının ait olduğu portal: 'bayi' ya da 'firma'. */
+  JP.oturumHedefi = function (k) { return JP.kullaniciTipi(k) === 'firma' ? 'firma' : 'bayi'; };
+
+  /** Giriş sonrası doğru ekrana götürür. Tek dosya sürümünde rol değiştirir,
+   *  ayrı sayfalarda ilgili sayfaya gider. */
+  JP.girisYonlendir = function (k) {
+    var hedef = JP.oturumHedefi(k);
+    if (JP.rolAyarla) { JP.rolAyarla(hedef); return; }
+    var dosya = hedef + '.html';
+    var su = (location.pathname.split('/').pop() || '').toLowerCase();
+    if (su === dosya) location.reload();
+    else location.href = dosya;
+  };
+
   /** Kullanıcı talep oluşturabilir mi? Rol ve bayi durumu birlikte belirler. */
   JP.talepYetkisi = function (k) {
     if (!k) return { olur: false, sebep: 'Oturum yok.' };
     if (k.durum === 'Pasif') return { olur: false, sebep: 'Hesabınız pasif durumda.' };
+    if (JP.kullaniciTipi(k) !== 'bayi') return { olur: false, sebep: 'Bu hesap bayi portalına ait değil.' };
     if (k.rol !== 'yetkili') return { olur: false, sebep: 'Hesabınız görüntüleyici yetkisinde; talep oluşturamazsınız.' };
     var b = JP.db.bayiler.find(function (x) { return x.kod === k.bayiKod; });
     if (!b) return { olur: false, sebep: 'Bayi kartı bulunamadı.' };
@@ -1585,7 +1661,7 @@
         kisit: { tip: 'tumu', gruplar: [], urunler: [] }, teslimatNotu: ''
       });
     });
-    // bayi kullanıcıları — hesaplar firma tarafından açılır, kayıt formu yoktur
+    // kullanıcılar — iki tip de yalnızca firma tarafından açılır, kayıt formu yoktur
     [
       ['BYI-0001', 'Selin Aydın', 'selin.aydin@anadoluperde.example', 'yetkili', 'Aktif', 3],
       ['BYI-0001', 'Kerem Doğan', 'kerem.dogan@anadoluperde.example', 'izleyici', 'Aktif', 12],
@@ -1594,9 +1670,20 @@
       ['BYI-0004', 'Milica Petrović', 'milica@balkanhome.example', 'yetkili', 'Aktif', 1]
     ].forEach(function (x) {
       db.kullanicilar.push({
-        id: uid('u'), bayiKod: x[0], ad: x[1], eposta: x[2], dil: x[0] === 'BYI-0004' ? 'en' : 'tr',
+        id: uid('u'), tip: 'bayi', bayiKod: x[0], ad: x[1], eposta: x[2], dil: x[0] === 'BYI-0004' ? 'en' : 'tr',
         rol: x[3], durum: x[4], olusturuldu: gecmis(30), davetTs: gecmis(30),
         sonGiris: x[5] === null ? null : gecmis(x[5])
+      });
+    });
+    [
+      ['Erhan Bursoy', 'erhan.bursoy@jalpersan.example', 'yonetici', 'Aktif', 0],
+      ['Ayşe Karaca', 'ayse.karaca@jalpersan.example', 'muhasebe', 'Aktif', 1],
+      ['Burak Demir', 'burak.demir@jalpersan.example', 'muhasebe', 'Davet gönderildi', null]
+    ].forEach(function (x) {
+      db.kullanicilar.push({
+        id: uid('u'), tip: 'firma', bayiKod: null, ad: x[0], eposta: x[1], dil: 'tr',
+        rol: x[2], durum: x[3], olusturuldu: gecmis(45), davetTs: gecmis(45),
+        sonGiris: x[4] === null ? null : gecmis(x[4])
       });
     });
 

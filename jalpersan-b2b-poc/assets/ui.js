@@ -276,6 +276,221 @@
   };
   UI.gorunumYaz = function (v) { try { localStorage.setItem('jp.katalogGorunum', v); } catch (e) {} };
 
+  /* ------------------------------------------------------------ giriş ekranı
+   * İki portal aynı giriş ekranını kullanır. Giriş yapan kullanıcının tipi
+   * hangi ekrana gidileceğini belirler: firma kullanıcısı firma paneline,
+   * bayi kullanıcısı bayi portalına. Kayıt formu yoktur; hesaplar firma
+   * tarafından açılır. */
+  UI.girisEkrani = function (o) {
+    o = o || {};
+    var kapi = o.kapi === 'firma' ? 'firma' : 'bayi';
+    var kok = document.getElementById('app');
+    document.title = (kapi === 'firma' ? 'Firma girişi' : 'Bayi girişi') + ' · Jalpersan B2B';
+    document.documentElement.classList.remove('logo-world');
+    if (JP.aboneSifirla) JP.aboneSifirla();
+
+    var eposta = h('input', {
+      type: 'text', inputmode: 'email', 'aria-label': 'E-posta',
+      placeholder: kapi === 'firma' ? 'ad.soyad@jalpersan.example' : 'ad.soyad@bayi.example'
+    });
+    var hata = h('div.note.bad.hidden');
+    var dogrulama = robotDogrulama(function () { dugmeTazele(); });
+    var girisDugmesi = h('button.btn.primary.block', { text: 'Giriş yap', onclick: function () { gir(); } });
+    var kilitBilgi = h('div.small.muted');
+    var sayacId = null;
+
+    function dugmeTazele() {
+      var d = JP.girisDurumu();
+      girisDugmesi.disabled = d.kilitli || !dogrulama.tamam();
+      girisDugmesi.textContent = d.kilitli ? 'Bekleyin (' + d.kalan + ' sn)' : 'Giriş yap';
+      girisDugmesi.title = d.kilitli ? 'Çok fazla hatalı deneme'
+        : (dogrulama.tamam() ? '' : 'Önce robot olmadığınızı doğrulayın');
+      kilitBilgi.textContent = d.kilitli
+        ? 'Hatalı deneme sınırı aşıldı. Sayaç sıfırlanınca tekrar deneyebilirsiniz.'
+        : (d.deneme ? d.deneme + ' hatalı deneme kaydedildi.' : '');
+      if (d.kilitli && !sayacId) sayacId = setInterval(dugmeTazele, 1000);
+      if (!d.kilitli && sayacId) { clearInterval(sayacId); sayacId = null; }
+    }
+
+    function gir(adres) {
+      if (!dogrulama.tamam()) {
+        hata.textContent = 'Devam etmek için robot olmadığınızı doğrulayın.';
+        hata.classList.remove('hidden');
+        return;
+      }
+      try {
+        var k = JP.kullaniciGiris(adres !== undefined ? adres : eposta.value);
+        JP.oturumAc(k);
+        JP.girisYonlendir(k);            // tip hangi ekrana gidileceğini belirler
+      } catch (e) {
+        hata.textContent = e.message;
+        hata.classList.remove('hidden');
+        dogrulama.sifirla();             // her denemede yeniden doğrulama istenir
+        dugmeTazele();
+      }
+    }
+    eposta.addEventListener('keydown', function (e) { if (e.key === 'Enter') gir(); });
+
+    function bassiz(ad) {
+      return (ad || '').split(/\s+/).filter(function (p) { return /[A-Za-zÇĞİÖŞÜçğıöşü]/.test(p[0] || ''); })
+        .slice(0, 2).map(function (p) { return p[0]; }).join('').toLocaleUpperCase('tr');
+    }
+
+    function hesapListesi(tip, baslik) {
+      var db = JP.db;
+      var liste = JP.kullanicilar(null, tip);
+      if (!liste.length) return null;
+      return h('div.giris-demo.' + tip, {}, [
+        h('div.eyebrow', { text: baslik }),
+        h('div.stack', { style: { gap: '4px' } }, liste.map(function (k) {
+          var b = k.bayiKod ? db.bayiler.find(function (x) { return x.kod === k.bayiKod; }) : null;
+          return h('button.giris-hesap', {
+            disabled: k.durum === 'Pasif',
+            onclick: function () { gir(k.eposta); }
+          }, [
+            h('span.avatar' + (tip === 'firma' ? '.firma' : ''), { text: bassiz(k.ad) }),
+            h('span', {}, [
+              h('span.gh-ad', { text: k.ad }),
+              h('span.gh-alt', { text: (b ? b.unvan : (tip === 'firma' ? 'Jalpersan' : k.bayiKod)) + ' · ' + JP.rolAdi(k.rol) })
+            ]),
+            h('span.spacer'),
+            k.durum === 'Aktif' ? null : h('span.small.muted', { text: k.durum })
+          ]);
+        }))
+      ]);
+    }
+
+    var firma = hesapListesi('firma', 'Prototip · firma hesapları');
+    var bayi = hesapListesi('bayi', 'Prototip · bayi hesapları');
+
+    kok.textContent = '';
+    kok.appendChild(h('div.giris', {}, h('div.giris-kutu', {}, [
+      h('div.giris-bas', {}, [
+        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: 'B2B portalı' })]),
+        h('span.poc-flag', { text: 'Prototip' })
+      ]),
+      h('h1', { text: 'Portal girişi' }),
+      h('p.small.muted', { text: 'Firma ve bayi hesapları aynı ekrandan girer; hesabınızın tipi hangi ekrana gideceğinizi belirler. Kayıt formu yoktur, hesaplar Jalpersan tarafından tanımlanır.' }),
+      h('label.f', {}, ['E-posta adresi', eposta]),
+      dogrulama.el,
+      hata,
+      girisDugmesi,
+      kilitBilgi,
+      (firma || bayi) ? h('div.stack', {}, [firma, bayi])
+        : h('div.note.warn', { text: 'Henüz kullanıcı tanımlanmamış. Firma panelindeki “Bayi kullanıcıları” ya da “Firma kullanıcıları” ekranından hesap açın.' })
+    ])));
+    dugmeTazele();
+  };
+
+  /* ------------------------------------------------------- robot doğrulaması
+   * JP.AYAR.recaptchaSiteKey tanımlıysa gerçek Google reCAPTCHA v2 bileşeni
+   * yüklenir. Tanımlı değilse (prototip varsayılanı) yerine açıkça "prototip"
+   * etiketli bir yer tutucu konur — böylece ekran akışı demoda görünür.
+   *
+   * Önemli: reCAPTCHA koruma sağlamaz, yalnızca sunucu doğruladığında sağlar.
+   * Gerçek kurulumda giriş isteğinde gelen token sunucuda
+   * https://www.google.com/recaptcha/api/siteverify adresine secret key ile
+   * sorulur ve başarısızsa istek reddedilir. İstemcide biten bir kontrol
+   * atlatılabilir; bu yüzden hesap kilitleme de sunucu tarafında olmalıdır. */
+  function robotDogrulama(degisti) {
+    var anahtar = (JP.AYAR && JP.AYAR.recaptchaSiteKey) || '';
+    if (anahtar) return gercekRecaptcha(anahtar, degisti);
+    return yerTutucu(degisti);
+  }
+
+  function gercekRecaptcha(anahtar, degisti) {
+    var kutu = h('div.g-recaptcha', { 'data-sitekey': anahtar });
+    var uyari = h('div.small.muted', { text: 'reCAPTCHA yükleniyor…' });
+    var el = h('div.dogrula', {}, [kutu, uyari]);
+    var widget = null;
+
+    function ciz() {
+      try {
+        widget = window.grecaptcha.render(kutu, {
+          sitekey: anahtar,
+          callback: function () { uyari.textContent = ''; degisti(); },
+          'expired-callback': function () { degisti(); }
+        });
+        uyari.textContent = '';
+      } catch (e) { uyari.textContent = 'reCAPTCHA yüklenemedi: ' + e.message; }
+    }
+
+    if (window.grecaptcha && window.grecaptcha.render) ciz();
+    else {
+      window.jpRecaptchaHazir = ciz;
+      var sc = document.createElement('script');
+      sc.src = 'https://www.google.com/recaptcha/api.js?onload=jpRecaptchaHazir&render=explicit';
+      sc.async = true; sc.defer = true;
+      sc.onerror = function () {
+        uyari.textContent = 'reCAPTCHA betiği yüklenemedi (ağ ya da içerik güvenlik kuralı engelledi).';
+      };
+      document.head.appendChild(sc);
+    }
+
+    return {
+      el: el,
+      tamam: function () {
+        try { return !!(window.grecaptcha && window.grecaptcha.getResponse(widget)); }
+        catch (e) { return false; }
+      },
+      jeton: function () {
+        try { return window.grecaptcha.getResponse(widget) || null; } catch (e) { return null; }
+      },
+      sifirla: function () { try { window.grecaptcha.reset(widget); } catch (e) {} }
+    };
+  }
+
+  function yerTutucu(degisti) {
+    var kutu = h('input', { type: 'checkbox', id: 'jp-robot' });
+    kutu.addEventListener('change', function () { degisti(); });
+    var el = h('div.dogrula.yer-tutucu', {}, [
+      h('label.chk', {}, [kutu, h('span', { text: 'Robot değilim' })]),
+      h('div.spacer'),
+      h('span.poc-flag', { text: 'Prototip' })
+    ]);
+    return {
+      el: h('div.stack', { style: { gap: '6px' } }, [
+        el,
+        h('div.small.muted', { text: 'Prototipte yer tutucudur. Gerçek kurulumda Google reCAPTCHA bileşeni gelir ve gelen jeton sunucuda doğrulanır.' })
+      ]),
+      tamam: function () { return kutu.checked; },
+      jeton: function () { return kutu.checked ? 'prototip' : null; },
+      sifirla: function () { kutu.checked = false; }
+    };
+  }
+
+  function kisitMetni(b) {
+    if (b.kisit.tip === 'tumu') return 'Tüm katalog açık';
+    if (b.kisit.tip === 'gruplar') return b.kisit.gruplar.join(', ') + ' grupları';
+    return b.kisit.urunler.length + ' seçili ürün';
+  }
+
+
+  /** Oturumdaki hesap bu ekrana ait değilse sessizce yönlendirmek yerine
+   *  ne olduğunu söyler ve iki çıkış yolu sunar. */
+  UI.yetkisizEkran = function (o) {
+    var kok = document.getElementById('app');
+    document.documentElement.classList.remove('logo-world');
+    if (JP.aboneSifirla) JP.aboneSifirla();
+    var k = o.kullanici;
+    var kendi = JP.oturumHedefi(k);
+    kok.textContent = '';
+    kok.appendChild(h('div.giris', {}, h('div.giris-kutu', {}, [
+      h('div.giris-bas', {}, [
+        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: 'B2B portalı' })]),
+        h('span.poc-flag', { text: 'Prototip' })
+      ]),
+      h('h1', { text: 'Bu ekrana erişiminiz yok' }),
+      h('p.small.muted', { text: k.ad + ' hesabı ' + (kendi === 'firma' ? 'firma paneline' : 'bayi portalına') +
+        ' aittir. ' + (o.kapi === 'firma' ? 'Firma paneli' : 'Bayi portalı') + ' için uygun bir hesapla giriş yapın.' }),
+      h('button.btn.primary.block', {
+        text: kendi === 'firma' ? 'Firma paneline dön' : 'Bayi portalına dön',
+        onclick: function () { JP.girisYonlendir(k); }
+      }),
+      h('button.btn.block', { text: 'Çıkış yap', onclick: function () { JP.oturumKapat(); location.reload(); } })
+    ])));
+  };
+
   UI.kabuk = function (o) {
     document.title = (o.rolAdi || 'Portal') + ' · Jalpersan B2B';
     document.documentElement.classList.toggle('logo-world', !!o.karanlik);

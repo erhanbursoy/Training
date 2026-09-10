@@ -18,43 +18,64 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
 
 ## Beş dakikalık demo
 
-1. **Firma → Ürünler / Bayiler** · "Logo'dan güncelle" ile stok ve cari kartları çekin.
+1. **Giriş** · Firma hesabıyla girin (prototipte hesaplar giriş ekranında listelidir).
+   Bayi hesabıyla girerseniz bayi portalına yönlenirsiniz.
+2. **Firma → Ürünler / Bayiler** · "Logo'dan güncelle" ile stok ve cari kartları çekin.
    Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili kategorileri açın.
-2. **Bayi → Ürün kataloğu** · Sol yan paneldeki ürün ağacından kırılım seçin, ürünleri
+3. **Bayi → Ürün kataloğu** · Sol yan paneldeki ürün ağacından kırılım seçin, ürünleri
    sepete ekleyin. **Sepetim → Sepeti onayla** dediğinizde satın alma talebi oluşur.
-3. **Firma → Bayiler → Talep oluştur** · Telefonla gelen talebi bayi adına aynı katalogdan
+4. **Firma → Bayiler → Talep oluştur** · Telefonla gelen talebi bayi adına aynı katalogdan
    girin; talep "firma girişi" olarak işaretlenir.
-4. **Firma → Talepler** · Aynı bayinin birkaç talebini satır başındaki kutularla seçip
+5. **Firma → Talepler** · Aynı bayinin birkaç talebini satır başındaki kutularla seçip
    **tek siparişe dönüştürün**; kip kalemleri ürün bazında gruplar. Sipariş oluşturulurken
    aynı işlemde Logo'da fiş açılır. "Logo gönderim hatasını simüle et" ile deneyin: fiş
    açılmazsa sipariş de oluşmaz, talep miktarı açıkta kalır.
-5. **Logo → Sipariş fişleri** · Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci
+6. **Logo → Sipariş fişleri** · Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci
    faturayı kesin, GİB'e gönderin.
-6. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
+7. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
    işlenir, sipariş kapanır. Tekrar sorgulayın — mükerrer hareket yazılmaz.
-7. **Firma → Raporlar** · Dört raporu tarih aralığıyla süzün: en çok sipariş edilenler,
+8. **Firma → Raporlar** · Dört raporu tarih aralığıyla süzün: en çok sipariş edilenler,
    karşılanmayı bekleyenler, bayi bazında sipariş sayıları, talepten karşılanmaya süre.
-8. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
+9. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
    görsel bayi kataloğunda görünür.
 
 Panel üstündeki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
 böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön** başlangıç örneğini geri yükler.
 
-## Bayi kullanıcıları
+## Kullanıcılar ve giriş
 
-Portal hesapları yalnızca firma panelindeki **Kullanıcılar** ekranından açılır;
-bayi tarafında kayıt formu yoktur. Her kullanıcı tek bir cari karta bağlıdır ve
-yalnızca o bayinin talep ve siparişlerini görür.
+İki kullanıcı tipi vardır ve ikisi de yalnızca firma tarafından açılır; portalda kayıt
+formu yoktur.
+
+| Tip | Nereye girer | Cari kart | Roller |
+| --- | --- | --- | --- |
+| Bayi kullanıcısı | Bayi portalı | bir bayiye bağlı | **Sipariş yetkilisi** (sepete ekler, talep gönderir), **Görüntüleyici** (yalnızca izler) |
+| Firma kullanıcısı | Firma paneli | bağlı değil | **Yönetici** (her şey + kullanıcı yönetimi), **Muhasebe** (kullanıcı yönetimi hariç) |
+
+**Tek giriş ekranı, tipe göre yönlendirme.** Bayi portalı ve firma paneli aynı giriş
+ekranını kullanır; giriş yapan hesabın tipi hangi ekrana gidileceğini belirler. Yanlış
+kapıdan giren bir hesap sessizce atılmaz: ne olduğunu söyleyen bir ekran çıkar ve kendi
+portalına dönme ya da çıkış yapma seçeneği verir. Logo ERP simülatörü portal dışıdır,
+giriş istemez.
+
+**Kullanıcı yönetimi Yönetici rolündedir.** Muhasebe rolü diğer bütün ekranları görür ama
+iki kullanıcı bölümü ona hiç görünmez. Sağ üstteki hesap menüsü rolü ve yetkiyi yazar.
+
+Firma panelinde iki ayrı ekran vardır: **Bayi kullanıcıları** (bayi sütunu ve bayi
+filtresiyle) ve **Firma kullanıcıları**. İkisi de aynı iskeleti paylaşır: arama, durum
+filtresi, liste ve ayrı detay ekranı. Detayda ad/e-posta/rol/dil düzenleme, bayi
+kullanıcısında bayi değiştirme, daveti ve şifre sıfırlama bağlantısını yeniden gönderme,
+pasife alma ve silme var. Bayi kartında da o bayinin kullanıcıları ayrı sekmede listelenir.
+
+Motor iki koruma uygular: rol tipe uymazsa kayıt reddedilir (bayi kullanıcısına Yönetici
+verilemez, firma kullanıcısı cari karta bağlanamaz) ve **son etkin firma yöneticisi** pasife
+alınamaz ya da silinemez — aksi halde paneli yönetecek kimse kalmazdı. Arayüz de kişinin
+kendi hesabını pasife almasını ve silmesini kapatır.
 
 | Alan | Anlamı |
 | --- | --- |
-| Rol | **Sipariş yetkilisi** sepete ekler ve talep gönderir; **Görüntüleyici** yalnızca izler |
 | Durum | Davet gönderildi → Aktif (ilk girişte) → Pasif (firma kapatınca) |
 | Dil | Türkçe / İngilizce tercihi |
-
-Firma tarafında: kullanıcı ekleme, ad/e-posta/rol/dil düzenleme, başka bayiye taşıma,
-daveti ve şifre sıfırlama bağlantısını yeniden gönderme, pasife alma ve silme.
-Bayi detayında da o bayinin kullanıcıları ayrı sekmede listelenir.
 
 Bayi portalı oturum yokken **giriş ekranı** gösterir. Prototipte şifre sorulmaz;
 gerçek kurulumda ASP.NET Core Identity ile davet bağlantısı, şifre politikası, hesap
@@ -113,8 +134,8 @@ olduğu için miktar gösterir; birim ürün kodunun yanındadır.
 
 ## Firma paneli
 
-Yedi bölüm: **Panel**, **Talepler**, **Siparişler**, **Raporlar**, **Ürünler**, **Bayiler**,
-**Kullanıcılar**.
+Bölümler: **Panel**, **Talepler**, **Siparişler**, **Raporlar**, **Ürünler**, **Bayiler** ve
+Yönetici rolündeki kullanıcıya açılan **Bayi kullanıcıları** ile **Firma kullanıcıları**.
 
 - **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, Logo'da miktarı değişen
   sipariş, gecikmiş sipariş. Karta tıklayınca ilgili ekrana gider.
@@ -136,6 +157,17 @@ Yedi bölüm: **Panel**, **Talepler**, **Siparişler**, **Raporlar**, **Ürünle
   (telefon talebi). Detay ayrı ekran, dört sekme: Bilgiler (Logo alanları salt okunur;
   siparişe açıklık, teslimat notu ve katalog kısıtı düzenlenebilir), Kullanıcılar,
   Talepler ve Siparişler geçmişi.
+
+### Katalogda sepet miktarı
+
+Katalog satırındaki sayaç **sepetteki miktarı** gösterir. Ürün sepette değilse sayaç bir
+miktar girişidir ve düğme onu sepete yazar; sepetteyse her değişiklik (+, −, elle yazma)
+doğrudan sepete işlenir ve düğme **Çıkar** olur. 0 yazmak satırı çıkarır. Yani sepet
+ekranındaki davranışın aynısı — katalogdan ekleme üst üste toplanmaz.
+
+Ürün detay kipi de aynı: sayaç sepetteki miktardan başlar, girilen miktar üstüne eklenmek
+yerine yerine yazılır. Aynı davranış firma tarafındaki bayi adına talep kataloğunda geçerli.
+Motorda `JP.sepetAyarla` bunu sağlar: mutlak miktar yazar, satır yoksa açar, 0 ise çıkarır.
 
 ### Raporlar
 
