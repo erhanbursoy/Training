@@ -515,22 +515,23 @@
   function talepAc(no) { secilen = no; detayGorunum = 'urunler'; kabuk.git('talepler'); }
 
   /* Bir talebin kalemleri farklı birimlerde olabilir (metre, adet, top…), bu yüzden
-     talep düzeyinde miktar toplanmaz. Özet kalem sayısıyla verilir. */
-  function sevkDurumu(k) {
+     talep düzeyinde miktar toplanmaz. Özet kalem sayısıyla verilir.
+     "Tamamlanan" = faturası GİB'e gönderilmiş miktar (bkz. JP.DURUM). */
+  function tamamDurumu(k) {
     if (k.fatura >= k.talep - 0.001) return 'tam';
     return k.fatura > 0.001 ? 'kismi' : 'yok';
   }
 
-  function sevkSayim(kalemler) {
+  function tamamSayim(kalemler) {
     var s = { tam: 0, kismi: 0, yok: 0, toplam: kalemler.length };
-    kalemler.forEach(function (k) { s[sevkDurumu(k)]++; });
+    kalemler.forEach(function (k) { s[tamamDurumu(k)]++; });
     return s;
   }
 
-  function sevkBandi(s) {
+  function tamamBandi(s) {
     var t = Math.max(s.toplam, 1);
     return h('div.row.tight', { style: { width: '164px' } }, [
-      h('div.bar', { style: { flex: '1 1 auto' }, title: s.tam + ' kalem tamamlandı, ' + s.kismi + ' kalem kısmen sevk edildi' }, [
+      h('div.bar', { style: { flex: '1 1 auto' }, title: s.tam + ' kalem tamamlandı, ' + s.kismi + ' kalem kısmen tamamlandı' }, [
         h('i', { style: { width: (s.tam / t * 100) + '%', background: 'var(--ok)' } }),
         h('i', { style: { width: (s.kismi / t * 100) + '%', background: 'var(--warn)' } })
       ]),
@@ -557,15 +558,15 @@
     }
 
     return UI.panel('Talep listesi', h('span.small.muted', { text: liste.length + ' talep' }),
-      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, 'Tamamlanma', ''],
         liste.map(function (t) {
-          var s2 = sevkSayim(JP.talepKalemDurum(t));
+          var s2 = tamamSayim(JP.talepKalemDurum(t));
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { talepAc(t.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
             h('td.mono', { text: t.no, style: { fontWeight: '600' } }),
             h('td', {}, UI.rozet(JP.talepDurumu(t))),
             h('td.num.mono', { text: String(s2.toplam) }),
-            h('td', {}, sevkBandi(s2)),
+            h('td', {}, tamamBandi(s2)),
             h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); talepAc(t.no); } }))
           ]);
         })), true);
@@ -574,7 +575,7 @@
   function talepDetay(t) {
     var kalemler = JP.talepKalemDurum(t);
     var islem = JP.talepIslemleri(t.no);
-    var sayim = sevkSayim(kalemler);
+    var sayim = tamamSayim(kalemler);
 
     var govde = h('div.stack');
     function govdeCiz() {
@@ -601,9 +602,9 @@
         t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null,
         h('div.grid.k4', {}, [
           UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
-          UI.kpi('Tamamı sevk edildi', String(sayim.tam), 'kalem'),
-          UI.kpi('Kısmen sevk edildi', String(sayim.kismi), 'kalem'),
-          UI.kpi('Sevk edilmedi', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
+          UI.kpi('Tamamlandı', String(sayim.tam), 'kalem'),
+          UI.kpi('Kısmen tamamlandı', String(sayim.kismi), 'kalem'),
+          UI.kpi('Bekleyen', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
         ])
       ])),
       h('div.seg', {}, [
@@ -622,7 +623,7 @@
 
   function detayUrunler(t, kalemler) {
     return UI.panel('Talep kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Sevk edilen', num: true }, ''],
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Tamamlanan', num: true }, ''],
         kalemler.map(function (k) {
           return h('tr', {}, [
             h('td', {}, h('div.row.tight', {}, [UI.kartela(k.urun, '26px', '40px'), h('div', {}, [
@@ -642,7 +643,7 @@
   function detayIslemler(t, islem) {
     return h('div.stack', {}, [
       UI.panel('Oluşturulan siparişler', h('span.small.muted', { text: 'Siparişi muhasebe oluşturur' }),
-        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Miktar', num: true }, { t: 'Faturalanan', num: true }],
+        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }],
           islem.siparisler.map(function (s) {
             return h('tr', {}, [
               h('td.mono', { text: s.no }),
@@ -653,8 +654,8 @@
               h('td.num.mono', { text: JP.fmt.miktar(s.faturalanan) })
             ]);
           }), 'Bu talepten henüz sipariş oluşturulmadı.'), true),
-      UI.panel('Sevkiyat ve faturalar', h('span.small.muted', { text: 'Fatura kesildiğinde sevkiyat gerçekleşmiş sayılır' }),
-        UI.tablo(['Fatura no', 'Tarih', 'Tip', 'Durum', { t: 'Sevk edilen', num: true }],
+      UI.panel('Tamamlanan faturalar', h('span.small.muted', { text: "Fatura GİB'e gönderildiğinde tamamlanmış sayılır" }),
+        UI.tablo(['Fatura no', 'Tarih', 'Tip', 'Durum', { t: 'Tamamlanan', num: true }],
           islem.faturalar.map(function (f) {
             return h('tr', {}, [
               h('td.mono', { text: f.no }),
@@ -663,7 +664,7 @@
               h('td', {}, f.gib === '—' ? h('span.small.muted', { text: '—' }) : UI.rozet(f.gib)),
               h('td.num.mono', { text: JP.fmt.miktar(f.miktar) })
             ]);
-          }), 'Bu talepten henüz sevkiyat yapılmadı.'), true)
+          }), 'Bu talebe ait tamamlanmış fatura yok.'), true)
     ]);
   }
 
@@ -692,7 +693,7 @@
     UI.modal({ etiket: t.no,
       icerik: h('div.stack', {}, [
         h('p', { text: k.urun.ad + ' (' + k.kalem.urunKod + ')' }),
-        taban > 0 ? h('div.note.warn', { text: JP.fmt.miktar(taban) + ' birim siparişe alınmış veya sevk edilmiş; bu miktarın altına inilemez.' }) : null,
+        taban > 0 ? h('div.note.warn', { text: JP.fmt.miktar(taban) + ' birim işleme alınmış veya tamamlanmış; bu miktarın altına inilemez.' }) : null,
         h('label.f', {}, ['Yeni talep miktarı', girdi]),
         h('div.small.muted', { text: 'Fark, havuza ters hareket olarak yazılır. Mevcut kayıt değiştirilmez.' })
       ]),

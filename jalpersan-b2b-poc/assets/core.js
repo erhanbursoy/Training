@@ -282,7 +282,7 @@
     return r2(hareketler.reduce(function (t, h) { return h.tip === tip ? t + h.miktar : t; }, 0));
   }
 
-  /** Bir hareket kümesinin dört bakiyesi. Açık = talep − siparişte − faturalanan. */
+  /** Bir hareket kümesinin dört bakiyesi. Açık = talep − işlemde − tamamlanan. */
   function bakiye(hareketler) {
     var talep = topla(hareketler, 'dTalep');
     var rezerv = topla(hareketler, 'dRezerv');
@@ -314,7 +314,7 @@
       var g = grup[k], b = bakiye(g.hareketler);
       var enEski = g.hareketler.filter(function (h) { return h.tip === 'dTalep' && h.miktar > 0; })
         .map(function (h) { return h.ts; }).sort()[0];
-      /* rezerv anlık açık rezervdir; "siparişe alınan" kümülatiftir — sevkiyatla
+      /* rezerv anlık açık rezervdir; "işleme alınan" kümülatiftir — tamamlanmayla
          kapanan rezerv düşülmez, aksi halde sevk edilen kalem 0 sipariş gösterir. */
       var siparis = r2(g.hareketler.reduce(function (t, h) {
         return (h.tip === 'dRezerv' && !h.rezervKapanis) ? t + h.miktar : t;
@@ -406,7 +406,7 @@
    */
   JP.ROLLER = [
     { kod: 'yetkili', ad: 'Sipariş yetkilisi', tip: 'bayi', aciklama: 'Katalogdan sepete ekler ve satın alma talebi gönderir.' },
-    { kod: 'izleyici', ad: 'Görüntüleyici', tip: 'bayi', aciklama: 'Talepleri ve sevkiyatı görür, talep oluşturamaz.' },
+    { kod: 'izleyici', ad: 'Görüntüleyici', tip: 'bayi', aciklama: 'Talepleri ve tamamlanma durumunu görür, talep oluşturamaz.' },
     { kod: 'yonetici', ad: 'Yönetici', tip: 'firma', aciklama: 'Tüm firma ekranları ve kullanıcı yönetimi.' },
     { kod: 'muhasebe', ad: 'Muhasebe', tip: 'firma', aciklama: 'Talep, sipariş, ürün ve bayi ekranları; kullanıcı yönetimi kapalı.' }
   ];
@@ -963,7 +963,7 @@
     });
   };
 
-  /** Bayi/muhasebe kalem miktarını düşürür. Siparişe dönen veya faturalanan kısım düşürülemez. */
+  /** Bayi/muhasebe kalem miktarını düşürür. İşleme alınan veya tamamlanan kısım düşürülemez. */
   JP.talepKalemAzalt = function (talepNo, kalemId, yeniMiktar, kullanici) {
     return JP.tx(function (db) {
       var t = db.talepler.find(function (x) { return x.no === talepNo; });
@@ -972,7 +972,7 @@
       var b = bakiye(db.havuz.filter(function (h) { return h.talepKalemId === kalemId; }));
       var taban = r2(b.rezerv + b.fatura);
       yeniMiktar = r2(Math.max(0, yeniMiktar));
-      if (yeniMiktar < taban) throw new Error('Bu kalemin ' + JP.fmt.miktar(taban) + ' birimi siparişe dönmüş veya faturalanmış; altına inilemez.');
+      if (yeniMiktar < taban) throw new Error('Bu kalemin ' + JP.fmt.miktar(taban) + ' birimi işleme alınmış veya tamamlanmış; altına inilemez.');
       var fark = r2(yeniMiktar - b.talep);
       if (!fark) return;
       hareket(db, {
@@ -985,26 +985,34 @@
     });
   };
 
+  /* Sistemin tek durum sözlüğü. Talep de sipariş de aynı üç aşamadan geçer:
+       Talep Edildi  → bayi açtı, Logo'ya gitmedi
+       İşleme Alındı → Logo'ya sipariş olarak iletildi
+       Tamamlandı    → Logo sorgusunda faturası GİB'e gönderildi
+     Logo'da fatura kesilmesi tek başına portal için bir şey ifade etmez;
+     ölçü GİB gönderiminin başarılı olmasıdır. */
+  JP.DURUM = { talep: 'Talep Edildi', isleme: 'İşleme Alındı', tamam: 'Tamamlandı', iptal: 'İptal' };
+  JP.DURUMLAR = [JP.DURUM.talep, JP.DURUM.isleme, JP.DURUM.tamam, JP.DURUM.iptal];
+
   JP.talepDurumu = function (talep) {
-    if (talep.iptal) return 'İptal';
+    if (talep.iptal) return JP.DURUM.iptal;
     var db = JP.db, toplam = 0, rezerv = 0, fatura = 0;
     talep.kalemler.forEach(function (k) {
       var b = bakiye(db.havuz.filter(function (h) { return h.talepKalemId === k.id; }));
       toplam += b.talep; rezerv += b.rezerv; fatura += b.fatura;
     });
-    if (toplam <= 0.001) return 'İptal';
-    if (fatura >= toplam - 0.001) return 'Tamamlandı';
-    if (rezerv + fatura >= toplam - 0.001) return 'Karşılandı';
-    if (rezerv + fatura > 0.001) return 'Kısmen Karşılandı';
-    return 'Açık';
+    if (toplam <= 0.001) return JP.DURUM.iptal;
+    if (fatura >= toplam - 0.001) return JP.DURUM.tamam;
+    if (rezerv + fatura > 0.001) return JP.DURUM.isleme;
+    return JP.DURUM.talep;
   };
 
   /** Bir talebin kalem kalem durumu.
    *  talep    → talep edilen  (Σ dTalep)
    *  siparis  → sipariş oluşturulan, kümülatif (rezerv hareketleri; fatura ile
    *             çözülen rezerv hariç, yoksa faturalanınca sıfıra düşerdi)
-   *  fatura   → tahsis edilen  (Σ dFatura)
-   *  acik     → bekleyen = talep − açık rezerv − tahsis
+   *  fatura   → tamamlanan   (Σ dFatura — GİB'e gönderilmiş fatura miktarı)
+   *  acik     → bekleyen = talep − açık rezerv − tamamlanan
    */
   JP.talepKalemDurum = function (talep) {
     var db = JP.db;
@@ -1032,7 +1040,7 @@
         || { ad: k.urunKod, birim: '', doku: 'diger', renk: '#B9AE99', gosterimBirimi: '' };
       return {
         kalem: k, urun: u,
-        siparis: k.miktar, logoMiktar: k.logoMiktar, sevk: k.faturalanan,
+        siparis: k.miktar, logoMiktar: k.logoMiktar, sevk: k.faturalanan,   // sevk = tamamlanan (GİB)
         kalan: r2(Math.max(0, k.logoMiktar - k.faturalanan)),
         degisti: Math.abs(k.logoMiktar - k.miktar) > 0.001
       };
@@ -1042,8 +1050,9 @@
   /** Hareketin iş dilindeki adı. Ekranlarda dTalep/dRezerv/dFatura yerine bu kullanılır. */
   JP.islemAdi = function (x) {
     if (x.tip === 'dTalep') return x.miktar > 0 ? 'Talep oluşturuldu' : 'Talep azaltıldı';
-    if (x.tip === 'dRezerv') return x.miktar > 0 ? 'Siparişe alındı' : 'Sipariş miktarı düşürüldü';
-    return 'Sevk edildi';
+    if (x.tip === 'dRezerv') return x.miktar > 0 ? 'İşleme alındı' : 'İşleme alınan miktar düşürüldü';
+    /* dFatura artık yalnızca GİB'e gönderilmiş fatura için yazılır. */
+    return 'Tamamlandı (GİB)';
   };
 
   /** Fatura eşleşme kademesinin okunur adı. */
@@ -1104,7 +1113,7 @@
       db.logo.fisler.unshift(mevcut);
     }
     s.logoFisNo = mevcut.fisNo;
-    s.durum = "Logo'ya İletildi";
+    s.durum = JP.DURUM.isleme;
     s.hataMetni = null;
     log(db, 'logo', 'Sipariş gönderimi', s.no + ' → Logo fiş ' + mevcut.fisNo + ' (ref ' + s.logoRef + ')');
     return mevcut;
@@ -1140,7 +1149,7 @@
       db.sayac.siparis++;
       var no = 'S-' + yil() + '-' + pad(db.sayac.siparis, 6);
       var siparis = {
-        no: no, bayiKod: bayiKod, tarih: now(), durum: "Logo'ya İletildi",
+        no: no, bayiKod: bayiKod, tarih: now(), durum: JP.DURUM.isleme,
         teslimTarihi: teslimTarihi || null,
         logoFisNo: null, logoRef: 'PORTAL-' + no, hataMetni: null,
         kalemler: temiz.map(function (s) {
@@ -1175,7 +1184,7 @@
     return JP.tx(function (db) {
       var s = db.siparisler.find(function (x) { return x.no === siparisNo; });
       if (!s) throw new Error('Sipariş bulunamadı.');
-      if (s.durum === 'Tamamlandı' || s.durum === 'İptal') throw new Error('Bu sipariş iptal edilemez.');
+      if (s.durum === JP.DURUM.tamam || s.durum === JP.DURUM.iptal) throw new Error('Bu sipariş iptal edilemez.');
       s.kalemler.forEach(function (k) {
         var acikRezerv = r2(k.logoMiktar - k.faturalanan);
         if (acikRezerv > 0.001) {
@@ -1186,7 +1195,7 @@
           });
         }
       });
-      s.durum = 'İptal';
+      s.durum = JP.DURUM.iptal;
       log(db, 'portal', 'Sipariş iptali', s.no + ' iptal edildi. Logo fişi ' + (s.logoFisNo || '—') + ' elle iptal edilmelidir.');
       return s;
     });
@@ -1198,14 +1207,14 @@
    *  1) fiş miktar değişimi → dRezerv düzeltmesi
    *  2) fişe bağlı fatura satırı → kademe 1 (bağlantılı): dFatura + / dRezerv −
    *  3) fişsiz (serbest) fatura → kademe 2 (FIFO) veya kademe 3 (eşleşmeyen)
-   *  4) tüm kalemler faturalandı + GİB başarılı → sipariş 'Tamamlandı'
+   *  4) tüm kalemler GİB'e gönderilmiş faturayla kapandıysa → 'Tamamlandı'
    */
   JP.durumSorgula = function (siparisNo) {
     return JP.tx(function (db) {
       var sonuc = { okunanFis: 0, miktarDegisimi: 0, faturaHareketi: 0, fifo: 0, eslesmeyen: 0, kapanan: 0, atlanan: 0 };
       var hedef = db.siparisler.filter(function (s) {
         if (siparisNo) return s.no === siparisNo;
-        return s.durum === "Logo'ya İletildi" || s.durum === 'Faturalandı';   // tamamlananlar tekrar sorgulanmaz
+        return s.durum === JP.DURUM.isleme;   // tamamlanan ve iptal tekrar sorgulanmaz
       });
 
       hedef.forEach(function (s) {
@@ -1225,7 +1234,7 @@
               });
             }
           });
-          s.durum = 'İptal';
+          s.durum = JP.DURUM.iptal;
           log(db, 'logo', 'Sipariş durumu', s.no + ' · Logo fişi iptal edilmiş, portal siparişi iptale çekildi', true);
           return;
         }
@@ -1250,8 +1259,10 @@
           k.logoMiktar = r2(r.miktar);
         });
 
-        // 2) fişe bağlı faturalar — kademe 1
-        db.logo.faturalar.filter(function (f) { return f.fisNo === fis.fisNo; }).forEach(function (f) {
+        /* 2) fişe bağlı faturalar — kademe 1.
+           Yalnızca GİB gönderimi başarılı olanlar havuza işlenir; kesilmiş ama
+           gönderilmemiş fatura portal için yoktur. */
+        db.logo.faturalar.filter(function (f) { return f.fisNo === fis.fisNo && f.gib === 'Başarılı'; }).forEach(function (f) {
           f.satirlar.forEach(function (fr, i) {
             var ref = 'logo:fatura:' + f.no + ':' + i;
             var fisSatir = fis.satirlar.find(function (r) { return r.id === fr.fisSatirId; });
@@ -1262,38 +1273,36 @@
               bayiKod: s.bayiKod, urunKod: k.urunKod, tip: 'dFatura', miktar: fr.miktar,
               kaynak: 'logo', ref: ref, siparisNo: s.no, talepNo: k.talepNo, talepKalemId: k.talepKalemId,
               belge: f.no, eslesme: 'baglantili', kullanici: 'logo',
-              aciklama: 'Fatura kesildi (' + f.tur + ')'
+              aciklama: "GİB'e gönderildi (" + f.tur + ')'
             });
             // rezerv aynı işlemde kapatılır
             hareket(db, {
               bayiKod: s.bayiKod, urunKod: k.urunKod, tip: 'dRezerv', miktar: -fr.miktar,
               kaynak: 'logo', ref: ref + ':rez', siparisNo: s.no, talepNo: k.talepNo, talepKalemId: k.talepKalemId,
               belge: f.no, kullanici: 'logo', rezervKapanis: true,
-              aciklama: 'Faturalanan miktarın rezervi çözüldü'
+              aciklama: 'Tamamlanan miktarın rezervi çözüldü'
             });
             k.faturalanan = r2(k.faturalanan + fr.miktar);
             sonuc.faturaHareketi++;
           });
         });
 
-        // 4) durum
-        var tumFaturalandi = s.kalemler.every(function (k) { return k.faturalanan >= k.logoMiktar - 0.001; });
-        var faturalar = db.logo.faturalar.filter(function (f) { return f.fisNo === fis.fisNo; });
-        var gibTamam = faturalar.length > 0 && faturalar.every(function (f) { return f.gib === 'Başarılı'; });
-        if (tumFaturalandi && gibTamam) {
-          if (s.durum !== 'Tamamlandı') {
-            s.durum = 'Tamamlandı'; sonuc.kapanan++;
-            bildir(db, s.bayiKod, 'Siparişiniz tamamlandı', s.no + ' faturalandı ve GİB gönderimi başarılı.');
-            log(db, 'logo', 'Sipariş kapanışı', s.no + ' · tüm kalemler faturalandı, GİB gönderimi başarılı → Tamamlandı');
+        /* 4) durum: bütün kalemler GİB'e gönderilmiş faturayla kapandıysa
+           sipariş tamamlanır. Arada başka bir durum yok — kesilmiş ama GİB'e
+           gitmemiş fatura siparişi İşleme Alındı'da bırakır. */
+        var tumTamamlandi = s.kalemler.every(function (k) { return k.faturalanan >= k.logoMiktar - 0.001; });
+        if (tumTamamlandi && s.kalemler.length) {
+          if (s.durum !== JP.DURUM.tamam) {
+            s.durum = JP.DURUM.tamam; sonuc.kapanan++;
+            bildir(db, s.bayiKod, 'Siparişiniz tamamlandı', s.no + " faturası GİB'e gönderildi.");
+            log(db, 'logo', 'Sipariş kapanışı', s.no + " · tüm kalemler GİB'e gönderildi → Tamamlandı");
           }
-        } else if (faturalar.length) {
-          s.durum = 'Faturalandı';
         }
       });
 
       // 3) fişsiz faturalar — kademe 2 (FIFO) / kademe 3 (eşleşmeyen)
       if (!siparisNo) {
-        db.logo.faturalar.filter(function (f) { return !f.fisNo; }).forEach(function (f) {
+        db.logo.faturalar.filter(function (f) { return !f.fisNo && f.gib === 'Başarılı'; }).forEach(function (f) {
           f.satirlar.forEach(function (fr, i) {
             var ref = 'logo:fatura:' + f.no + ':' + i;
             if (db.havuz.some(function (h) { return h.ref === ref; })) { sonuc.atlanan++; return; }
@@ -1307,7 +1316,7 @@
                 bayiKod: f.cariKod, urunKod: fr.stokKod, tip: 'dFatura', miktar: pay,
                 kaynak: 'logo', ref: ref + (j ? ':p' + j : ''), talepNo: a.talepNo, talepKalemId: a.kalemId,
                 belge: f.no, eslesme: 'fifo', kullanici: 'logo',
-                aciklama: 'Sipariş bağlantısı yok — en eski açık talebe (FIFO) tahsis edildi'
+                aciklama: 'Sipariş bağlantısı yok — en eski açık talebe (FIFO) yazıldı'
               });
               kalan = r2(kalan - pay); sonuc.fifo++;
             });
@@ -1358,7 +1367,7 @@
 
   /** Elle düzeltme tipleri — ekranda hareket tipi yerine ne yaptığı yazar. */
   JP.ELLE_TIPLER = [
-    { tip: 'dFatura', ad: 'Sevkiyat kaydı (talebi kapatır)' },
+    { tip: 'dFatura', ad: 'Tamamlanma kaydı (talebi kapatır)' },
     { tip: 'dTalep', ad: 'Talep düzeltmesi' },
     { tip: 'dRezerv', ad: 'Sipariş düzeltmesi' }
   ];
@@ -1518,9 +1527,9 @@
   };
 
   /* ------------------------------------------------------------------ raporlar
-   * Dört rapor da aynı iskeleti kullanır: tarih aralığı süzer, satırları ürün
+   * Üç rapor da aynı iskeleti kullanır: tarih aralığı süzer, satırları ürün
    * ya da bayi bazında toplar, sıralı bir dizi döner. Miktarlar ürünün kendi
-   * biriminden olduğu için satırlar arası toplanmaz; özetler satır sayar.
+   * biriminden olduğu için satırlar arası toplanmaz; sayımlar kalem sayar.
    */
   function araligaGirer(ts, bas, bit) {
     if (bas && ts < bas) return false;
@@ -1536,69 +1545,50 @@
     return Math.round(dizi.reduce(function (t, v) { return t + v; }, 0) / dizi.length * 10) / 10;
   }
 
-  /** 1 — Ürün bazında en çok sipariş edilenler. Aralık sipariş tarihine bakar. */
-  JP.raporEnCokSiparis = function (f) {
-    f = f || {};
-    var g = {};
-    JP.db.siparisler.forEach(function (s) {
-      if (s.durum === 'İptal') return;
-      if (!araligaGirer(s.tarih, f.bas, f.bit)) return;
-      JP.siparisKalemDurum(s).forEach(function (k) {
-        var r = g[k.kalem.urunKod] || (g[k.kalem.urunKod] = {
-          urunKod: k.kalem.urunKod, siparisKalem: 0, siparis: 0, sevk: 0,
-          bayiler: {}, siparisler: {}, sonTarih: null
-        });
-        r.siparisKalem++;
-        r.siparis = r2(r.siparis + k.logoMiktar);
-        r.sevk = r2(r.sevk + k.sevk);
-        r.bayiler[s.bayiKod] = true;
-        r.siparisler[s.no] = true;
-        if (!r.sonTarih || s.tarih > r.sonTarih) r.sonTarih = s.tarih;
-      });
-    });
-    return Object.keys(g).map(function (kod) {
-      var r = g[kod];
-      r.urun = urunBilgi(kod);
-      r.bayiSayisi = Object.keys(r.bayiler).length;
-      r.siparisSayisi = Object.keys(r.siparisler).length;
-      r.sevkOran = r.siparis > 0 ? Math.round(r.sevk / r.siparis * 100) : 0;
-      return r;
-    }).sort(function (a, b) { return b.siparis - a.siparis || b.siparisKalem - a.siparisKalem; });
-  };
-
-  /** 2 — Talep edilmiş, karşılanmayı bekleyen ürünler. Aralık talep tarihine bakar. */
-  JP.raporBekleyen = function (f) {
+  /** 1 — Ürün raporu: ürün bazında kaç talep gelmiş, kaçı sevk edilmiş, kaçı
+   *  tamamlanmış. Sayımlar talep kalemi düzeyinde, miktarlar ürünün kendi
+   *  biriminde. Aralık talep tarihine bakar. */
+  JP.raporUrun = function (f) {
     f = f || {};
     var g = {};
     JP.db.talepler.forEach(function (t) {
+      if (t.iptal) return;
       if (!araligaGirer(t.tarih, f.bas, f.bit)) return;
-      JP.talepKalemDurum(t).forEach(function (k) {
-        if (k.donusturulebilir <= 0.001 && k.talep - k.fatura <= 0.001) return;
-        var r = g[k.kalem.urunKod] || (g[k.kalem.urunKod] = {
-          urunKod: k.kalem.urunKod, talep: 0, siparis: 0, sevk: 0, kalan: 0,
-          bayiler: {}, talepler: {}, enEskiTs: null
+      JP.talepKalemDurum(t).forEach(function (kd) {
+        /* Miktarı sıfıra çekilen (iptal edilen) kalem talep sayılmaz. */
+        if (kd.talep <= 0.001) return;
+        var kod = kd.kalem.urunKod;
+        var r = g[kod] || (g[kod] = {
+          urunKod: kod, kalem: 0, islemeKalem: 0, tamamlanan: 0,
+          talep: 0, siparis: 0, sevk: 0, kalan: 0,
+          talepler: {}, bayiler: {}, sonTarih: null
         });
-        r.talep = r2(r.talep + k.talep);
-        r.siparis = r2(r.siparis + k.siparis);
-        r.sevk = r2(r.sevk + k.fatura);
-        r.kalan = r2(r.kalan + k.donusturulebilir);
-        r.bayiler[t.bayiKod] = true;
+        r.kalem++;
+        /* İşleme alınan = Logo'ya sipariş olarak gitmiş kalem (rezerv ya da
+           tamamlanma hareketi var). Tamamlanan = tamamı GİB'e gönderilmiş. */
+        if (kd.siparis + kd.fatura > 0.001) r.islemeKalem++;
+        if (kd.talep > 0.001 && kd.fatura + 0.001 >= kd.talep) r.tamamlanan++;
+        r.talep = r2(r.talep + kd.talep);
+        r.siparis = r2(r.siparis + kd.siparis);
+        r.sevk = r2(r.sevk + kd.fatura);
+        r.kalan = r2(r.kalan + kd.donusturulebilir);
         r.talepler[t.no] = true;
-        if (!r.enEskiTs || t.tarih < r.enEskiTs) r.enEskiTs = t.tarih;
+        r.bayiler[t.bayiKod] = true;
+        if (!r.sonTarih || t.tarih > r.sonTarih) r.sonTarih = t.tarih;
       });
     });
     return Object.keys(g).map(function (kod) {
       var r = g[kod];
       r.urun = urunBilgi(kod);
-      r.bayiSayisi = Object.keys(r.bayiler).length;
       r.talepSayisi = Object.keys(r.talepler).length;
-      r.yas = r.enEskiTs ? gunFark(r.enEskiTs) : 0;
+      r.bayiSayisi = Object.keys(r.bayiler).length;
+      r.islemeYuzde = r.kalem ? Math.round(r.islemeKalem / r.kalem * 100) : 0;
+      r.tamamlanmaYuzde = r.kalem ? Math.round(r.tamamlanan / r.kalem * 100) : 0;
       return r;
-    }).filter(function (r) { return r.kalan > 0.001; })
-      .sort(function (a, b) { return b.yas - a.yas || b.kalan - a.kalan; });
+    }).sort(function (a, b) { return b.kalem - a.kalem || b.talep - a.talep; });
   };
 
-  /** 3 — Bayi bazında sipariş sayıları. Aralık sipariş tarihine bakar. */
+  /** 2 — Bayi raporu: bayi bazında sipariş, kalem ve tamamlanma sayıları. Aralık sipariş tarihine bakar. */
   JP.raporBayiSiparis = function (f) {
     f = f || {};
     var g = {};
@@ -1615,7 +1605,7 @@
       var r = kutu(s.bayiKod);
       r.siparis++;
       r.siparisKalem += s.kalemler.length;
-      if (s.durum === 'Tamamlandı') r.tamamlanan++;
+      if (s.durum === JP.DURUM.tamam) r.tamamlanan++;
       s.kalemler.forEach(function (k) { r.urunler[k.urunKod] = true; });
       if (!r.sonTarih || s.tarih > r.sonTarih) r.sonTarih = s.tarih;
     });
@@ -1629,13 +1619,15 @@
       r.bayi = b || { kod: kod, unvan: kod, sehir: '', ulke: '' };
       r.urunSayisi = Object.keys(r.urunler).length;
       r.donusumOran = r.talep > 0 ? Math.round(r.siparis / r.talep * 100) : 0;
+      r.tamamlanmaYuzde = r.siparis > 0 ? Math.round(r.tamamlanan / r.siparis * 100) : 0;
       return r;
     }).sort(function (a, b) { return b.siparis - a.siparis || b.talep - a.talep; });
   };
 
-  /** 4 — Ürün bazında talepten karşılanmaya kadar geçen süre.
-   *  Ölçüm talep kalemi düzeyindedir: talebin açıldığı an ile ilk sevkiyat ve
-   *  tam sevkiyat arasındaki gün sayısı. Aralık talep tarihine bakar. */
+  /** 3 — Performans raporu: ürün bazında talep/sevk adetleri ile talepten
+   *  karşılanmaya kadar geçen en kısa, en uzun ve ortalama gün.
+   *  Ölçüm talep kalemi düzeyindedir: talebin açıldığı an ile ilk ve son
+   *  tamamlanma (GİB gönderimi) arasındaki gün. Aralık talep tarihine bakar. */
   JP.raporSure = function (f) {
     f = f || {};
     var g = {};
@@ -1646,8 +1638,10 @@
         var kd = durum.find(function (x) { return x.kalem.id === k.id; });
         if (!kd) return;
         var r = g[k.urunKod] || (g[k.urunKod] = {
-          urunKod: k.urunKod, kapanan: 0, acik: 0, ilk: [], tam: [], acikYas: []
+          urunKod: k.urunKod, kapanan: 0, acik: 0, islemeKalem: 0,
+          talepler: {}, ilk: [], tam: [], acikYas: []
         });
+        r.talepler[t.no] = true;
         var hs = JP.db.havuz.filter(function (h) { return h.talepKalemId === k.id; });
         var acilis = hs.filter(function (h) { return h.tip === 'dTalep' && h.miktar > 0; })
           .map(function (h) { return h.ts; }).sort()[0] || t.tarih;
@@ -1655,6 +1649,7 @@
           .map(function (h) { return h.ts; }).sort();
         var gun = function (a, b) { return Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000 * 10) / 10); };
         if (sevkler.length) r.ilk.push(gun(acilis, sevkler[0]));
+        if (kd.siparis + kd.fatura > 0.001) r.islemeKalem++;
         if (kd.fatura + 0.001 >= kd.talep && kd.talep > 0) {
           r.kapanan++;
           r.tam.push(gun(acilis, sevkler[sevkler.length - 1]));
@@ -1669,9 +1664,12 @@
       r.urun = urunBilgi(kod);
       r.ortIlk = ort(r.ilk);
       r.ortTam = ort(r.tam);
+      r.enKisaTam = r.tam.length ? Math.min.apply(null, r.tam) : null;
       r.enUzunTam = r.tam.length ? Math.max.apply(null, r.tam) : null;
       r.enUzunAcik = r.acikYas.length ? Math.max.apply(null, r.acikYas) : null;
       r.kalem = r.kapanan + r.acik;
+      r.talepSayisi = Object.keys(r.talepler).length;
+      r.tamamlanmaYuzde = r.kalem ? Math.round(r.kapanan / r.kalem * 100) : 0;
       return r;
     }).sort(function (a, b) {
       var av = a.ortTam === null ? -1 : a.ortTam, bv = b.ortTam === null ? -1 : b.ortTam;

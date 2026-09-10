@@ -22,8 +22,11 @@
   var secKullanici = null;
   var fKullanici = { bayi: { ara: '', bayiKod: '', durum: '' }, firma: { ara: '', durum: '' } };
   var kullaniciTipi = 'bayi';
-  var fRapor = { bas: '', bit: '', ara: '', durum: '' };
-  var raporSecim = 'encok';
+  var fRapor = {
+    urun: { bas: '', bit: '', ara: '', durum: '' },
+    bayi: { bas: '', bit: '', ara: '', durum: '' },
+    performans: { bas: '', bit: '', ara: '', durum: '' }
+  };
 
   function aktifKullanici() {
     var k = JP.oturumKullanici();
@@ -37,36 +40,39 @@
     if (!oturum) return UI.girisEkrani({ kapi: 'firma' });
     kabuk = UI.kabuk({
       rol: 'firma', rolAdi: 'Firma paneli', altBaslik: 'Muhasebe ve yönetim',
-      railBaslik: 'Yönetim',
+      railBaslik: 'Firma paneli',
       ustSag: function () {
         var kul = aktifKullanici();
         /* Veri sıfırlama demo aracıdır ve giriş sayfasında durur; panelde
            yalnızca oturum menüsü var. */
         return h('div.row.tight', {}, [kul ? profilDugmesi(kul) : null]);
       },
+      /* Menü üç öbekte: günlük iş (Operasyon), ana veri (Yönetim) ve raporlar.
+         Rozet yalnızca iş bekleyen iki bölümde var: kapanmamış talep ve
+         kapanmamış sipariş sayısı. Ana veri ve rapor bölümleri sayı taşımaz. */
       bolumler: [
         { id: 'panel', ad: 'Panel', ciz: panel },
-        { id: 'talepler', ad: 'Talepler',
+        { id: 'talepler', ad: 'Talepler', grup: 'Operasyon',
           ciz: talepler,
-          sayi: function () { return JP.db.talepler.filter(bekleyen).length; },
+          sayi: function () { return acikTalepSayisi(); },
           sicak: function () { return JP.db.talepler.filter(bekleyen).length > 0; } },
-        { id: 'siparisler', ad: 'Siparişler',
-          ciz: siparisler, sayi: function () { return JP.db.siparisler.length; } },
-        { id: 'raporlar', ad: 'Raporlar', ciz: raporlar },
-        { id: 'urunler', ad: 'Ürünler',
-          ciz: urunler, yan: urunAgacPaneli, yanBaslik: 'Ürün ağacı',
-          sayi: function () { return JP.db.urunler.length; } },
-        { id: 'bayiler', ad: 'Bayiler',
-          ciz: bayiler, yan: talepGirisAgacPaneli, yanBaslik: 'Ürün ağacı',
-          sayi: function () { return JP.db.bayiler.length; } },
-        { id: 'bayiKullanicilari', ad: 'Bayi kullanıcıları', gizli: !yonetebilir(),
-          ciz: function () { kullaniciTipi = 'bayi'; return kullanicilar('bayi'); },
-          sayi: function () { return JP.kullanicilar(null, 'bayi').length; },
-          sicak: function () { return JP.kullanicilar(null, 'bayi').some(function (k) { return k.durum === 'Davet gönderildi'; }); } },
-        { id: 'firmaKullanicilari', ad: 'Firma kullanıcıları', gizli: !yonetebilir(),
-          ciz: function () { kullaniciTipi = 'firma'; return kullanicilar('firma'); },
-          sayi: function () { return JP.kullanicilar(null, 'firma').length; },
-          sicak: function () { return JP.kullanicilar(null, 'firma').some(function (k) { return k.durum === 'Davet gönderildi'; }); } }
+        { id: 'siparisler', ad: 'Siparişler', grup: 'Operasyon',
+          ciz: siparisler,
+          sayi: function () { return acikSiparisSayisi(); } },
+        { id: 'urunler', ad: 'Ürünler', grup: 'Yönetim',
+          ciz: urunler, yan: urunAgacPaneli, yanBaslik: 'Ürün ağacı' },
+        { id: 'bayiler', ad: 'Bayiler', grup: 'Yönetim',
+          ciz: bayiler, yan: talepGirisAgacPaneli, yanBaslik: 'Ürün ağacı' },
+        { id: 'bayiKullanicilari', ad: 'Bayi kullanıcıları', grup: 'Yönetim', gizli: !yonetebilir(),
+          ciz: function () { kullaniciTipi = 'bayi'; return kullanicilar('bayi'); } },
+        { id: 'firmaKullanicilari', ad: 'Firma kullanıcıları', grup: 'Yönetim', gizli: !yonetebilir(),
+          ciz: function () { kullaniciTipi = 'firma'; return kullanicilar('firma'); } },
+        { id: 'urunRaporu', ad: 'Ürün raporu', grup: 'Raporlar',
+          ciz: function () { return raporEkrani('urun'); } },
+        { id: 'bayiRaporu', ad: 'Bayi raporu', grup: 'Raporlar',
+          ciz: function () { return raporEkrani('bayi'); } },
+        { id: 'performansRaporu', ad: 'Performans raporu', grup: 'Raporlar',
+          ciz: function () { return raporEkrani('performans'); } }
       ]
     });
   };
@@ -105,17 +111,28 @@
   }
 
   /* ------------------------------------------------------------- yardımcı */
-  function bekleyen(t) { var d = JP.talepDurumu(t); return d === 'Açık' || d === 'Kısmen Karşılandı'; }
+  /* Kapanmamış talep: tamamlanmamış ve iptal olmamış (bkz. JP.DURUM). */
+  function bekleyen(t) { var d = JP.talepDurumu(t); return d === JP.DURUM.talep || d === JP.DURUM.isleme; }
+  /* Menü rozetleri: kapanmamış belge sayısı. Talepte ölçü "Tamamlandı değil",
+     siparişte "Tamamlandı ve İptal değil" — iptal edilmiş sipariş listede
+     görünür bir son durumdur, iş beklemez. */
+  function acikTalepSayisi() {
+    return JP.db.talepler.filter(function (t) { return JP.talepDurumu(t) !== JP.DURUM.tamam; }).length;
+  }
+  function acikSiparisSayisi() {
+    return JP.db.siparisler.filter(function (s) { return s.durum !== JP.DURUM.tamam && s.durum !== JP.DURUM.iptal; }).length;
+  }
   function bayiAd(kod) { var b = JP.db.bayiler.find(function (x) { return x.kod === kod; }); return b ? b.unvan : kod; }
   function urun(kod) { return JP.db.urunler.find(function (x) { return x.kod === kod; }) || { ad: kod, kod: kod, birim: '', doku: 'diger', renk: '#B9AE99', gosterimBirimi: '' }; }
   function kucult(s) { return (s || '').toLocaleLowerCase('tr'); }
   function gunBasi(d) { return d ? d + 'T00:00:00' : null; }
   function gunSonu(d) { return d ? d + 'T23:59:59' : null; }
 
-  function sevkSayim(kalemler, alanTalep, alanSevk) {
+  /* "Tamamlanan" = faturası GİB'e gönderilmiş miktar (bkz. JP.DURUM). */
+  function tamamSayim(kalemler, alanTalep, alanTamam) {
     var s = { tam: 0, kismi: 0, yok: 0, toplam: kalemler.length };
     kalemler.forEach(function (k) {
-      var t = k[alanTalep], f = k[alanSevk];
+      var t = k[alanTalep], f = k[alanTamam];
       if (f >= t - 0.001) s.tam++; else if (f > 0.001) s.kismi++; else s.yok++;
     });
     return s;
@@ -159,15 +176,16 @@
   /* ------------------------------------------------------------------ panel */
   function panel() {
     var db = JP.db;
-    var acikTalep = db.talepler.filter(bekleyen).length;
-    var acikSiparis = db.siparisler.filter(function (s) { return s.durum === "Logo'ya İletildi" || s.durum === 'Faturalandı'; }).length;
+    var acikTalep = db.talepler.filter(function (t) { return JP.talepDurumu(t) === JP.DURUM.talep; }).length;
+    var islemdeTalep = db.talepler.filter(function (t) { return JP.talepDurumu(t) === JP.DURUM.isleme; }).length;
+    var acikSiparis = db.siparisler.filter(function (s) { return s.durum === JP.DURUM.isleme; }).length;
     /* Gönderim hatası artık kayıt bırakmaz (sipariş oluşmaz), yerine Logo
        tarafında miktarı değiştirilmiş ve gözden geçirilmesi gereken siparişler. */
     var degisen = db.siparisler.filter(function (s) {
-      if (s.durum === 'İptal') return false;
+      if (s.durum === JP.DURUM.iptal) return false;
       return JP.siparisKalemDurum(s).some(function (k) { return k.degisti; });
     }).length;
-    var gecikmis = db.siparisler.filter(function (s) { return s.durum === "Logo'ya İletildi" && JP.gunFark(s.tarih) > 7; }).length;
+    var gecikmis = db.siparisler.filter(function (s) { return s.durum === JP.DURUM.isleme && JP.gunFark(s.tarih) > 7; }).length;
 
     function kart(etiket, deger, birim, alt, hedef, vurgu) {
       var el = UI.kpi(etiket, String(deger), birim, alt, vurgu);
@@ -193,10 +211,11 @@
       ]));
     }
     kap.appendChild(h('div.grid.k4', {}, [
-      kart('Açık talep', acikTalep, 'talep', 'Siparişe dönmeyi bekliyor', 'talepler', acikTalep > 0),
-      kart('Açık sipariş', acikSiparis, 'sipariş', "Logo'da faturalanmayı bekliyor", 'siparisler'),
+      /* Üç durum artı bir istisna: Logo'da miktarı değişmiş siparişler. */
+      kart('Talep edilen', acikTalep, 'talep', "Logo'ya gönderilmeyi bekliyor", 'talepler', acikTalep > 0),
+      kart('İşleme alınan', islemdeTalep + acikSiparis, 'belge', islemdeTalep + ' talep · ' + acikSiparis + " sipariş, GİB'i bekliyor", 'siparisler'),
       kart("Logo'da değişen", degisen, 'sipariş', degisen ? 'Miktar Logo tarafında değişti' : 'Fark yok', 'siparisler', degisen > 0),
-      kart('Gecikmiş sipariş', gecikmis, 'sipariş', "7 günden uzun süredir faturalanmadı", 'siparisler')
+      kart('Gecikmiş', gecikmis, 'sipariş', '7 günden uzun süredir tamamlanmadı', 'siparisler', gecikmis > 0)
     ]));
     return kap;
   }
@@ -261,9 +280,9 @@
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(UI.panel(null, null, UI.tablo(
-        ['', 'Tarih', 'Talep no', 'Bayi', 'İstenen teslim', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+        ['', 'Tarih', 'Talep no', 'Bayi', 'İstenen teslim', 'Durum', { t: 'Kalem', num: true }, 'Tamamlanma', ''],
         liste.map(function (t) {
-          var s = sevkSayim(JP.talepKalemDurum(t), 'talep', 'fatura');
+          var s = tamamSayim(JP.talepKalemDurum(t), 'talep', 'fatura');
           var donebilir = JP.talepKalemDurum(t).some(function (k) { return k.donusturulebilir > 0.001; });
           var bayiUyum = !secilenBayi() || secilenBayi() === t.bayiKod;
           var kutu = h('input', {
@@ -304,7 +323,7 @@
     seritCiz();
 
     return h('div.stack', {}, [
-      filtreCubugu(fTalep, ['Açık', 'Kısmen Karşılandı', 'Karşılandı', 'Tamamlandı'], yenile,
+      filtreCubugu(fTalep, JP.DURUMLAR, yenile,
         h('div.row.tight', {}, [
           sayimEl,
           h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { talepKopyala(liste); } })
@@ -316,13 +335,13 @@
   }
 
   function talepKopyala(liste) {
-    var satir = [['Talep no', 'Tarih', 'Bayi', 'Kaynak', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Kalan']];
+    var satir = [['Talep no', 'Tarih', 'Bayi', 'Kaynak', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'İşleme alınan', 'Tamamlanan']];
     liste.forEach(function (t) {
       JP.talepKalemDurum(t).forEach(function (k) {
         satir.push([t.no, JP.fmt.tarih(t.tarih), bayiAd(t.bayiKod),
           t.kaynak === 'firma' ? 'Firma girişi' : 'Bayi',
           t.teslimTarihi ? JP.fmt.tarih(t.teslimTarihi) : '', JP.talepDurumu(t),
-          k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura, k.donusturulebilir]);
+          k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura]);
       });
     });
     UI.tabloKopyala('Talepler', satir);
@@ -331,7 +350,7 @@
   function talepDetay(t) {
     var kalemler = JP.talepKalemDurum(t);
     var islem = JP.talepIslemleri(t.no);
-    var sayim = sevkSayim(kalemler, 'talep', 'fatura');
+    var sayim = tamamSayim(kalemler, 'talep', 'fatura');
     var donusturulebilir = kalemler.some(function (k) { return k.donusturulebilir > 0.001; });
     /* Aynı bayinin başka açık talepleri varsa tek siparişte birleştirme kısayolu. */
     var digerAcik = donusturulebilir ? JP.db.talepler.filter(function (x) {
@@ -369,9 +388,9 @@
         t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null,
         h('div.grid.k4', {}, [
           UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
-          UI.kpi('Tamamı sevk edildi', String(sayim.tam), 'kalem'),
-          UI.kpi('Kısmen sevk edildi', String(sayim.kismi), 'kalem'),
-          UI.kpi('Sevk edilmedi', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
+          UI.kpi('Tamamlandı', String(sayim.tam), 'kalem'),
+          UI.kpi('Kısmen tamamlandı', String(sayim.kismi), 'kalem'),
+          UI.kpi('Bekleyen', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
         ])
       ])),
       h('div.seg', {}, [
@@ -387,11 +406,13 @@
   }
 
   function detayUrunler(kalemler) {
-    /* Sevk edilen, siparişe alınanın içindedir — ayrıca düşülmez. Kalan, henüz
-       siparişe alınmamış miktardır; dört sütun bu yüzden alt alta toplanmaz. */
+    /* Üç durumun üç sütunu: istenen, Logo'ya giden, GİB'e gidip tamamlanan.
+       Tamamlanan, işleme alınanın içindedir — sütunlar alt alta toplanmaz.
+       İşleme alınmayı bekleyen miktar talep − işleme alınandır; ayrı sütun
+       tutulmaz, dönüştürme kipinde "Kalan" olarak çıkar. */
     return UI.panel('Talep kalemleri',
-      h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden · Sevk edilen, siparişe alınanın içindedir · Kalan henüz siparişe alınmadı' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
+      h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden · Tamamlanan, işleme alınanın içindedir' }),
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }],
         kalemler.map(function (k) {
           return h('tr', {}, [
             h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
@@ -401,9 +422,7 @@
             h('td.small.muted.nowrap', { text: k.urun.gosterimBirimi }),
             h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.donusturulebilir),
-              style: { color: k.donusturulebilir > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } })
+            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } })
           ]);
         })), true);
   }
@@ -411,7 +430,7 @@
   function detayIslemler(islem) {
     return h('div.stack', {}, [
       UI.panel('Oluşturulan siparişler', null,
-        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, ''],
+        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }, ''],
           islem.siparisler.map(function (s) {
             return h('tr', {}, [
               h('td.mono', { text: s.no }),
@@ -423,8 +442,8 @@
               h('td.right', {}, h('button.btn.ghost.sm', { text: 'Siparişe git', onclick: function () { siparisAc(s.no); } }))
             ]);
           }), 'Bu talepten henüz sipariş oluşturulmadı.'), true),
-      UI.panel('Sevkiyat ve faturalar', h('span.small.muted', { text: 'Fatura kesildiğinde sevkiyat gerçekleşmiş sayılır' }),
-        UI.tablo(['Fatura no', 'Tarih', 'Tip', 'Eşleşme', 'GİB', { t: 'Sevk edilen', num: true }],
+      UI.panel('Tamamlanan faturalar', h('span.small.muted', { text: "Fatura GİB'e gönderildiğinde tamamlanmış sayılır" }),
+        UI.tablo(['Fatura no', 'Tarih', 'Tip', 'Eşleşme', 'GİB', { t: 'Tamamlanan', num: true }],
           islem.faturalar.map(function (f) {
             return h('tr', {}, [
               h('td.mono', { text: f.no }),
@@ -434,7 +453,7 @@
               h('td', {}, f.gib === '—' ? h('span.small.muted', { text: '—' }) : UI.rozet(f.gib)),
               h('td.num.mono', { text: JP.fmt.miktar(f.miktar) })
             ]);
-          }), 'Bu talepten henüz sevkiyat yapılmadı.'), true)
+          }), 'Bu talebe ait tamamlanmış fatura yok.'), true)
     ]);
   }
 
@@ -558,9 +577,9 @@
       icerik: h('div.stack', {}, [
         talepler.length > 1 ? h('div.note', {
           text: 'Seçilen talepler tek siparişte birleşir. Her kalem kendi talebine bağlı kalır; ' +
-                'sevkiyat gerçekleştiğinde ilgili talep kapanır.'
+                "fatura GİB'e gönderildiğinde ilgili talep kapanır."
         }) : null,
-        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep edilen', num: true }, { t: 'Kalan', num: true }, 'Siparişe alınacak'], govde),
+        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep edilen', num: true }, { t: 'Kalan', num: true }, 'İşleme alınacak'], govde),
         ozet,
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Talep edilen teslim tarihi (opsiyonel)', teslim]),
@@ -616,7 +635,7 @@
     UI.dene(function () {
       var r = JP.durumSorgula();
       UI.toast('Logo sorgusu tamamlandı',
-        r.okunanFis + ' fiş · ' + r.miktarDegisimi + ' miktar değişimi · ' + (r.faturaHareketi + r.fifo) + ' sevkiyat · ' +
+        r.okunanFis + ' fiş · ' + r.miktarDegisimi + ' miktar değişimi · ' + (r.faturaHareketi + r.fifo) + ' tamamlanma · ' +
         r.atlanan + ' mükerrer atlandı' + (r.kapanan ? ' · ' + r.kapanan + ' sipariş kapandı' : ''), 'ok');
     });
   }
@@ -635,9 +654,9 @@
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(UI.panel(null, null, UI.tablo(
-        ['Tarih', 'Sipariş no', 'Bayi', 'Durum', 'Logo fiş', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+        ['Tarih', 'Sipariş no', 'Bayi', 'Durum', 'Logo fiş', { t: 'Kalem', num: true }, 'Tamamlanma', ''],
         liste.map(function (s) {
-          var sy = sevkSayim(JP.siparisKalemDurum(s), 'logoMiktar', 'sevk');
+          var sy = tamamSayim(JP.siparisKalemDurum(s), 'logoMiktar', 'sevk');
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { siparisAc(s.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(s.tarih) }),
             h('td.mono', { text: s.no, style: { fontWeight: '600' } }),
@@ -659,7 +678,7 @@
     tabloCiz();
 
     return h('div.stack', {}, [
-      filtreCubugu(fSiparis, ["Logo'ya İletildi", 'Faturalandı', 'Tamamlandı', 'İptal'], yenile,
+      filtreCubugu(fSiparis, [JP.DURUM.isleme, JP.DURUM.tamam, JP.DURUM.iptal], yenile,
         h('div.row.tight', {}, [
           sayimEl,
           h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { siparisKopyala(liste); } })
@@ -673,12 +692,12 @@
   }
 
   function siparisKopyala(liste) {
-    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Siparişe alınan', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
+    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Miktar', 'Tamamlanan']];
     liste.forEach(function (s) {
       JP.siparisKalemDurum(s).forEach(function (k) {
         satir.push([s.no, JP.fmt.tarih(s.tarih), bayiAd(s.bayiKod),
           s.teslimTarihi ? JP.fmt.tarih(s.teslimTarihi) : '', s.durum, s.logoFisNo || '',
-          k.kalem.talepNo, k.kalem.urunKod, k.urun.ad, k.urun.birim, k.siparis, k.logoMiktar, k.sevk, k.kalan]);
+          k.kalem.talepNo, k.kalem.urunKod, k.urun.ad, k.urun.birim, k.logoMiktar, k.sevk]);
       });
     });
     UI.tabloKopyala('Siparişler', satir);
@@ -687,7 +706,7 @@
   function siparisDetay(s) {
     var db = JP.db;
     var kl = JP.siparisKalemDurum(s);
-    var sayim = sevkSayim(kl, 'logoMiktar', 'sevk');
+    var sayim = tamamSayim(kl, 'logoMiktar', 'sevk');
     var fis = db.logo.fisler.find(function (f) { return f.portalRef === s.logoRef; });
     var faturalar = fis ? db.logo.faturalar.filter(function (f) { return f.fisNo === fis.fisNo; }) : [];
     var degisen = kl.filter(function (k) { return k.degisti; }).length;
@@ -716,14 +735,17 @@
         ]),
         h('div.grid.k4', {}, [
           UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
-          UI.kpi('Tamamı sevk edildi', String(sayim.tam), 'kalem'),
-          UI.kpi('Kısmen sevk edildi', String(sayim.kismi), 'kalem'),
-          UI.kpi('Sevk edilmedi', String(sayim.yok), 'kalem', null, true)
+          UI.kpi('Tamamlandı', String(sayim.tam), 'kalem'),
+          UI.kpi('Kısmen tamamlandı', String(sayim.kismi), 'kalem'),
+          UI.kpi('Bekleyen', String(sayim.yok), 'kalem', null, true)
         ])
       ])),
 
+      /* Sipariş satırında iki sayı yeter: Logo'daki güncel miktar ve bunun
+         tamamlanan kısmı. Logo'da miktar değiştiyse satır sarıya döner ve
+         siparişteki ilk miktar rozette yazar. */
       UI.panel('Sipariş kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-        UI.tablo(['Ürün', 'Birim', 'Talep no', { t: 'Siparişe alınan', num: true }, { t: "Logo'daki miktar", num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
+        UI.tablo(['Ürün', 'Birim', 'Talep no', { t: 'Miktar', num: true }, { t: 'Tamamlanan', num: true }],
           kl.map(function (k) {
             return h('tr', {}, [
               h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
@@ -732,11 +754,12 @@
               ])),
               h('td.small.muted.nowrap', { text: k.urun.gosterimBirimi }),
               h('td', {}, h('button.tag', { text: k.kalem.talepNo, onclick: function () { secSiparis = null; talepAc(k.kalem.talepNo); } })),
-              h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
-              h('td.num.mono', { text: JP.fmt.miktar(k.logoMiktar),
-                style: k.degisti ? { color: 'var(--warn)', fontWeight: '600' } : null }),
-              h('td.num.mono', { text: JP.fmt.miktar(k.sevk), style: { color: k.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-              h('td.num.mono', { text: JP.fmt.miktar(k.kalan) })
+              h('td.num.mono', {}, [
+                h('span', { text: JP.fmt.miktar(k.logoMiktar),
+                  style: k.degisti ? { color: 'var(--warn)', fontWeight: '600' } : null }),
+                k.degisti ? h('span.pc.mono', { text: 'siparişte ' + JP.fmt.miktar(k.siparis) }) : null
+              ]),
+              h('td.num.mono', { text: JP.fmt.miktar(k.sevk), style: { color: k.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } })
             ]);
           })), true),
 
@@ -753,25 +776,32 @@
   }
 
   /* ------------------------------------------------------------------ raporlar
-   * Dört rapor tek iskeleti paylaşır: üstte rapor seçici, altında ortak tarih
-   * aralığı + arama çubuğu, sonra raporun ne ölçtüğünü söyleyen bir satır, dört
-   * ölçüm kartı ve tek tablo. Her raporun Excel çıktısı vardır.
+   * Üç rapor menüde ayrı bölümdür ama tek iskeleti paylaşır: ortak tarih
+   * aralığı + arama çubuğu, raporun ne ölçtüğünü söyleyen bir satır ve tek
+   * tablo. Üstte ölçüm kartı yok — sayılar tablonun kendisinde.
    *
    * Miktarlar ürünün kendi biriminden olduğu için satırlar arası toplanmaz;
-   * kartlar ürün, bayi, kalem ya da gün sayar. */
+   * kalem ve belge sayıları toplanır.
+   *
+   * Süzgeç durumu rapor başına ayrı tutulur: bayi raporunda yazılan arama
+   * ürün raporunu boşaltmasın. */
   var RAPORLAR = [
-    { id: 'encok',   ad: 'En çok sipariş edilenler',
-      olcum: 'Ürün bazında sipariş miktarı ve sevkiyat oranı. Tarih aralığı sipariş tarihine bakar.' },
-    { id: 'bekleyen', ad: 'Karşılanmayı bekleyenler',
-      olcum: 'Talep edilmiş ama henüz siparişe alınmamış miktarlar. Tarih aralığı talep tarihine bakar.' },
-    { id: 'bayi',    ad: 'Bayi bazında sipariş sayıları',
-      olcum: 'Her bayinin talep ve sipariş adedi ile talebin siparişe dönüşme oranı. Tarih aralığı belge tarihine bakar.' },
-    { id: 'sure',    ad: 'Talepten karşılanmaya süre',
-      olcum: 'Ürün bazında talebin açılışından ilk ve tam sevkiyata kadar geçen gün. Tarih aralığı talep tarihine bakar.' }
+    { id: 'urun', ad: 'Ürün raporu',
+      olcum: 'Ürün bazında kaç talep gelmiş, kaçı işleme alınmış, kaçı tamamlanmış. Tarih aralığı talep tarihine bakar.',
+      not: "Sayılar talep kalemi adedidir; miktarlar ürünün kendi birimindedir. Tamamlanan = faturası GİB'e gönderilmiş kalem.",
+      ipucu: 'Ürün adı, stok kodu veya kategori ara…' },
+    { id: 'bayi', ad: 'Bayi raporu',
+      olcum: 'Bayi bazında sipariş ve kalem sayısı ile siparişlerin tamamlanma oranı. Tarih aralığı sipariş tarihine bakar.',
+      not: "Tamamlanma, bütün kalemlerinin faturası GİB'e gönderilmiş sipariş sayısıdır. İptal edilen siparişler sayılmaz.",
+      ipucu: 'Bayi unvanı, cari kodu veya şehir ara…' },
+    { id: 'performans', ad: 'Performans raporu',
+      olcum: 'Ürün bazında talep ve tamamlanma adetleri ile talepten tamamlanmaya kadar geçen en kısa, en uzun ve ortalama gün.',
+      not: "Süre talep kalemi düzeyinde ölçülür: talebin açıldığı an ile faturanın GİB'e gönderildiği an arasındaki gün. Yalnızca tamamı tamamlanmış kalemler süreye girer.",
+      ipucu: 'Ürün adı, stok kodu veya kategori ara…' }
   ];
 
-  function raporAra(metin) {
-    var q = kucult(fRapor.ara).trim();
+  function raporAra(id, metin) {
+    var q = kucult(fRapor[id].ara).trim();
     return !q || kucult(metin).indexOf(q) >= 0;
   }
 
@@ -781,203 +811,143 @@
       h('span', {}, [h('span.small', { text: u.ad }), h('span.pc.mono', { text: u.kod })])
     ]));
   }
+  function raporBayiHucre(b) {
+    return h('td', {}, h('button.urun-link', { onclick: function () { bayiAc(b.kod); } },
+      h('span', {}, [
+        h('span.small', { text: b.unvan }),
+        h('span.pc.mono', { text: b.kod + ((b.sehir || b.ulke) ? ' · ' + [b.sehir, b.ulke].filter(Boolean).join(' / ') : '') })
+      ])));
+  }
   function gunHucre(v, vurgu) {
     if (v === null || v === undefined) return h('td.num.small.muted', { text: '—' });
     return h('td.num.mono', { text: JP.fmt.miktar(v), style: vurgu ? { color: 'var(--warn)', fontWeight: '600' } : null });
   }
-
-  /* --- 1: en çok sipariş edilenler --- */
-  function raporEnCok(f) {
-    var satir = JP.raporEnCokSiparis(f).filter(function (r) {
-      return raporAra(r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
-    });
-    return {
-      kart: [
-        ['Ürün', satir.length, 'ürün', 'Aralıkta siparişe giren'],
-        ['Sipariş kalemi', satir.reduce(function (t, r) { return t + r.siparisKalem; }, 0), 'kalem', null],
-        ['Sipariş', yekun(satir, 'siparisSayisi'), 'sipariş', 'Farklı belge'],
-        ['Bayi', yekun(satir, 'bayiSayisi'), 'bayi', 'Sipariş veren']
-      ],
-      basliklar: ['Ürün', 'Kategori', 'Birim', { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true },
-        { t: 'Sevk oranı', num: true }, { t: 'Kalem', num: true }, { t: 'Bayi', num: true }, 'Son sipariş'],
-      satirlar: satir.map(function (r) {
-        return h('tr', {}, [
-          raporUrunHucre(r.urun),
-          h('td.small.muted', { text: r.urun.grup || '—' }),
-          h('td.small.muted.nowrap', { text: r.urun.gosterimBirimi }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.siparis), style: { fontWeight: '600' } }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-          h('td.num.mono', { text: r.sevkOran + '%' }),
-          h('td.num.mono', { text: String(r.siparisKalem) }),
-          h('td.num.mono', { text: String(r.bayiSayisi) }),
-          h('td.small.muted.nowrap', { text: JP.fmt.tarih(r.sonTarih) })
-        ]);
-      }),
-      bos: 'Bu aralıkta siparişe giren ürün yok.',
-      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Birim', 'Siparişe alınan', 'Sevk edilen', 'Sevk oranı %', 'Kalem', 'Bayi', 'Son sipariş']]
-        .concat(satir.map(function (r) {
-          return [r.urunKod, r.urun.ad, r.urun.grup, r.urun.gosterimBirimi, r.siparis, r.sevk, r.sevkOran,
-            r.siparisKalem, r.bayiSayisi, JP.fmt.tarih(r.sonTarih)];
-        }))
-    };
+  function yuzdeHucre(v, adet) {
+    if (!adet) return h('td.num.small.muted', { text: '—' });
+    return h('td.num.mono', { text: v + '%', style: { color: v >= 100 ? 'var(--ok)' : (v > 0 ? null : 'var(--text-3)'), fontWeight: v >= 100 ? '600' : null } });
   }
 
-  /* --- 2: karşılanmayı bekleyenler --- */
-  function raporBekleyen(f) {
-    var satir = JP.raporBekleyen(f).filter(function (r) {
-      return raporAra(r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
+  /* --- 1: ürün raporu --- */
+  function raporUrun(f) {
+    var satir = JP.raporUrun(f).filter(function (r) {
+      return raporAra('urun', r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
     });
     return {
-      kart: [
-        ['Bekleyen ürün', satir.length, 'ürün', 'Kalanı olan'],
-        ['Talep', yekun(satir, 'talepSayisi'), 'talep', 'Farklı belge'],
-        ['Bayi', yekun(satir, 'bayiSayisi'), 'bayi', 'Bekleyen'],
-        ['En eski', satir.length ? satir[0].yas : 0, 'gün', 'Açılalı geçen süre', satir.length > 0]
-      ],
-      basliklar: ['Ürün', 'Kategori', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true },
-        { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }, { t: 'Talep', num: true }, { t: 'Bayi', num: true }, { t: 'En eski (gün)', num: true }],
+      basliklar: ['Ürün', 'Kategori', { t: 'Talep (kalem)', num: true }, { t: 'İşleme alınan (kalem)', num: true },
+        { t: 'Tamamlanan (kalem)', num: true }, { t: 'Tamamlanma', num: true },
+        'Birim', { t: 'Talep edilen', num: true }, { t: 'Tamamlanan', num: true }],
       satirlar: satir.map(function (r) {
         return h('tr', {}, [
           raporUrunHucre(r.urun),
           h('td.small.muted', { text: r.urun.grup || '—' }),
+          h('td.num.mono', { text: String(r.kalem), style: { fontWeight: '600' } }),
+          h('td.num.mono', { text: String(r.islemeKalem) }),
+          h('td.num.mono', { text: String(r.tamamlanan) }),
+          yuzdeHucre(r.tamamlanmaYuzde, r.kalem),
           h('td.small.muted.nowrap', { text: r.urun.gosterimBirimi }),
           h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.siparis) }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.kalan), style: { color: 'var(--warn)', fontWeight: '600' } }),
-          h('td.num.mono', { text: String(r.talepSayisi) }),
-          h('td.num.mono', { text: String(r.bayiSayisi) }),
-          h('td.num.mono', { text: String(r.yas) })
+          h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } })
         ]);
       }),
-      bos: 'Bu aralıkta karşılanmayı bekleyen ürün yok.',
-      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Kalan', 'Talep', 'Bayi', 'En eski gün']]
+      bos: 'Bu aralıkta talep görmüş ürün yok.',
+      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Talep kalemi', 'İşleme alınan kalem',
+        'Tamamlanan kalem', 'Tamamlanma %', 'Birim', 'Talep edilen', 'Tamamlanan']]
         .concat(satir.map(function (r) {
-          return [r.urunKod, r.urun.ad, r.urun.grup, r.urun.gosterimBirimi, r.talep, r.siparis, r.sevk, r.kalan,
-            r.talepSayisi, r.bayiSayisi, r.yas];
+          return [r.urunKod, r.urun.ad, r.urun.grup, r.kalem, r.islemeKalem, r.tamamlanan,
+            r.tamamlanmaYuzde, r.urun.gosterimBirimi, r.talep, r.sevk];
         }))
     };
   }
 
-  /* --- 3: bayi bazında sipariş sayıları --- */
+  /* --- 2: bayi raporu --- */
   function raporBayi(f) {
     var satir = JP.raporBayiSiparis(f).filter(function (r) {
-      return raporAra(r.bayi.unvan + ' ' + r.bayiKod + ' ' + r.bayi.sehir);
+      return raporAra('bayi', r.bayi.unvan + ' ' + r.bayiKod + ' ' + r.bayi.sehir);
     });
     return {
-      kart: [
-        ['Bayi', satir.length, 'bayi', 'Listelenen'],
-        ['Sipariş', yekun(satir, 'siparis'), 'sipariş', 'Aralıkta açılan'],
-        ['Talep', yekun(satir, 'talep'), 'talep', 'Aralıkta girilen'],
-        ['Tamamlanan', yekun(satir, 'tamamlanan'), 'sipariş', 'Tümü sevk edildi']
-      ],
-      basliklar: ['Bayi', 'Şehir / Ülke', { t: 'Talep', num: true }, { t: 'Sipariş', num: true },
-        { t: 'Dönüşüm', num: true }, { t: 'Sipariş kalemi', num: true }, { t: 'Ürün çeşidi', num: true },
-        { t: 'Tamamlanan', num: true }, 'Son sipariş'],
+      basliklar: ['Bayi', { t: 'Sipariş', num: true }, { t: 'Kalem', num: true },
+        { t: 'Tamamlanan', num: true }, { t: 'Tamamlanma', num: true }, 'Son sipariş'],
       satirlar: satir.map(function (r) {
         return h('tr', {}, [
-          h('td', {}, h('button.btn.ghost.sm', { text: r.bayi.unvan, onclick: function () { bayiAc(r.bayiKod); } })),
-          h('td.small.muted', { text: (r.bayi.sehir || '—') + ' / ' + (r.bayi.ulke || '—') }),
-          h('td.num.mono', { text: String(r.talep) }),
+          raporBayiHucre(r.bayi),
           h('td.num.mono', { text: String(r.siparis), style: { fontWeight: '600' } }),
-          h('td.num.mono', { text: r.talep ? r.donusumOran + '%' : '—' }),
           h('td.num.mono', { text: String(r.siparisKalem) }),
-          h('td.num.mono', { text: String(r.urunSayisi) }),
           h('td.num.mono', { text: String(r.tamamlanan) }),
+          yuzdeHucre(r.tamamlanmaYuzde, r.siparis),
           h('td.small.muted.nowrap', { text: r.sonTarih ? JP.fmt.tarih(r.sonTarih) : '—' })
         ]);
       }),
       bos: 'Aramaya uyan bayi yok.',
-      excel: [['Cari kodu', 'Bayi', 'Şehir', 'Ülke', 'Talep', 'Sipariş', 'Dönüşüm %', 'Sipariş kalemi', 'Ürün çeşidi', 'Tamamlanan', 'Son sipariş']]
+      excel: [['Cari kodu', 'Bayi', 'Şehir', 'Ülke', 'Sipariş', 'Kalem', 'Tamamlanan', 'Tamamlanma %', 'Son sipariş']]
         .concat(satir.map(function (r) {
-          return [r.bayiKod, r.bayi.unvan, r.bayi.sehir, r.bayi.ulke, r.talep, r.siparis, r.donusumOran,
-            r.siparisKalem, r.urunSayisi, r.tamamlanan, r.sonTarih ? JP.fmt.tarih(r.sonTarih) : ''];
+          return [r.bayiKod, r.bayi.unvan, r.bayi.sehir, r.bayi.ulke, r.siparis, r.siparisKalem,
+            r.tamamlanan, r.tamamlanmaYuzde, r.sonTarih ? JP.fmt.tarih(r.sonTarih) : ''];
         }))
     };
   }
 
-  /* --- 4: talepten karşılanmaya süre --- */
-  function raporSure(f) {
+  /* --- 3: performans raporu --- */
+  function raporPerformans(f) {
     var satir = JP.raporSure(f).filter(function (r) {
-      return raporAra(r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
+      return raporAra('performans', r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
     });
-    var kapali = satir.filter(function (r) { return r.ortTam !== null; });
-    var ortalama = kapali.length
-      ? Math.round(kapali.reduce(function (t, r) { return t + r.ortTam; }, 0) / kapali.length * 10) / 10
-      : 0;
     return {
-      kart: [
-        ['Ürün', satir.length, 'ürün', 'Talep görmüş'],
-        ['Tam sevk edilen', yekun(satir, 'kapanan'), 'kalem', 'Süresi ölçülebilen'],
-        ['Ortalama süre', ortalama, 'gün', 'Talepten tam sevkiyata'],
-        ['Bekleyen kalem', yekun(satir, 'acik'), 'kalem', 'Henüz tamamlanmadı', yekun(satir, 'acik') > 0]
-      ],
-      basliklar: ['Ürün', 'Kategori', { t: 'Kalem', num: true }, { t: 'Tam sevk', num: true },
-        { t: 'Ort. ilk sevk (gün)', num: true }, { t: 'Ort. tam sevk (gün)', num: true }, { t: 'En uzun (gün)', num: true },
-        { t: 'Bekleyen', num: true }, { t: 'En eski bekleyen (gün)', num: true }],
+      basliklar: ['Ürün', 'Kategori', { t: 'Talep (kalem)', num: true }, { t: 'İşleme alınan (kalem)', num: true },
+        { t: 'Tamamlanan (kalem)', num: true }, { t: 'En kısa (gün)', num: true },
+        { t: 'En uzun (gün)', num: true }, { t: 'Ortalama (gün)', num: true }],
       satirlar: satir.map(function (r) {
         return h('tr', {}, [
           raporUrunHucre(r.urun),
           h('td.small.muted', { text: r.urun.grup || '—' }),
-          h('td.num.mono', { text: String(r.kalem) }),
+          h('td.num.mono', { text: String(r.kalem), style: { fontWeight: '600' } }),
+          h('td.num.mono', { text: String(r.islemeKalem) }),
           h('td.num.mono', { text: String(r.kapanan) }),
-          gunHucre(r.ortIlk),
-          gunHucre(r.ortTam),
-          gunHucre(r.enUzunTam),
-          h('td.num.mono', { text: String(r.acik), style: r.acik ? { color: 'var(--warn)', fontWeight: '600' } : null }),
-          gunHucre(r.enUzunAcik, r.enUzunAcik !== null && r.enUzunAcik > 7)
+          gunHucre(r.enKisaTam),
+          gunHucre(r.enUzunTam, r.enUzunTam !== null && r.enUzunTam > 7),
+          gunHucre(r.ortTam)
         ]);
       }),
       bos: 'Bu aralıkta talep görmüş ürün yok.',
-      not: 'Süreler gün cinsindendir ve talep kalemi düzeyinde ölçülür: talebin açıldığı an ile sevkiyat (fatura) arasındaki fark.',
-      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Kalem', 'Tam sevk edilen', 'Ort. ilk sevk gün', 'Ort. tam sevk gün', 'En uzun gün', 'Bekleyen kalem', 'En eski bekleyen gün']]
+      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Talep kalemi', 'İşleme alınan kalem', 'Tamamlanan kalem',
+        'En kısa gün', 'En uzun gün', 'Ortalama gün']]
         .concat(satir.map(function (r) {
-          return [r.urunKod, r.urun.ad, r.urun.grup, r.kalem, r.kapanan,
-            r.ortIlk === null ? '' : r.ortIlk, r.ortTam === null ? '' : r.ortTam,
-            r.enUzunTam === null ? '' : r.enUzunTam, r.acik, r.enUzunAcik === null ? '' : r.enUzunAcik];
+          return [r.urunKod, r.urun.ad, r.urun.grup, r.kalem, r.islemeKalem, r.kapanan,
+            r.enKisaTam === null ? '' : r.enKisaTam,
+            r.enUzunTam === null ? '' : r.enUzunTam,
+            r.ortTam === null ? '' : r.ortTam];
         }))
     };
   }
 
-  function yekun(satir, alan) {
-    return satir.reduce(function (t, r) { return t + (r[alan] || 0); }, 0);
-  }
-
-  function raporlar() {
-    var secili = RAPORLAR.find(function (r) { return r.id === raporSecim; }) || RAPORLAR[0];
-    var uret = { encok: raporEnCok, bekleyen: raporBekleyen, bayi: raporBayi, sure: raporSure }[secili.id];
-    var f = { bas: gunBasi(fRapor.bas), bit: gunSonu(fRapor.bit) };
+  function raporEkrani(id) {
+    var secili = RAPORLAR.find(function (r) { return r.id === id; }) || RAPORLAR[0];
+    var uret = { urun: raporUrun, bayi: raporBayi, performans: raporPerformans }[secili.id];
+    var fs = fRapor[secili.id];
+    var f = { bas: gunBasi(fs.bas), bit: gunSonu(fs.bit) };
 
     var govde = h('div.stack');
+    var sonRapor = null;
     function ciz() {
       var r = uret(f);
       govde.textContent = '';
-      govde.appendChild(h('div.grid.k4', {}, r.kart.map(function (kk) {
-        return UI.kpi(kk[0], JP.fmt.miktar(kk[1]), kk[2], kk[3], kk[4]);
-      })));
-      if (r.not) govde.appendChild(h('div.small.muted', { text: r.not }));
       govde.appendChild(UI.panel(null, null, UI.tablo(r.basliklar, r.satirlar, r.bos), true));
       sonRapor = r;
     }
-    var sonRapor = null;
     /* Diğer ekranlarla aynı sözleşme: arama yerinde çizer, tarih ve temizleme
        tüm ekranı yeniler (filtre çubuğundaki "Temizle" düğmesi de yenilenmeli). */
     function yenile(yerinde) {
-      f = { bas: gunBasi(fRapor.bas), bit: gunSonu(fRapor.bit) };
+      f = { bas: gunBasi(fs.bas), bit: gunSonu(fs.bit) };
       if (yerinde) ciz(); else kabuk.ciz();
     }
     ciz();
 
     return h('div.stack', {}, [
-      h('div.seg', {}, RAPORLAR.map(function (o) {
-        return h('button', { 'aria-pressed': String(secili.id === o.id), text: o.ad,
-          onclick: function () { raporSecim = o.id; kabuk.ciz(); } });
-      })),
-      filtreCubugu(fRapor, null, yenile,
+      filtreCubugu(fs, null, yenile,
         h('button.btn.ghost.sm', { text: "Excel'e kopyala",
           onclick: function () { UI.tabloKopyala(secili.ad, sonRapor.excel); } }),
-        secili.id === 'bayi' ? 'Bayi unvanı, cari kodu veya şehir ara…' : 'Ürün adı, stok kodu veya kategori ara…'),
+        secili.ipucu),
       h('div.small.muted', { text: secili.olcum }),
+      secili.not ? h('div.small.muted', { text: secili.not }) : null,
       govde
     ]);
   }
@@ -1223,8 +1193,8 @@
         ]))
       ]),
 
-      UI.panel('Bu üründe sevk bekleyen talepler', h('span.small.muted', { text: bekleyenSatir.length + ' bayi' }),
-        UI.tablo(['Bayi', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }, { t: 'Yaş', num: true }],
+      UI.panel('Bu üründe tamamlanmayı bekleyen talepler', h('span.small.muted', { text: bekleyenSatir.length + ' bayi' }),
+        UI.tablo(['Bayi', { t: 'Talep edilen', num: true }, { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }, { t: 'Kalan', num: true }, { t: 'Yaş', num: true }],
           bekleyenSatir.map(function (r) {
             return h('tr', {}, [
               h('td.small', {}, h('button.btn.ghost.sm', { text: bayiAd(r.bayiKod), onclick: function () { secUrun = null; bayiAc(r.bayiKod); } })),
@@ -1700,9 +1670,9 @@
 
   function bayiTalepler(liste) {
     return UI.panel('Talep geçmişi', h('span.small.muted', { text: liste.length + ' talep' }),
-      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, 'Tamamlanma', ''],
         liste.map(function (t) {
-          var s = sevkSayim(JP.talepKalemDurum(t), 'talep', 'fatura');
+          var s = tamamSayim(JP.talepKalemDurum(t), 'talep', 'fatura');
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { secBayi = null; talepAc(t.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
             h('td.mono', { text: t.no }),
@@ -1716,9 +1686,9 @@
 
   function bayiSiparisler(liste) {
     return UI.panel('Sipariş geçmişi', h('span.small.muted', { text: liste.length + ' sipariş' }),
-      UI.tablo(['Tarih', 'Sipariş no', 'Durum', 'Logo fiş', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+      UI.tablo(['Tarih', 'Sipariş no', 'Durum', 'Logo fiş', { t: 'Kalem', num: true }, 'Tamamlanma', ''],
         liste.map(function (s) {
-          var sy = sevkSayim(JP.siparisKalemDurum(s), 'logoMiktar', 'sevk');
+          var sy = tamamSayim(JP.siparisKalemDurum(s), 'logoMiktar', 'sevk');
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { secBayi = null; siparisAc(s.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(s.tarih) }),
             h('td.mono', { text: s.no }),

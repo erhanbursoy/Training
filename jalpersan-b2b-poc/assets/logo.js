@@ -118,7 +118,7 @@
       icerik: h('div.stack', {}, [
         h('div.row', {}, [h('span.small.muted', { text: 'Fatura tipi' }), turSec]),
         UI.tablo(['Stok', { t: 'Fiş miktarı', num: true }, { t: 'Kalan', num: true }, 'Faturalanacak'], girdiler),
-        h('div.note', { text: 'Miktarı düşürerek kısmi fatura kesebilir, kalan için ikinci faturayı sonra kesebilirsiniz. Portal her fatura satırını benzersiz referansla bir kez işler.' })
+        h('div.note', { text: "Miktarı düşürerek kısmi fatura kesebilir, kalan için ikinci faturayı sonra kesebilirsiniz. Portal yalnızca GİB'e gönderilmiş faturaları işler ve her satırı benzersiz referansla bir kez sayar." })
       ]),
       aksiyonlar: function (kapat) {
         return [
@@ -129,7 +129,7 @@
               UI.dene(function () {
                 var fatura = JP.logo.faturaKes(f.fisNo, f.satirlar.map(function (r) { return { fisSatirId: r.id, miktar: satirlar[r.id] || 0 }; }), tur);
                 kapat();
-                UI.toast('Fatura kesildi', fatura.no + ' · GİB gönderimi bekliyor.', 'ok');
+                UI.toast('Fatura kesildi', fatura.no + " · portal için henüz bir şey değişmedi; GİB'e gönderilince tamamlanır.", 'ok');
               });
             }
           })
@@ -187,12 +187,13 @@
     var db = JP.db;
     if (!db.logo.faturalar.length) {
       return h('div.stack', {}, [
-        h('div.note', { html: '<b>Fatura yok.</b> Sipariş fişleri ekranından fatura kesin.' }),
+        h('div.note', { html: "<b>Fatura yok.</b> Sipariş fişleri ekranından fatura kesin. Portal tarafında bir şeyin değişmesi için faturanın GİB'e gönderilmesi gerekir." }),
         serbestFaturaKarti()
       ]);
     }
     return h('div.stack', {}, [
       serbestFaturaKarti(),
+      h('div.note', { text: "Portal yalnızca GİB gönderimi başarılı olan faturaları görür; kesilmiş ama gönderilmemiş fatura portalda talebi kapatmaz." }),
       UI.panel('Fatura listesi', h('span.small.muted', { text: db.logo.faturalar.length + ' fatura' }),
         UI.tablo(['Fatura no', 'Tip', 'Cari', 'Fiş', 'Satırlar', 'GİB', 'ETTN', ''],
           db.logo.faturalar.map(function (f) {
@@ -208,7 +209,7 @@
               h('td.mono.small.muted', { text: f.ettn ? f.ettn.slice(0, 14) + '…' : '—' }),
               h('td.right', {}, f.gib === 'Kesilmedi' ? h('div.row.tight', {}, [
                 h('button.btn.primary.sm', { text: "GİB'e gönder", onclick: function () { UI.dene(function () { JP.logo.gibGonder(f.no, true); UI.toast('GİB gönderimi başarılı', f.no, 'ok'); }); } }),
-                h('button.btn.ghost.sm', { text: 'Ret simüle et', onclick: function () { UI.dene(function () { JP.logo.gibGonder(f.no, false); UI.toast('GİB reddi', f.no + ' · sipariş kapanmaz.', 'bad'); }); } })
+                h('button.btn.ghost.sm', { text: 'Ret simüle et', onclick: function () { UI.dene(function () { JP.logo.gibGonder(f.no, false); UI.toast('GİB reddi', f.no + ' · portal tarafında hiçbir şey değişmez.', 'bad'); }); } })
               ]) : (f.gib === 'Hata' ? h('button.btn.sm', { text: 'Yeniden gönder', onclick: function () { UI.dene(function () { JP.logo.gibGonder(f.no, true); UI.toast('GİB gönderimi başarılı', f.no, 'ok'); }); } }) : h('span.small.muted', { text: JP.fmt.saat(f.gibTs) })))
             ]);
           })), true)

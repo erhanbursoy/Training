@@ -128,7 +128,7 @@ Standart web uygulaması düzeni: üstte **Ürün kataloğu** ve **Taleplerim**;
 sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
 
 - **Taleplerim** · liste (tarih, talep no, durum) ve talep detayı; kalem satırlarında
-  yalnızca talep edilen ve sevk edilen miktarlar yazar.
+  yalnızca talep edilen ve tamamlanan miktarlar yazar.
   Detayda üç görünüm var: **Ürünler**, **İşlemler** (talepten doğan siparişler ve faturalar)
   ve **Hareketler** (talep geçmişi).
 
@@ -136,13 +136,14 @@ sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil 
 
 Ürünler farklı birimlerde olabilir (metre, adet). Bu yüzden bir talebin kalemleri
 **hiçbir yerde toplanmaz**: talep listesi ve talep özeti miktar değil kalem sayısı
-gösterir (kaç kalem tamamen, kısmen veya hiç sevk edilmedi). Miktarlar yalnızca
+gösterir (kaç kalem tamamen, kısmen veya hiç tamamlandı). Miktarlar yalnızca
 kalem satırında, o ürünün kendi biriminden yazar. Dashboard satırları tek ürün
 olduğu için miktar gösterir; birim ürün kodunun yanındadır.
 
 ## Firma paneli
 
-Bölümler: **Panel**, **Talepler**, **Siparişler**, **Raporlar**, **Ürünler**, **Bayiler** ve
+Menü üç öbekte: **Panel** tek başına; **Operasyon** (Talepler, Siparişler — kapanmamış
+belge sayısını rozet olarak taşır), **Yönetim** (Ürünler, Bayiler ve
 Yönetici rolündeki kullanıcıya açılan **Bayi kullanıcıları** ile **Firma kullanıcıları**.
 
 - **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, Logo'da miktarı değişen
@@ -160,7 +161,7 @@ Yönetici rolündeki kullanıcıya açılan **Bayi kullanıcıları** ile **Firm
   Satırda ürünün bayi kataloğunda görünüp görünmediği ve Logo durumu rozet olarak yazar.
   Detay ayrı ekrandır: solda salt okunur Logo alanları ve altında **Görseller**, sağda
   düzenlenebilir portal alanları (siparişe açıklık, bayiye gösterilen birim, katalog
-  sırası, teknik özellik, açıklama). Altta o üründe sevk bekleyen bayiler listelenir.
+  sırası, teknik özellik, açıklama). Altta o üründe tamamlanmayı bekleyen bayiler listelenir.
 - **Bayiler** · arama kutusu, **Logo'dan güncelle** ve satır başına **Talep oluştur**
   (telefon talebi). Detay ayrı ekran, dört sekme: Bilgiler (Logo alanları salt okunur;
   siparişe açıklık, teslimat notu ve katalog kısıtı düzenlenebilir), Kullanıcılar,
@@ -179,25 +180,23 @@ Motorda `JP.sepetAyarla` bunu sağlar: mutlak miktar yazar, satır yoksa açar, 
 
 ### Raporlar
 
-Dört rapor tek iskeleti paylaşır: üstte rapor seçici, altında ortak tarih aralığı ve arama
-çubuğu, raporun ne ölçtüğünü söyleyen bir satır, dört ölçüm kartı ve tek tablo. Her raporun
-kendi Excel çıktısı vardır.
+Üç rapor menüde ayrı bölümdür (**Raporlar → Ürün / Bayi / Performans raporu**) ve tek
+iskeleti paylaşır: ortak tarih aralığı + arama çubuğu, raporun ne ölçtüğünü söyleyen bir
+satır ve tek tablo. Üstte ölçüm kartı yoktur; sayılar tablonun kendisindedir. Süzgeç
+durumu rapor başına ayrıdır ve her raporun kendi Excel çıktısı vardır.
 
 | Rapor | Satır | Ölçüler | Tarih aralığı |
 | --- | --- | --- | --- |
-| En çok sipariş edilenler | ürün | siparişe alınan, sevk edilen, sevk oranı, kalem, bayi, son sipariş | sipariş tarihi |
-| Karşılanmayı bekleyenler | ürün | talep edilen, siparişe alınan, sevk edilen, kalan, talep, bayi, en eski | talep tarihi |
-| Bayi bazında sipariş sayıları | bayi | talep, sipariş, dönüşüm oranı, sipariş kalemi, ürün çeşidi, tamamlanan | belge tarihi |
-| Talepten karşılanmaya süre | ürün | kalem, tam sevk, ort. ilk sevk, ort. tam sevk, en uzun, bekleyen | talep tarihi |
+| Ürün raporu | ürün | talep / işleme alınan / tamamlanan kalem, tamamlanma %, talep edilen ve tamamlanan miktar | talep tarihi |
+| Bayi raporu | bayi | sipariş sayısı, kalem sayısı, tamamlanma sayısı, tamamlanma yüzdesi, son sipariş | sipariş tarihi |
+| Performans raporu | ürün | talep / işleme alınan / tamamlanan kalem, en kısa, en uzun ve ortalama gün | talep tarihi |
 
-Süre raporu **talep kalemi düzeyinde** ölçer: kalemin `dTalep` hareketinin zamanı ile
-sevkiyat (`dFatura`) hareketlerinin zamanı arasındaki gün farkı. *İlk sevk* ilk faturaya,
-*tam sevk* kalemin tamamının kapandığı faturaya kadar geçen süredir. Tamamlanmamış kalemler
-ayrı sayılır ve en eskisinin yaşı yazar; kapanmamış kalem ortalamayı bozmaz.
+Performans raporu **talep kalemi düzeyinde** ölçer: kalemin `dTalep` hareketinin zamanı ile
+tamamlanma (`dFatura` — GİB gönderimi) hareketlerinin zamanı arasındaki gün farkı. Yalnızca
+tamamı tamamlanmış kalemler süreye girer; kapanmamış kalem ortalamayı bozmaz.
 
-İptal edilmiş siparişler sipariş raporlarına girmez. Miktarlar ürünün kendi biriminden
-olduğu için satırlar arası toplanmaz — ölçüm kartları ürün, bayi, kalem, belge ya da gün
-sayar.
+İptal edilmiş siparişler raporlara girmez. Miktarlar ürünün kendi biriminden olduğu için
+satırlar arası toplanmaz; kalem ve belge sayıları toplanır.
 
 ### Birden çok talebi tek siparişte birleştirme
 
@@ -213,7 +212,7 @@ görünür. Kalemler tek tek çıkarılabilir, miktarları düşürülebilir; gi
 kendi talebinde açık kalır.
 
 Sipariş kalemi her zaman **kendi talep kalemine bağlı** kalır. Bu yüzden altı talebin
-altısı da sevkiyat gerçekleştiğinde ayrı ayrı kapanır ve hareket defteri bağlantısı
+altısı da tamamlandığında ayrı ayrı kapanır ve hareket defteri bağlantısı
 bozulmaz. Logo tarafında tek fiş açılır, kalem sayısı kadar satır taşır.
 
 Tek sınır: **bir sipariş yalnızca tek bayinin taleplerinden oluşur** — Logo fişi tek cari
@@ -229,8 +228,22 @@ Logo fişi açılamazsa işlem tümüyle geri alınır: sipariş oluşmaz, harek
 ilerlemez ve talep miktarı açıkta kalır — muhasebe yeniden dener. Dönüştürme kipindeki
 "Logo gönderim hatasını simüle et" kutusu bunu demoda gösterir.
 
-Bu yüzden sipariş durumları **Logo'ya İletildi → Faturalandı → Tamamlandı / İptal**
-şeklindedir; "Taslak" ve "Gönderim Hatası" durumları kalmadı.
+### Durum sözlüğü
+
+Talep de sipariş de aynı **üç aşamadan** geçer; başka durum adı yoktur:
+
+| Durum | Ne demek |
+| --- | --- |
+| Talep Edildi | Bayi (ya da bayi adına muhasebe) talebi açtı; Logo'ya gitmedi |
+| İşleme Alındı | Sipariş Logo'ya iletildi; Logo'da ve portalda sipariş var |
+| Tamamlandı | Logo sorgusunda faturası GİB'e gönderilmiş |
+| İptal | Talep sıfıra çekildi ya da sipariş/fiş iptal edildi |
+
+**Logo'da fatura kesilmesi portal için tek başına bir şey ifade etmez.** Ölçü GİB
+gönderiminin başarılı olmasıdır: kesilmiş ama gönderilmemiş fatura havuza hareket
+yazmaz, talebi kapatmaz, durumu değiştirmez. GİB reddi de aynı — yeniden gönderilip
+başarılı olduğunda hareket yazılır. "Taslak", "Faturalandı", "Karşılandı", "Kısmen
+Karşılandı" ve "Gönderim Hatası" durumları kalmadı.
 
 Bunun çalışması için `JP.tx` atomiktir: işlem gövdesi hata atarsa değişikliklerin tamamı
 geri alınır. Aksi halde yarım kayıt (talep düşmüş ama sipariş yok) bellekte kalıyordu.
@@ -263,25 +276,37 @@ Talep ve sipariş listeleri Excel'e kopyalanabilir; iki çıktı da teslim tarih
 
 İki tarafta iki sabit sütun takımı kullanılır; başka miktar adı yoktur.
 
-**Bayi tablolarında ikili:** Talep edilen · Sevk edilen.
+Sütun adları durum sözlüğüyle aynı üç kavramı taşır.
 
-**Firma tablolarında dörtlü:** Talep edilen · Siparişe alınan · Sevk edilen · Kalan.
+**Bayi tablolarında ikili:** Talep edilen · Tamamlanan.
+
+**Firma talep satırlarında üçlü:** Talep edilen · İşleme alınan · Tamamlanan.
+
+**Firma sipariş satırlarında ikili:** Miktar · Tamamlanan. Sipariş satırındaki *Miktar*
+Logo'daki güncel miktardır; Logo tarafında değiştirildiyse sayı sarıya döner ve altında
+siparişteki ilk miktar yazar.
 
 | Sütun | Karşılığı |
 | --- | --- |
 | Talep edilen | Σ `dTalep` — bayinin istediği |
-| Siparişe alınan | Σ `dRezerv`, faturayla çözülen rezerv hariç (kümülatif) |
-| Sevk edilen | Σ `dFatura` — fatura kesildiğinde sevkiyat gerçekleşmiş sayılır |
-| Kalan | `acik` = talep − rezerv − fatura; henüz siparişe alınmamış miktar |
+| İşleme alınan | Σ `dRezerv`, tamamlanmayla çözülen rezerv hariç (kümülatif) |
+| Tamamlanan | Σ `dFatura` — yalnızca GİB'e gönderilmiş fatura miktarı |
+| Kalan | `acik` = talep − rezerv − tamamlanan; henüz Logo'ya gitmemiş miktar |
 
-**Sevk edilen, siparişe alınanın içindedir** — ayrıca düşülmez. Bu yüzden dört sütun alt
-alta toplanmaz: 320 talep / 200 siparişe alınan / 200 sevk edilen / 120 kalan satırı
-"320 istendi, 200'ü siparişe girdi ve sevk edildi, 120'si hâlâ siparişe alınmadı"
-demektir. Talep kalemleri panelinin başlığı bu okuma notunu taşır.
+**Tamamlanan, işleme alınanın içindedir** — ayrıca düşülmez. Bu yüzden sütunlar alt alta
+toplanmaz: 320 talep / 200 işleme alınan / 200 tamamlanan satırı "320 istendi, 200'ü
+Logo'ya gitti ve GİB'e gönderildi, 120'si hâlâ işleme alınmadı" demektir. Talep kalemleri
+panelinin başlığı bu okuma notunu taşır.
 
-Eski "Bekleyen" (talep − sevk) ve "Dönüştürülebilir" adları kaldırıldı: birincisi siparişe
-alınmış miktarı da içerdiği için "ele alınmamış" gibi okunuyordu, ikincisi teknik bir
-addı. İkisinin yerini **Kalan** aldı.
+**Kalan** belge satırlarında sütun olarak durmaz — talep edilen ile işleme alınanın farkı
+olduğu için gözle okunur. Yalnızca kendisinin konu olduğu iki yerde çıkar: siparişe
+dönüştürme kipinde (ne kadarı işleme alınabilir) ve ürün detayındaki tamamlanmayı bekleyen
+talepler listesinde.
+
+Eski adlar kaldırıldı: "Siparişe alınan" yerine **İşleme alınan**, "Sevk edilen" ve
+"Faturalanan" yerine **Tamamlanan**, "Bekleyen" ve "Dönüştürülebilir" yerine **Kalan**.
+Sipariş satırındaki ayrı "Logo'daki miktar" sütunu kalktı; tek **Miktar** sütunu o değeri
+gösterir.
 
 ### Havuz görünmez, birimler karışmaz
 
@@ -297,21 +322,21 @@ tek ürüne ait satırlarda, o ürünün kendi biriminden yazar.
 
 Havuz, rezerv, tahsis, eşleşme kademesi ve hareket tipleri (`dTalep` / `dRezerv` / `dFatura`)
 iç muhasebe kavramlarıdır ve bayi ekranlarında hiçbir yerde geçmez. Bayi talep oluşturur ve
-talebinin ne kadarının sevk edildiğini görür. Motor aynıdır; yalnızca sunum farklıdır.
+talebinin ne kadarının tamamlandığını görür. Motor aynıdır; yalnızca sunum farklıdır.
 
 Bayi tablolarında yalnızca **iki miktar** vardır — bayinin işine yarayan ikili:
 
 | Bayi ne görür | Arkada ne var |
 | --- | --- |
 | Talep edilen | Σ `dTalep` |
-| Sevk edilen | Σ `dFatura` — fatura kesildiğinde sevkiyat gerçekleşmiş sayılır |
+| Tamamlanan | Σ `dFatura` — yalnızca GİB'e gönderilmiş fatura miktarı |
 
 Bu iki sayı kalem düzeyindedir; farklı birimler karışmasın diye talep düzeyinde toplanmaz.
 Siparişin ne kadarının açıldığı, rezerv ve eşleşme bayiyi ilgilendirmez; bayi talebini
-oluşturur ve ne kadarının sevk edildiğini görür.
+oluşturur ve ne kadarının tamamlandığını görür.
 
 Talep geçmişinde hareket tipleri iş diline çevrilir: *Talep oluşturuldu*, *Talep azaltıldı*,
-*Siparişe alındı*, *Sipariş miktarı düşürüldü*, *Sevk edildi*. Faturayla birlikte yazılan
+*İşleme alındı*, *İşleme alınan miktar düşürüldü*, *Tamamlandı (GİB)*. Tamamlanmayla birlikte yazılan
 rezerv çözümü teknik bir kayıt olduğu için bayiye gösterilmez.
 
 Sipariş birimi (metre / adet) yalnızca talep detayında kalem satırının yanında yazar;
@@ -395,13 +420,15 @@ düzeltme ters hareketle yapılır.
 ```
 talep       = Σ dTalep       (talep açıldı +, iptal/azaltma −)
 siparişte   = Σ dRezerv      (sipariş +, sipariş iptali −, fatura −)
-faturalanan = Σ dFatura
-açık        = talep − siparişte − faturalanan
+tamamlanan  = Σ dFatura      (yalnızca GİB'e gönderilmiş fatura)
+açık        = talep − siparişte − tamamlanan
 ```
 
-Fatura yazılırken rezerv **aynı işlemde** kapatılır; aksi halde sipariş faturalanınca
-miktar iki kez düşer. Logo kaynaklı her hareketin benzersiz bir referansı vardır
-(`logo:fatura:<no>:<satır>`), sorgu kaç kez tetiklenirse tetiklensin aynı hareket ikinci kez yazılmaz.
+Tamamlanma hareketi yazılırken rezerv **aynı işlemde** kapatılır; aksi halde sipariş
+tamamlanınca miktar iki kez düşer. Havuza yalnızca **GİB gönderimi başarılı** faturalar
+işlenir. Logo kaynaklı her hareketin benzersiz bir referansı vardır
+(`logo:fatura:<no>:<satır>`), sorgu kaç kez tetiklenirse tetiklensin aynı hareket ikinci
+kez yazılmaz.
 
 ### Fatura eşleme kademeleri
 
@@ -410,6 +437,8 @@ miktar iki kez düşer. Logo kaynaklı her hareketin benzersiz bir referansı va
 | 1 · Bağlantılı | Fatura satırında sipariş satır referansı var | Sipariş kalemi → talep kalemi, deterministik |
 | 2 · FIFO | Sipariş bağlantısı yok, bayi ve ürün eşleşiyor | En eski açık talep kaleminden düşülür |
 | 3 · Eşleşmeyen | Talep yok veya talebi aşıyor | "Talep dışı fatura" listesine düşer, elle bağlanır |
+
+Üç kademe de yalnızca GİB'e gönderilmiş faturalar için çalışır.
 
 Havuz bakiyesi negatife düşmez; talebi aşan fatura miktarı ayrı raporlanır.
 

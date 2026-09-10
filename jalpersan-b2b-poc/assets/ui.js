@@ -175,9 +175,11 @@
   };
 
   /* ---------------------------------------------------------------- rozet */
+  /* Belge durumları üç aşamadır (bkz. JP.DURUM): Talep Edildi → İşleme Alındı
+     → Tamamlandı, artı İptal. Kalanlar Logo simülatörünün kendi durumları. */
   var RENK = {
-    'Açık': 'warn', 'Kısmen Karşılandı': 'info', 'Karşılandı': 'acc', 'Tamamlandı': 'ok', 'İptal': '',
-    'Taslak': '', "Logo'ya İletildi": 'info', 'Gönderim Hatası': 'bad', 'Faturalandı': 'acc',
+    'Talep Edildi': 'warn', 'İşleme Alındı': 'info', 'Tamamlandı': 'ok', 'İptal': '',
+    'Taslak': '', 'Açık': 'warn', 'Gönderim Hatası': 'bad',
     'Kesilmedi': 'warn', 'Başarılı': 'ok', 'Hata': 'bad', 'Gönderildi': 'info'
   };
   UI.rozet = function (metin, tip) {
@@ -563,10 +565,21 @@
       ]);
     }
 
+    /* Bölümler `grup` alanıyla öbeklenir: aynı grubun ilk bölümünden önce bir
+       başlık satırı çıkar, grubu olmayan bölümler (Panel) doğrudan listelenir.
+       Dar ekranda ray yatay bir şeride dönüştüğü için başlıklar gizlenir. */
     function gezCiz() {
       gezEl.textContent = '';
       gezEl.appendChild(h('div.eyebrow', { text: o.railBaslik || 'Bölümler' }));
-      gorunur.forEach(function (b) { gezEl.appendChild(dugme(b)); });
+      var sonGrup = null;
+      gorunur.forEach(function (b) {
+        var g = b.grup || null;
+        if (g !== sonGrup) {
+          if (g) gezEl.appendChild(h('div.rail-grup', { text: g }));
+          sonGrup = g;
+        }
+        gezEl.appendChild(dugme(b));
+      });
     }
 
     function ciz() {
