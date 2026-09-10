@@ -3712,7 +3712,12 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       kap.appendChild(h('div.note.warn', {}, [
         h('b', { text: 'Portal ana verisi boş. ' }),
         h('span', { text: 'Ana veri sahibi Logo’dur; ürün ve bayi ekranlarındaki “Logo’dan güncelle” ile çekin. ' }),
-        h('button.btn.sm', { text: 'Ürünlere git', onclick: function () { kabuk.git('urunler'); } })
+        h('div.row.tight', { style: { marginTop: '8px' } }, [
+          db.urunler.length ? null : h('button.btn.primary.sm', { text: 'Ürünleri Logo’dan çek', onclick: logoUrunCek }),
+          db.bayiler.length ? null : h('button.btn.primary.sm', { text: 'Bayileri Logo’dan çek', onclick: logoBayiCek }),
+          h('button.btn.sm', { text: 'Ürünlere git', onclick: function () { kabuk.git('urunler'); } }),
+          h('button.btn.sm', { text: 'Bayilere git', onclick: function () { kabuk.git('bayiler'); } })
+        ])
       ]));
     }
     kap.appendChild(h('div.grid.k4', {}, [
@@ -4390,8 +4395,16 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       if (u) return urunEkrani(u);
       secUrun = null;
     }
+    /* Liste boşken de eylem ekranda kalmalı: aksi halde "Logo'dan güncelle ile
+       çekin" diyen bir uyarı çıkıyor ama düğme çizilmediği için basılamıyordu. */
     if (!db.urunler.length) {
-      return h('div.note.warn', { html: '<b>Ürün yok.</b> “Logo’dan güncelle” ile stok kartlarını çekin.' });
+      return h('div.stack', {}, [
+        h('div.cat-bar', {}, [
+          h('button.btn.primary', { text: "Logo'dan güncelle", title: 'Stok kartlarını Logo’dan okur', onclick: logoUrunCek }),
+          UI.senkronBilgi(db.senkron.urun)
+        ]),
+        h('div.note.warn', { html: '<b>Ürün yok.</b> Yukarıdaki “Logo’dan güncelle” ile stok kartlarını çekin. Ana veri sahibi Logo’dur; portal kartların kopyasını tutar.' })
+      ]);
     }
 
     var tumu = urunKaynak();
