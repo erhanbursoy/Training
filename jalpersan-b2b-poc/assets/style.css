@@ -160,6 +160,34 @@ a { color: var(--accent); }
 .rail .count.hot { background: var(--warn); color: #fff; }
 .rail button[aria-current="true"] .count.hot { background: var(--warn); color: #fff; }
 
+/* Belge künyesi: etiket–değer çiftleri (UI.bilgi) */
+.bilgi { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 4px 20px; }
+.bilgi > div { padding: 2px 0; min-width: 0; }
+.bilgi .e {
+  font-family: var(--font-display); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--text-3);
+}
+.bilgi .d {
+  font-size: 14px; margin-top: 3px; display: flex; align-items: center;
+  gap: 7px; flex-wrap: wrap; min-width: 0;
+}
+/* Uzun e-posta ya da referans komşu sütuna taşmasın, sarsın. */
+.bilgi .d > * { min-width: 0; overflow-wrap: anywhere; }
+/* Mono aynı boyutta daha geniş görünür; künyede bir tık küçük yazılır. */
+.bilgi .d .mono { font-family: var(--font-mono); font-size: 13px; }
+
+/* Satır içi SVG grafik (UI.grafik) */
+.grafik-kutu { display: flex; flex-direction: column; gap: 8px; }
+.grafik { display: block; width: 100%; height: auto; }
+.grafik .gx { font-family: var(--font-mono); font-size: 10px; fill: var(--text-3); }
+/* Dar viewBox küçültülerek çizildiği için yazı birimleri büyütülür. */
+.grafik.dar .gx { font-size: 17px; }
+.grafik .gizgi { stroke: var(--line); stroke-width: 1; }
+.grafik .geksen { stroke: var(--line-2); stroke-width: 1; }
+.grafik-gosterge { font-size: 12px; color: var(--text-2); gap: 14px; }
+.gosterge { display: inline-flex; align-items: center; gap: 6px; }
+.gosterge i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
 .main { flex: 1 1 auto; min-width: 0; padding: 20px 22px 64px; }
 .main > header { margin-bottom: 16px; }
 .main > header p { color: var(--text-2); max-width: 68ch; margin: 4px 0 0; }
@@ -595,6 +623,10 @@ td.num .pc { display: block; font-family: var(--font-mono); font-size: 10.5px; c
 }
 .acilir .ac-bas { padding: 11px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
 .acilir .ac-bas h3 { font-size: 13px; }
+/* Menü başlığı tıklanabilir olduğunda: profil sayfasına giden satır */
+.acilir button.ac-bas-btn { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); font: inherit; color: inherit; cursor: pointer; }
+.acilir button.ac-bas-btn:hover { background: var(--sunk); }
+.acilir button.ac-bas-btn svg { color: var(--text-3); flex: none; }
 .acilir .ac-govde { max-height: 340px; overflow-y: auto; }
 .acilir .ac-alt { padding: 9px 14px; border-top: 1px solid var(--line); background: var(--surface-2); }
 .acilir .ac-satir { display: block; width: 100%; text-align: left; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; }

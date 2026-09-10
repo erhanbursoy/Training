@@ -1545,6 +1545,55 @@
     return Math.round(dizi.reduce(function (t, v) { return t + v; }, 0) / dizi.length * 10) / 10;
   }
 
+  /** Son N günün günlük miktar özeti: talep edilen / işleme alınan / tamamlanan.
+   *  Hareket defterinden okunur; birimler karışmasın diye ürünün gösterim
+   *  birimine göre ayrılır ve istenen birim süzülür. Birim verilmezse hareketi
+   *  en çok olan birim kullanılır. */
+  JP.gunlukOzet = function (gun, birim) {
+    gun = gun || 30;
+    var db = JP.db;
+    var bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    var bas = new Date(bugun.getTime() - (gun - 1) * 86400000);
+    var anahtar = function (d) { return d.toISOString().slice(0, 10); };
+
+    /* Aralıktaki hareketleri birime göre topla; birim seçilmemişse en yoğun olanı
+       seç. Hareket kaydına alan yazılmaz — birim yanında ayrı tutulur. */
+    var birimToplam = {}, son = new Date(bugun.getTime() + 86400000 - 1);
+    var urunBirim = {};
+    db.urunler.forEach(function (u) { urunBirim[u.kod] = u.gosterimBirimi || u.birim || '—'; });
+    var ilgili = [];
+    db.havuz.forEach(function (hr) {
+      if (hr.rezervKapanis) return;                 // fatura ile çözülen rezerv sayılmaz
+      if (hr.miktar <= 0) return;                   // düzeltme/iptal hareketleri seriye girmez
+      var t = new Date(hr.ts);
+      if (isNaN(t) || t < bas || t > son) return;
+      var b = urunBirim[hr.urunKod] || '—';
+      birimToplam[b] = (birimToplam[b] || 0) + hr.miktar;
+      ilgili.push({ hareket: hr, birim: b });
+    });
+    var birimler = Object.keys(birimToplam).sort(function (a, b) { return birimToplam[b] - birimToplam[a]; });
+    var secili = birim || birimler[0] || '';
+
+    var gunler = [];
+    for (var i = 0; i < gun; i++) {
+      var d = new Date(bas.getTime() + i * 86400000);
+      gunler.push({ gun: anahtar(d), talep: 0, isleme: 0, tamam: 0 });
+    }
+    var indeks = {};
+    gunler.forEach(function (g, i) { indeks[g.gun] = i; });
+
+    ilgili.forEach(function (kayit) {
+      if (secili && kayit.birim !== secili) return;
+      var hr = kayit.hareket;
+      var i = indeks[String(hr.ts).slice(0, 10)];
+      if (i === undefined) return;
+      if (hr.tip === 'dTalep') gunler[i].talep = r2(gunler[i].talep + hr.miktar);
+      else if (hr.tip === 'dRezerv') gunler[i].isleme = r2(gunler[i].isleme + hr.miktar);
+      else if (hr.tip === 'dFatura') gunler[i].tamam = r2(gunler[i].tamam + hr.miktar);
+    });
+    return { gunler: gunler, birim: secili, birimler: birimler };
+  };
+
   /** 1 — Ürün raporu: ürün bazında kaç talep gelmiş, kaçı sevk edilmiş, kaçı
    *  tamamlanmış. Sayımlar talep kalemi düzeyinde, miktarlar ürünün kendi
    *  biriminde. Aralık talep tarihine bakar. */
@@ -1584,6 +1633,8 @@
       r.bayiSayisi = Object.keys(r.bayiler).length;
       r.islemeYuzde = r.kalem ? Math.round(r.islemeKalem / r.kalem * 100) : 0;
       r.tamamlanmaYuzde = r.kalem ? Math.round(r.tamamlanan / r.kalem * 100) : 0;
+      /* Miktar bazlı tamamlanma: raporda gösterilen oran budur. */
+      r.miktarYuzde = r.talep > 0 ? Math.round(r.sevk / r.talep * 100) : 0;
       return r;
     }).sort(function (a, b) { return b.kalem - a.kalem || b.talep - a.talep; });
   };
@@ -1772,13 +1823,21 @@
       aksesuar: tohumUrun(db, 'Ronco', 0)          // adet birimli — karışık birim demoda görünsün
     };
 
+    /* Talepleri bayinin sipariş yetkilisi açar; belge künyesinde adı görünür. */
+    function yetkili(bayiKod) {
+      var k = db.kullanicilar.find(function (x) {
+        return x.tip === 'bayi' && x.bayiKod === bayiKod && x.rol === 'yetkili' && x.durum === 'Aktif';
+      });
+      return k ? k.id : null;
+    }
+
     _ts = gecmis(24);
     JP.talepOlustur('BYI-0001', [
       { urunKod: U.stor1, miktar: 320 },
       { urunKod: U.stor2, miktar: 150 },
       { urunKod: U.tul1, miktar: 90 },
       { urunKod: U.aksesuar, miktar: 24 }
-    ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', ileriGun(6));
+    ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', ileriGun(6), yetkili('BYI-0001'), 'bayi');
 
     _ts = gecmis(21);
     var t1 = db.talepler[0];
@@ -1797,13 +1856,13 @@
     JP.talepOlustur('BYI-0002', [
       { urunKod: U.dikey1, miktar: 240 },
       { urunKod: U.trend1, miktar: 180 }
-    ], 'Ofis projesi — teslim tarihi kritik.', ileriGun(12));
+    ], 'Ofis projesi — teslim tarihi kritik.', ileriGun(12), yetkili('BYI-0002'), 'bayi');
 
     _ts = gecmis(3);
     JP.talepOlustur('BYI-0004', [
       { urunKod: tohumUrun(db, 'Stor Perde Kumaşı', 12), miktar: 400 },
       { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
-    ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21));
+    ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21), yetkili('BYI-0004'), 'bayi');
 
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
     _ts = gecmis(2);

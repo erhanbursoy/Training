@@ -624,6 +624,133 @@
   };
 
   /* ------------------------------------------------ küçük bileşen kısayolları */
+  /* ------------------------------------------------------------ bilgi kutusu */
+  /* Belge başlığı: etiket–değer çiftleri. Ölçüm kartı değil, künye — talep ve
+     sipariş detaylarının üstünde "bu belge nedir" sorusunu yanıtlar. */
+  UI.bilgi = function (satirlar) {
+    return h('div.bilgi', {}, satirlar.filter(Boolean).map(function (r) {
+      var deger = r[1];
+      return h('div', {}, [
+        h('div.e', { text: r[0] }),
+        h('div.d', {}, typeof deger === 'string' ? h('span', { text: deger }) : deger)
+      ]);
+    }));
+  };
+
+  /* ---------------------------------------------------------------- grafik */
+  /* Satır içi SVG çubuk grafik: gün başına üç seri. Kütüphane yüklenmez
+     (artifact CSP'si dış betiği de engelliyor), viewBox ile ölçeklenir. */
+  UI.grafik = function (o) {
+    var seriler = o.seriler || [];
+    var etiketler = o.etiketler || [];
+    var n = etiketler.length || 1;
+    var enBuyuk = 0;
+    seriler.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyuk) enBuyuk = v; }); });
+
+    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. */
+    var tepe = enBuyuk > 0 ? enBuyuk : 1;
+    var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
+    var carpan = tepe / basamak;
+    tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
+
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(ad, nitelik, cocuk) {
+      var e = document.createElementNS(ns, ad);
+      Object.keys(nitelik || {}).forEach(function (k) { e.setAttribute(k, String(nitelik[k])); });
+      (cocuk || []).forEach(function (c) { if (c) e.appendChild(c); });
+      return e;
+    }
+
+    /* Telefonda 1000x210 viewBox ekrana sığdırılırken çizim 70 px'e iniyor;
+       dar ekranda daha kare bir kutu ve daha büyük yazı kullanılır. */
+    function ciz() {
+      var dar = false;
+      try { dar = window.matchMedia('(max-width: 700px)').matches; } catch (e) {}
+      var G = dar ? 560 : 1000, Y = dar ? 300 : 210;
+      var solPay = dar ? 64 : 52, altPay = dar ? 34 : 26, ustPay = dar ? 12 : 8;
+      var etiketAdim = dar ? 7 : 5;
+      var alanG = G - solPay - 8, alanY = Y - altPay - ustPay;
+      var adim = n > 1 ? alanG / (n - 1) : 0;
+      var x = function (i) { return solPay + adim * i; };
+      var y = function (v) { return ustPay + alanY - alanY * (v / tepe); };
+      function yazi(px, py, metin, sinif, hiza) {
+        var t = el('text', { x: px, y: py, class: sinif || 'gx', 'text-anchor': hiza || 'middle' });
+        t.textContent = metin;
+        return t;
+      }
+
+      var cocuklar = [];
+      // yatay ızgara ve eksen değerleri
+      for (var i = 0; i <= 4; i++) {
+        var cizgiY = ustPay + alanY * (i / 4);
+        cocuklar.push(el('line', { x1: solPay, y1: cizgiY, x2: G - 8, y2: cizgiY, class: 'gizgi' }));
+        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5), JP.fmt.miktar(Math.round(tepe * (1 - i / 4))), 'gx', 'end'));
+      }
+      // her seri bir çizgi
+      seriler.forEach(function (s) {
+        cocuklar.push(el('polyline', {
+          points: s.veri.map(function (v, i) { return x(i).toFixed(2) + ',' + y(v || 0).toFixed(2); }).join(' '),
+          fill: 'none', stroke: s.renk, 'stroke-width': dar ? 2.6 : 2,
+          'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+        }));
+      });
+      // değeri olan noktalara ipuçlu işaret
+      seriler.forEach(function (s) {
+        s.veri.forEach(function (v, i) {
+          if (!v) return;
+          var ipucu = el('title');
+          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.birim ? ' ' + o.birim : '');
+          cocuklar.push(el('circle', {
+            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4 : 3.2,
+            fill: 'var(--surface)', stroke: s.renk, 'stroke-width': 2
+          }, [ipucu]));
+        });
+      });
+      /* Her günü yazmak sığmaz; belirli aralıkta tarih yazılır. İlk ve son
+         etiket kenara yapıştığı için hizası içe çevrilir. */
+      var sonIndeks = etiketler.length - 1;
+      etiketler.forEach(function (etiket, gi) {
+        if (gi !== sonIndeks) {
+          if (gi % etiketAdim !== 0) return;
+          // son etikete çok yakın periyodik etiket üst üste biner
+          if (sonIndeks - gi < Math.ceil(etiketAdim / 2)) return;
+        }
+        var hiza = gi === 0 ? 'start' : (gi === sonIndeks ? 'end' : 'middle');
+        cocuklar.push(yazi(x(gi), Y - (dar ? 10 : 8), etiket, 'gx', hiza));
+      });
+      cocuklar.push(el('line', { x1: solPay, y1: ustPay + alanY, x2: G - 8, y2: ustPay + alanY, class: 'geksen' }));
+
+      return el('svg', {
+        class: 'grafik' + (dar ? ' dar' : ''), viewBox: '0 0 ' + G + ' ' + Y, role: 'img',
+        'aria-label': o.baslik || 'Grafik', preserveAspectRatio: 'xMidYMid meet'
+      }, cocuklar);
+    }
+
+    var svg = ciz();
+    var kutu = h('div.grafik-kutu', {}, [
+      h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
+        return h('span.gosterge', {}, [h('i', { style: { background: s.renk } }), h('span', { text: s.ad })]);
+      }).concat([h('div.spacer'), o.birim ? h('span.small.muted', { text: 'miktar · ' + o.birim }) : null])),
+      svg,
+      enBuyuk > 0 ? null : h('div.small.muted', { text: o.bos || 'Bu aralıkta hareket yok.' })
+    ]);
+
+    /* Ekran genişliği eşiği geçtiğinde (telefon döndürme) yeniden çizilir;
+       düğüm DOM'dan çıktığında dinleyici kendini kaldırır. */
+    try {
+      var mq = window.matchMedia('(max-width: 700px)');
+      var tazele = function () {
+        if (!kutu.isConnected) { mq.removeEventListener('change', tazele); return; }
+        var yenisi = ciz();
+        kutu.replaceChild(yenisi, svg);
+        svg = yenisi;
+      };
+      mq.addEventListener('change', tazele);
+    } catch (e) {}
+
+    return kutu;
+  };
+
   UI.kpi = function (etiket, deger, birim, alt, vurgu) {
     return h('div.kpi' + (vurgu ? '.on-accent' : ''), {}, [
       h('div.k', { text: etiket }),

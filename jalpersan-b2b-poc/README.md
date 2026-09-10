@@ -127,8 +127,11 @@ kapatır, sebebi ekranda yazar.
 Standart web uygulaması düzeni: üstte **Ürün kataloğu** ve **Taleplerim**;
 sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
 
-- **Taleplerim** · liste (tarih, talep no, durum) ve talep detayı; kalem satırlarında
-  yalnızca talep edilen ve tamamlanan miktarlar yazar.
+- **Taleplerim** · liste (tarih, talep no, durum, ürün sayısı) ve talep detayı. Detay iki
+  bloktur: künye (talep numarası, tarihi, durumu, talep eden kullanıcı) ve talep edilen
+  ürünler. Kalem satırlarında yalnızca talep edilen ve tamamlanan miktarlar yazar.
+- **Profilim** · sağ üstteki menüde ada tıklanınca açılır: hesap bilgileri, rol, talep
+  yetkisi, bağlı bayi ve katalog kısıtı. Menünün kendisi kısa tutulur (ad, bayi, çıkış).
   Detayda üç görünüm var: **Ürünler**, **İşlemler** (talepten doğan siparişler ve faturalar)
   ve **Hareketler** (talep geçmişi).
 
@@ -187,9 +190,9 @@ durumu rapor başına ayrıdır ve her raporun kendi Excel çıktısı vardır.
 
 | Rapor | Satır | Ölçüler | Tarih aralığı |
 | --- | --- | --- | --- |
-| Ürün raporu | ürün | talep / işleme alınan / tamamlanan kalem, tamamlanma %, talep edilen ve tamamlanan miktar | talep tarihi |
-| Bayi raporu | bayi | sipariş sayısı, kalem sayısı, tamamlanma sayısı, tamamlanma yüzdesi, son sipariş | sipariş tarihi |
-| Performans raporu | ürün | talep / işleme alınan / tamamlanan kalem, en kısa, en uzun ve ortalama gün | talep tarihi |
+| Ürün raporu | ürün | birim, talep edilen, işleme alınan, tamamlanan miktar ve tamamlanma yüzdesi | talep tarihi |
+| Bayi raporu | bayi | sipariş sayısı, kalem sayısı, tamamlanma sayısı, son sipariş | sipariş tarihi |
+| Performans raporu | ürün | birim, en kısa, en uzun ve ortalama tamamlanma günü | talep tarihi |
 
 Performans raporu **talep kalemi düzeyinde** ölçer: kalemin `dTalep` hareketinin zamanı ile
 tamamlanma (`dFatura` — GİB gönderimi) hareketlerinin zamanı arasındaki gün farkı. Yalnızca
@@ -271,6 +274,22 @@ sipariş detayında etiket olarak durur ve sipariş Logo'ya gönderildiğinde fi
 Logo simülatöründe fiş başlığında görünür.
 
 Talep ve sipariş listeleri Excel'e kopyalanabilir; iki çıktı da teslim tarihi sütununu taşır.
+
+### Belge künyesi ve panel grafiği
+
+Talep ve sipariş detaylarının üstünde ölçüm kartı yoktur; yerine etiket–değer künyesi
+durur (`UI.bilgi`). Talep künyesi belge numarası, tarih, durum, bayi, talep eden kullanıcı
+ve ürün sayısını verir; sipariş künyesi buna Logo fişi, portal referansı ve siparişi
+besleyen talepleri ekler. Talep kalemi satırında **Sipariş** sütunu vardır: kalemin girdiği
+sipariş numaraları rozet olarak yazar ve tıklanınca sipariş açılır. Böylece kaldırılan
+"İşlemler" sekmesindeki bilgi satırın kendisine taşınmış olur.
+
+Panelde son 30 günün çizgi grafiği vardır: talep edilen, işleme alınan ve tamamlanan
+miktarlar üç seri olarak çizilir (`JP.gunlukOzet` + `UI.grafik`). Grafik satır içi SVG'dir;
+kütüphane yüklenmez, çünkü artifact ortamının içerik güvenlik kuralı dış betiğe izin
+vermez. Miktarlar ürünün kendi biriminden geldiği için seriler **tek birim** üzerinden
+çizilir; birden çok birimde hareket varsa sağ üstte birim seçici çıkar. Telefon
+genişliğinde grafik daha kare bir kutuya geçer ve ekran eşiği aşıldığında yeniden çizilir.
 
 ### Miktar sözlüğü
 

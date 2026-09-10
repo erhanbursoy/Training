@@ -163,6 +163,34 @@ a { color: var(--accent); }
 .rail .count.hot { background: var(--warn); color: #fff; }
 .rail button[aria-current="true"] .count.hot { background: var(--warn); color: #fff; }
 
+/* Belge künyesi: etiket–değer çiftleri (UI.bilgi) */
+.bilgi { display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr)); gap: 4px 20px; }
+.bilgi > div { padding: 2px 0; min-width: 0; }
+.bilgi .e {
+  font-family: var(--font-display); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--text-3);
+}
+.bilgi .d {
+  font-size: 14px; margin-top: 3px; display: flex; align-items: center;
+  gap: 7px; flex-wrap: wrap; min-width: 0;
+}
+/* Uzun e-posta ya da referans komşu sütuna taşmasın, sarsın. */
+.bilgi .d > * { min-width: 0; overflow-wrap: anywhere; }
+/* Mono aynı boyutta daha geniş görünür; künyede bir tık küçük yazılır. */
+.bilgi .d .mono { font-family: var(--font-mono); font-size: 13px; }
+
+/* Satır içi SVG grafik (UI.grafik) */
+.grafik-kutu { display: flex; flex-direction: column; gap: 8px; }
+.grafik { display: block; width: 100%; height: auto; }
+.grafik .gx { font-family: var(--font-mono); font-size: 10px; fill: var(--text-3); }
+/* Dar viewBox küçültülerek çizildiği için yazı birimleri büyütülür. */
+.grafik.dar .gx { font-size: 17px; }
+.grafik .gizgi { stroke: var(--line); stroke-width: 1; }
+.grafik .geksen { stroke: var(--line-2); stroke-width: 1; }
+.grafik-gosterge { font-size: 12px; color: var(--text-2); gap: 14px; }
+.gosterge { display: inline-flex; align-items: center; gap: 6px; }
+.gosterge i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
 .main { flex: 1 1 auto; min-width: 0; padding: 20px 22px 64px; }
 .main > header { margin-bottom: 16px; }
 .main > header p { color: var(--text-2); max-width: 68ch; margin: 4px 0 0; }
@@ -598,6 +626,10 @@ td.num .pc { display: block; font-family: var(--font-mono); font-size: 10.5px; c
 }
 .acilir .ac-bas { padding: 11px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
 .acilir .ac-bas h3 { font-size: 13px; }
+/* Menü başlığı tıklanabilir olduğunda: profil sayfasına giden satır */
+.acilir button.ac-bas-btn { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); font: inherit; color: inherit; cursor: pointer; }
+.acilir button.ac-bas-btn:hover { background: var(--sunk); }
+.acilir button.ac-bas-btn svg { color: var(--text-3); flex: none; }
 .acilir .ac-govde { max-height: 340px; overflow-y: auto; }
 .acilir .ac-alt { padding: 9px 14px; border-top: 1px solid var(--line); background: var(--surface-2); }
 .acilir .ac-satir { display: block; width: 100%; text-align: left; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; font: inherit; color: inherit; }
@@ -2389,6 +2421,55 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     return Math.round(dizi.reduce(function (t, v) { return t + v; }, 0) / dizi.length * 10) / 10;
   }
 
+  /** Son N günün günlük miktar özeti: talep edilen / işleme alınan / tamamlanan.
+   *  Hareket defterinden okunur; birimler karışmasın diye ürünün gösterim
+   *  birimine göre ayrılır ve istenen birim süzülür. Birim verilmezse hareketi
+   *  en çok olan birim kullanılır. */
+  JP.gunlukOzet = function (gun, birim) {
+    gun = gun || 30;
+    var db = JP.db;
+    var bugun = new Date(); bugun.setHours(0, 0, 0, 0);
+    var bas = new Date(bugun.getTime() - (gun - 1) * 86400000);
+    var anahtar = function (d) { return d.toISOString().slice(0, 10); };
+
+    /* Aralıktaki hareketleri birime göre topla; birim seçilmemişse en yoğun olanı
+       seç. Hareket kaydına alan yazılmaz — birim yanında ayrı tutulur. */
+    var birimToplam = {}, son = new Date(bugun.getTime() + 86400000 - 1);
+    var urunBirim = {};
+    db.urunler.forEach(function (u) { urunBirim[u.kod] = u.gosterimBirimi || u.birim || '—'; });
+    var ilgili = [];
+    db.havuz.forEach(function (hr) {
+      if (hr.rezervKapanis) return;                 // fatura ile çözülen rezerv sayılmaz
+      if (hr.miktar <= 0) return;                   // düzeltme/iptal hareketleri seriye girmez
+      var t = new Date(hr.ts);
+      if (isNaN(t) || t < bas || t > son) return;
+      var b = urunBirim[hr.urunKod] || '—';
+      birimToplam[b] = (birimToplam[b] || 0) + hr.miktar;
+      ilgili.push({ hareket: hr, birim: b });
+    });
+    var birimler = Object.keys(birimToplam).sort(function (a, b) { return birimToplam[b] - birimToplam[a]; });
+    var secili = birim || birimler[0] || '';
+
+    var gunler = [];
+    for (var i = 0; i < gun; i++) {
+      var d = new Date(bas.getTime() + i * 86400000);
+      gunler.push({ gun: anahtar(d), talep: 0, isleme: 0, tamam: 0 });
+    }
+    var indeks = {};
+    gunler.forEach(function (g, i) { indeks[g.gun] = i; });
+
+    ilgili.forEach(function (kayit) {
+      if (secili && kayit.birim !== secili) return;
+      var hr = kayit.hareket;
+      var i = indeks[String(hr.ts).slice(0, 10)];
+      if (i === undefined) return;
+      if (hr.tip === 'dTalep') gunler[i].talep = r2(gunler[i].talep + hr.miktar);
+      else if (hr.tip === 'dRezerv') gunler[i].isleme = r2(gunler[i].isleme + hr.miktar);
+      else if (hr.tip === 'dFatura') gunler[i].tamam = r2(gunler[i].tamam + hr.miktar);
+    });
+    return { gunler: gunler, birim: secili, birimler: birimler };
+  };
+
   /** 1 — Ürün raporu: ürün bazında kaç talep gelmiş, kaçı sevk edilmiş, kaçı
    *  tamamlanmış. Sayımlar talep kalemi düzeyinde, miktarlar ürünün kendi
    *  biriminde. Aralık talep tarihine bakar. */
@@ -2428,6 +2509,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       r.bayiSayisi = Object.keys(r.bayiler).length;
       r.islemeYuzde = r.kalem ? Math.round(r.islemeKalem / r.kalem * 100) : 0;
       r.tamamlanmaYuzde = r.kalem ? Math.round(r.tamamlanan / r.kalem * 100) : 0;
+      /* Miktar bazlı tamamlanma: raporda gösterilen oran budur. */
+      r.miktarYuzde = r.talep > 0 ? Math.round(r.sevk / r.talep * 100) : 0;
       return r;
     }).sort(function (a, b) { return b.kalem - a.kalem || b.talep - a.talep; });
   };
@@ -2616,13 +2699,21 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       aksesuar: tohumUrun(db, 'Ronco', 0)          // adet birimli — karışık birim demoda görünsün
     };
 
+    /* Talepleri bayinin sipariş yetkilisi açar; belge künyesinde adı görünür. */
+    function yetkili(bayiKod) {
+      var k = db.kullanicilar.find(function (x) {
+        return x.tip === 'bayi' && x.bayiKod === bayiKod && x.rol === 'yetkili' && x.durum === 'Aktif';
+      });
+      return k ? k.id : null;
+    }
+
     _ts = gecmis(24);
     JP.talepOlustur('BYI-0001', [
       { urunKod: U.stor1, miktar: 320 },
       { urunKod: U.stor2, miktar: 150 },
       { urunKod: U.tul1, miktar: 90 },
       { urunKod: U.aksesuar, miktar: 24 }
-    ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', ileriGun(6));
+    ], 'Sezon açılışı için ilk parti. Kartela ile aynı tonlar olsun.', ileriGun(6), yetkili('BYI-0001'), 'bayi');
 
     _ts = gecmis(21);
     var t1 = db.talepler[0];
@@ -2641,13 +2732,13 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     JP.talepOlustur('BYI-0002', [
       { urunKod: U.dikey1, miktar: 240 },
       { urunKod: U.trend1, miktar: 180 }
-    ], 'Ofis projesi — teslim tarihi kritik.', ileriGun(12));
+    ], 'Ofis projesi — teslim tarihi kritik.', ileriGun(12), yetkili('BYI-0002'), 'bayi');
 
     _ts = gecmis(3);
     JP.talepOlustur('BYI-0004', [
       { urunKod: tohumUrun(db, 'Stor Perde Kumaşı', 12), miktar: 400 },
       { urunKod: tohumUrun(db, 'Tül Stor Perde Kumaşı', 4), miktar: 120 }
-    ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21));
+    ], 'Belgrad deposu için. Konteyner yüklemesi ayın 25\'i.', ileriGun(21), yetkili('BYI-0004'), 'bayi');
 
     // Logo'ya iletilmiş, henüz faturalanmamış bir sipariş — canlı demoda kaldığı yerden devam eder
     _ts = gecmis(2);
@@ -3296,6 +3387,133 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   };
 
   /* ------------------------------------------------ küçük bileşen kısayolları */
+  /* ------------------------------------------------------------ bilgi kutusu */
+  /* Belge başlığı: etiket–değer çiftleri. Ölçüm kartı değil, künye — talep ve
+     sipariş detaylarının üstünde "bu belge nedir" sorusunu yanıtlar. */
+  UI.bilgi = function (satirlar) {
+    return h('div.bilgi', {}, satirlar.filter(Boolean).map(function (r) {
+      var deger = r[1];
+      return h('div', {}, [
+        h('div.e', { text: r[0] }),
+        h('div.d', {}, typeof deger === 'string' ? h('span', { text: deger }) : deger)
+      ]);
+    }));
+  };
+
+  /* ---------------------------------------------------------------- grafik */
+  /* Satır içi SVG çubuk grafik: gün başına üç seri. Kütüphane yüklenmez
+     (artifact CSP'si dış betiği de engelliyor), viewBox ile ölçeklenir. */
+  UI.grafik = function (o) {
+    var seriler = o.seriler || [];
+    var etiketler = o.etiketler || [];
+    var n = etiketler.length || 1;
+    var enBuyuk = 0;
+    seriler.forEach(function (s) { s.veri.forEach(function (v) { if (v > enBuyuk) enBuyuk = v; }); });
+
+    /* Yuvarlak bir tepe seç: 1-2-5 basamakları. */
+    var tepe = enBuyuk > 0 ? enBuyuk : 1;
+    var basamak = Math.pow(10, Math.floor(Math.log(tepe) / Math.LN10));
+    var carpan = tepe / basamak;
+    tepe = (carpan <= 1 ? 1 : carpan <= 2 ? 2 : carpan <= 5 ? 5 : 10) * basamak;
+
+    var ns = 'http://www.w3.org/2000/svg';
+    function el(ad, nitelik, cocuk) {
+      var e = document.createElementNS(ns, ad);
+      Object.keys(nitelik || {}).forEach(function (k) { e.setAttribute(k, String(nitelik[k])); });
+      (cocuk || []).forEach(function (c) { if (c) e.appendChild(c); });
+      return e;
+    }
+
+    /* Telefonda 1000x210 viewBox ekrana sığdırılırken çizim 70 px'e iniyor;
+       dar ekranda daha kare bir kutu ve daha büyük yazı kullanılır. */
+    function ciz() {
+      var dar = false;
+      try { dar = window.matchMedia('(max-width: 700px)').matches; } catch (e) {}
+      var G = dar ? 560 : 1000, Y = dar ? 300 : 210;
+      var solPay = dar ? 64 : 52, altPay = dar ? 34 : 26, ustPay = dar ? 12 : 8;
+      var etiketAdim = dar ? 7 : 5;
+      var alanG = G - solPay - 8, alanY = Y - altPay - ustPay;
+      var adim = n > 1 ? alanG / (n - 1) : 0;
+      var x = function (i) { return solPay + adim * i; };
+      var y = function (v) { return ustPay + alanY - alanY * (v / tepe); };
+      function yazi(px, py, metin, sinif, hiza) {
+        var t = el('text', { x: px, y: py, class: sinif || 'gx', 'text-anchor': hiza || 'middle' });
+        t.textContent = metin;
+        return t;
+      }
+
+      var cocuklar = [];
+      // yatay ızgara ve eksen değerleri
+      for (var i = 0; i <= 4; i++) {
+        var cizgiY = ustPay + alanY * (i / 4);
+        cocuklar.push(el('line', { x1: solPay, y1: cizgiY, x2: G - 8, y2: cizgiY, class: 'gizgi' }));
+        cocuklar.push(yazi(solPay - 8, cizgiY + (dar ? 6 : 3.5), JP.fmt.miktar(Math.round(tepe * (1 - i / 4))), 'gx', 'end'));
+      }
+      // her seri bir çizgi
+      seriler.forEach(function (s) {
+        cocuklar.push(el('polyline', {
+          points: s.veri.map(function (v, i) { return x(i).toFixed(2) + ',' + y(v || 0).toFixed(2); }).join(' '),
+          fill: 'none', stroke: s.renk, 'stroke-width': dar ? 2.6 : 2,
+          'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+        }));
+      });
+      // değeri olan noktalara ipuçlu işaret
+      seriler.forEach(function (s) {
+        s.veri.forEach(function (v, i) {
+          if (!v) return;
+          var ipucu = el('title');
+          ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.birim ? ' ' + o.birim : '');
+          cocuklar.push(el('circle', {
+            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4 : 3.2,
+            fill: 'var(--surface)', stroke: s.renk, 'stroke-width': 2
+          }, [ipucu]));
+        });
+      });
+      /* Her günü yazmak sığmaz; belirli aralıkta tarih yazılır. İlk ve son
+         etiket kenara yapıştığı için hizası içe çevrilir. */
+      var sonIndeks = etiketler.length - 1;
+      etiketler.forEach(function (etiket, gi) {
+        if (gi !== sonIndeks) {
+          if (gi % etiketAdim !== 0) return;
+          // son etikete çok yakın periyodik etiket üst üste biner
+          if (sonIndeks - gi < Math.ceil(etiketAdim / 2)) return;
+        }
+        var hiza = gi === 0 ? 'start' : (gi === sonIndeks ? 'end' : 'middle');
+        cocuklar.push(yazi(x(gi), Y - (dar ? 10 : 8), etiket, 'gx', hiza));
+      });
+      cocuklar.push(el('line', { x1: solPay, y1: ustPay + alanY, x2: G - 8, y2: ustPay + alanY, class: 'geksen' }));
+
+      return el('svg', {
+        class: 'grafik' + (dar ? ' dar' : ''), viewBox: '0 0 ' + G + ' ' + Y, role: 'img',
+        'aria-label': o.baslik || 'Grafik', preserveAspectRatio: 'xMidYMid meet'
+      }, cocuklar);
+    }
+
+    var svg = ciz();
+    var kutu = h('div.grafik-kutu', {}, [
+      h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
+        return h('span.gosterge', {}, [h('i', { style: { background: s.renk } }), h('span', { text: s.ad })]);
+      }).concat([h('div.spacer'), o.birim ? h('span.small.muted', { text: 'miktar · ' + o.birim }) : null])),
+      svg,
+      enBuyuk > 0 ? null : h('div.small.muted', { text: o.bos || 'Bu aralıkta hareket yok.' })
+    ]);
+
+    /* Ekran genişliği eşiği geçtiğinde (telefon döndürme) yeniden çizilir;
+       düğüm DOM'dan çıktığında dinleyici kendini kaldırır. */
+    try {
+      var mq = window.matchMedia('(max-width: 700px)');
+      var tazele = function () {
+        if (!kutu.isConnected) { mq.removeEventListener('change', tazele); return; }
+        var yenisi = ciz();
+        kutu.replaceChild(yenisi, svg);
+        svg = yenisi;
+      };
+      mq.addEventListener('change', tazele);
+    } catch (e) {}
+
+    return kutu;
+  };
+
   UI.kpi = function (etiket, deger, birim, alt, vurgu) {
     return h('div.kpi' + (vurgu ? '.on-accent' : ''), {}, [
       h('div.k', { text: etiket }),
@@ -3383,7 +3601,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         { id: 'talepler', ad: 'Taleplerim',
           ciz: talepler,
           sayi: function () { var b = aktifBayi(); return b ? JP.db.talepler.filter(function (t) { return t.bayiKod === b.kod; }).length : 0; } },
-        { id: 'sepet', gizli: true, ad: 'Sepetim', ciz: sepetEkrani }
+        { id: 'sepet', gizli: true, ad: 'Sepetim', ciz: sepetEkrani },
+        { id: 'profil', gizli: true, ad: 'Profilim', ciz: profilEkrani }
       ]
     });
   };
@@ -3442,40 +3661,67 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     ];
   }
 
+  /* Menü kısa: kim olduğun, hangi bayi ve çıkış. Yetki ve katalog kısıtı
+     profil sayfasında; ada tıklanınca oraya gidilir. */
   function profilPaneli(kul, bayi, kapat) {
-    var yetki = JP.talepYetkisi(kul);
     return [
-      h('div.ac-bas', {}, [
+      h('button.ac-bas.ac-bas-btn', {
+        title: 'Profilime git',
+        onclick: function () { kapat(); kabuk.git('profil'); }
+      }, [
         h('span.avatar', { text: bassiz(kul.ad) }),
         h('div', {}, [
           h('h3', { text: kul.ad }),
           h('div.small.muted', { text: kul.eposta })
-        ])
+        ]),
+        h('div.spacer'),
+        UI.ikon('ok', 14)
       ]),
       h('div.ac-govde', {}, [
         h('div.ac-satir', {}, [
           h('b', { text: 'Bayi' }),
           h('div.small', { text: bayi.unvan }),
           h('div.z', { text: bayi.kod + ' · ' + bayi.sehir + '/' + bayi.ulke })
-        ]),
-        h('div.ac-satir', {}, [
-          h('b', { text: 'Yetki' }),
-          h('div.row.tight', { style: { marginTop: '4px' } }, [
-            h('span.tag', { text: JP.rolAdi(kul.rol) }),
-            yetki.olur ? UI.rozet('Talep oluşturabilir', 'ok') : UI.rozet('Talep oluşturamaz', 'warn')
-          ]),
-          yetki.olur ? null : h('div.z', { text: yetki.sebep })
-        ]),
-        h('div.ac-satir', {}, [
-          h('b', { text: 'Katalog' }), h('div.small.muted', { text: kisitMetni(bayi) })
         ])
       ]),
       h('div.ac-alt', {}, h('div.row', {}, [
-        h('span.small.muted', { text: 'Hesabınız firma tarafından tanımlanır.' }),
+        h('button.btn.ghost.sm', { text: 'Profilim', onclick: function () { kapat(); kabuk.git('profil'); } }),
         h('div.spacer'),
         h('button.btn.sm', { text: 'Çıkış', onclick: function () { kapat(); oturumKapat(); } })
       ]))
     ];
+  }
+
+  /* ------------------------------------------------------------------ profil */
+  function profilEkrani() {
+    var kul = aktifKullanici(), bayi = aktifBayi();
+    if (!kul || !bayi) return h('div.empty', { text: 'Oturum bulunamadı.' });
+    var yetki = JP.talepYetkisi(kul);
+    return h('div.stack', {}, [
+      h('div.row', {}, [
+        h('button.btn.ghost.sm', { text: '← Ürün kataloğu', onclick: function () { kabuk.git('katalog'); } }),
+        h('div.spacer')
+      ]),
+      UI.panel('Hesabım', null, UI.bilgi([
+        ['Ad soyad', kul.ad],
+        ['E-posta', h('span.mono', { text: kul.eposta })],
+        ['Rol', h('span.tag', { text: JP.rolAdi(kul.rol) })],
+        ['Durum', UI.rozet(kul.durum)],
+        ['Son giriş', kul.sonGiris ? JP.fmt.saat(kul.sonGiris) : 'İlk giriş'],
+        ['Talep yetkisi', yetki.olur ? UI.rozet('Talep oluşturabilir', 'ok') : UI.rozet('Talep oluşturamaz', 'warn')]
+      ])),
+      UI.panel('Bayi', null, UI.bilgi([
+        ['Unvan', bayi.unvan],
+        ['Cari kodu', h('span.mono', { text: bayi.kod })],
+        ['Şehir / ülke', bayi.sehir + ' / ' + bayi.ulke],
+        ['Katalog', kisitMetni(bayi)]
+      ])),
+      h('div.row', {}, [
+        h('span.small.muted', { text: 'Hesap bilgileri Jalpersan tarafından yönetilir; değişiklik için firmayla görüşün.' }),
+        h('div.spacer'),
+        h('button.btn.sm', { text: 'Çıkış yap', onclick: oturumKapat })
+      ])
+    ]);
   }
 
   /** Bayinin katalog kısıtı — profil panelinde ve katalog notunda yazar. */
@@ -3851,34 +4097,13 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
   /* ------------------------------------------------------------ taleplerim */
   var secilen = null;                 // açık talep detayı (talep no)
-  var detayGorunum = 'urunler';       // urunler | islemler | hareketler
 
-  function talepAc(no) { secilen = no; detayGorunum = 'urunler'; kabuk.git('talepler'); }
+  function talepAc(no) { secilen = no; kabuk.git('talepler'); }
 
-  /* Bir talebin kalemleri farklı birimlerde olabilir (metre, adet, top…), bu yüzden
-     talep düzeyinde miktar toplanmaz. Özet kalem sayısıyla verilir.
+  /* Bir talebin kalemleri farklı birimlerde olabilir (metre, adet, top…), bu
+     yüzden talep düzeyinde miktar toplanmaz; miktarlar yalnızca kalem
+     satırında, o ürünün kendi biriminden yazar.
      "Tamamlanan" = faturası GİB'e gönderilmiş miktar (bkz. JP.DURUM). */
-  function tamamDurumu(k) {
-    if (k.fatura >= k.talep - 0.001) return 'tam';
-    return k.fatura > 0.001 ? 'kismi' : 'yok';
-  }
-
-  function tamamSayim(kalemler) {
-    var s = { tam: 0, kismi: 0, yok: 0, toplam: kalemler.length };
-    kalemler.forEach(function (k) { s[tamamDurumu(k)]++; });
-    return s;
-  }
-
-  function tamamBandi(s) {
-    var t = Math.max(s.toplam, 1);
-    return h('div.row.tight', { style: { width: '164px' } }, [
-      h('div.bar', { style: { flex: '1 1 auto' }, title: s.tam + ' kalem tamamlandı, ' + s.kismi + ' kalem kısmen tamamlandı' }, [
-        h('i', { style: { width: (s.tam / t * 100) + '%', background: 'var(--ok)' } }),
-        h('i', { style: { width: (s.kismi / t * 100) + '%', background: 'var(--warn)' } })
-      ]),
-      h('span.small.mono.muted', { text: s.tam + ' / ' + s.toplam })
-    ]);
-  }
 
   function talepler() {
     var db = JP.db, bayi = aktifBayi();
@@ -3899,71 +4124,45 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     }
 
     return UI.panel('Talep listesi', h('span.small.muted', { text: liste.length + ' talep' }),
-      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Kalem', num: true }, 'Tamamlanma', ''],
+      UI.tablo(['Tarih', 'Talep no', 'Durum', { t: 'Ürün sayısı', num: true }, ''],
         liste.map(function (t) {
-          var s2 = tamamSayim(JP.talepKalemDurum(t));
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { talepAc(t.no); } }, [
             h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
             h('td.mono', { text: t.no, style: { fontWeight: '600' } }),
             h('td', {}, UI.rozet(JP.talepDurumu(t))),
-            h('td.num.mono', { text: String(s2.toplam) }),
-            h('td', {}, tamamBandi(s2)),
+            h('td.num.mono', { text: String(t.kalemler.length) }),
             h('td.right', {}, h('button.btn.ghost.sm', { text: 'Detay', onclick: function (e) { e.stopPropagation(); talepAc(t.no); } }))
           ]);
         })), true);
   }
 
+  /* Talep detayı iki bloktur: künye ve talep edilen ürünler. Bayiye sipariş,
+     fatura ve hareket defteri gösterilmez — o firma tarafının işidir. */
   function talepDetay(t) {
     var kalemler = JP.talepKalemDurum(t);
-    var islem = JP.talepIslemleri(t.no);
-    var sayim = tamamSayim(kalemler);
-
-    var govde = h('div.stack');
-    function govdeCiz() {
-      govde.textContent = '';
-      if (detayGorunum === 'urunler') govde.appendChild(detayUrunler(t, kalemler));
-      else if (detayGorunum === 'islemler') govde.appendChild(detayIslemler(t, islem));
-      else govde.appendChild(detayHareketler(t));
-    }
-    govdeCiz();
 
     return h('div.stack', {}, [
       h('div.row', {}, [
         h('button.btn.ghost.sm', { text: '← Talep listesi', onclick: function () { secilen = null; kabuk.ciz(); } }),
         h('div.spacer')
       ]),
-      UI.panel(null, null, h('div.stack', {}, [
-        h('div.row', {}, [
-          h('h2.mono', { text: t.no }),
-          UI.rozet(JP.talepDurumu(t)),
-          h('span.small.muted', { text: JP.fmt.tarih(t.tarih) + ' · ' + JP.gunFark(t.tarih) + ' gün önce' }),
-          t.teslimTarihi ? h('span.tag', { text: 'İstenen teslim ' + JP.fmt.tarih(t.teslimTarihi) }) : null,
-          t.kullaniciAd ? h('span.small.muted', { text: 'Oluşturan: ' + t.kullaniciAd }) : null
+      UI.panel('Talep bilgisi', null, h('div.stack', {}, [
+        UI.bilgi([
+          ['Talep numarası', h('span.mono', { text: t.no, style: { fontWeight: '600' } })],
+          ['Talep tarihi', JP.fmt.tarih(t.tarih) + ' · ' + JP.gunFark(t.tarih) + ' gün önce'],
+          ['Talep durumu', UI.rozet(JP.talepDurumu(t))],
+          ['Talep eden kullanıcı', t.kullaniciAd || (t.kaynak === 'firma' ? 'Jalpersan (telefon talebi)' : '—')],
+          t.teslimTarihi ? ['İstenen teslim tarihi', JP.fmt.tarih(t.teslimTarihi)] : null,
+          ['Ürün sayısı', String(t.kalemler.length)]
         ]),
-        t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null,
-        h('div.grid.k4', {}, [
-          UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
-          UI.kpi('Tamamlandı', String(sayim.tam), 'kalem'),
-          UI.kpi('Kısmen tamamlandı', String(sayim.kismi), 'kalem'),
-          UI.kpi('Bekleyen', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
-        ])
+        t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null
       ])),
-      h('div.seg', {}, [
-        ['urunler', 'Ürünler (' + t.kalemler.length + ')'],
-        ['islemler', 'İşlemler (' + (islem.siparisler.length + islem.faturalar.length) + ')'],
-        ['hareketler', 'Hareketler']
-      ].map(function (o) {
-        return h('button', {
-          'aria-pressed': String(detayGorunum === o[0]), text: o[1],
-          onclick: function () { detayGorunum = o[0]; kabuk.ciz(); }
-        });
-      })),
-      govde
+      detayUrunler(t, kalemler)
     ]);
   }
 
   function detayUrunler(t, kalemler) {
-    return UI.panel('Talep kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
+    return UI.panel('Talep edilen ürünler', null,
       UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Tamamlanan', num: true }, ''],
         kalemler.map(function (k) {
           return h('tr', {}, [
@@ -3979,53 +4178,6 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
               : h('span.small.muted', { text: '—' }))
           ]);
         })), true);
-  }
-
-  function detayIslemler(t, islem) {
-    return h('div.stack', {}, [
-      UI.panel('Oluşturulan siparişler', h('span.small.muted', { text: 'Siparişi muhasebe oluşturur' }),
-        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }],
-          islem.siparisler.map(function (s) {
-            return h('tr', {}, [
-              h('td.mono', { text: s.no }),
-              h('td.small.muted', { text: JP.fmt.tarih(s.tarih) }),
-              h('td', {}, UI.rozet(s.durum)),
-              h('td.mono.small', { text: s.logoFisNo || '—' }),
-              h('td.num.mono', { text: JP.fmt.miktar(s.miktar) }),
-              h('td.num.mono', { text: JP.fmt.miktar(s.faturalanan) })
-            ]);
-          }), 'Bu talepten henüz sipariş oluşturulmadı.'), true),
-      UI.panel('Tamamlanan faturalar', h('span.small.muted', { text: "Fatura GİB'e gönderildiğinde tamamlanmış sayılır" }),
-        UI.tablo(['Fatura no', 'Tarih', 'Tip', 'Durum', { t: 'Tamamlanan', num: true }],
-          islem.faturalar.map(function (f) {
-            return h('tr', {}, [
-              h('td.mono', { text: f.no }),
-              h('td.small.muted', { text: JP.fmt.tarih(f.ts) }),
-              h('td.small', { text: f.tur }),
-              h('td', {}, f.gib === '—' ? h('span.small.muted', { text: '—' }) : UI.rozet(f.gib)),
-              h('td.num.mono', { text: JP.fmt.miktar(f.miktar) })
-            ]);
-          }), 'Bu talebe ait tamamlanmış fatura yok.'), true)
-    ]);
-  }
-
-  /* Talebin geçmişi — iç işlem tipleri yerine bayinin anlayacağı adlar (JP.islemAdi).
-     Faturayla birlikte yazılan teknik kayıt listelenmez. */
-  function detayHareketler(t) {
-    var hs = JP.db.havuz.filter(function (x) { return x.talepNo === t.no && !x.rezervKapanis; })
-      .sort(function (a, b) { return b.ts.localeCompare(a.ts); });
-    return UI.panel('Talep geçmişi', h('span.small.muted', { text: hs.length + ' kayıt' }),
-      UI.tablo(['Tarih', 'Ürün', 'İşlem', { t: 'Miktar', num: true }, 'Belge'],
-        hs.map(function (x) {
-          var ad = JP.islemAdi(x);
-          return h('tr', {}, [
-            h('td.small.nowrap', { text: JP.fmt.saat(x.ts) }),
-            h('td.mono.small', { text: x.urunKod }),
-            h('td', {}, UI.rozet(ad, x.tip === 'dFatura' ? 'ok' : (x.miktar > 0 ? 'info' : 'warn'))),
-            h('td.num.mono', { text: JP.fmt.miktar(Math.abs(x.miktar)) }),
-            h('td.mono.small.muted', { text: x.belge || '—' })
-          ]);
-        }), 'Kayıt yok.'), true);
   }
 
   function azaltKip(t, k) {
@@ -4271,6 +4423,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         ])
       ]));
     }
+    kap.appendChild(otuzGunGrafigi());
     kap.appendChild(h('div.grid.k4', {}, [
       /* Üç durum artı bir istisna: Logo'da miktarı değişmiş siparişler. */
       kart('Talep edilen', acikTalep, 'talep', "Logo'ya gönderilmeyi bekliyor", 'talepler', acikTalep > 0),
@@ -4279,6 +4432,39 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       kart('Gecikmiş', gecikmis, 'sipariş', '7 günden uzun süredir tamamlanmadı', 'siparisler', gecikmis > 0)
     ]));
     return kap;
+  }
+
+  /* Son 30 günün üç serisi: talep edilen, işleme alınan, tamamlanan miktar.
+     Miktarlar ürünün kendi biriminden geldiği için birimler karıştırılmaz —
+     birden çok birimde hareket varsa üstte seçici çıkar. */
+  var grafikBirim = null;
+  function otuzGunGrafigi() {
+    var o = JP.gunlukOzet(30, grafikBirim);
+    if (!o.birimler.length) grafikBirim = null;
+    else if (grafikBirim && o.birimler.indexOf(grafikBirim) < 0) { grafikBirim = null; o = JP.gunlukOzet(30, null); }
+
+    var etiketler = o.gunler.map(function (g) {
+      var p = g.gun.split('-');
+      return p[2] + '.' + p[1];
+    });
+    var grafik = UI.grafik({
+      baslik: 'Son 30 gün · talep edilen, işleme alınan ve tamamlanan miktar',
+      birim: o.birim,
+      etiketler: etiketler,
+      bos: 'Son 30 günde hareket yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
+      seriler: [
+        { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
+        { ad: 'İşleme alınan', renk: 'var(--info)', veri: o.gunler.map(function (g) { return g.isleme; }) },
+        { ad: 'Tamamlanan', renk: 'var(--ok)', veri: o.gunler.map(function (g) { return g.tamam; }) }
+      ]
+    });
+    var secici = o.birimler.length > 1
+      ? h('div.seg', {}, o.birimler.map(function (b) {
+          return h('button', { 'aria-pressed': String(b === o.birim), text: b,
+            onclick: function () { grafikBirim = b; kabuk.ciz(); } });
+        }))
+      : null;
+    return UI.panel('Son 30 gün', secici, grafik);
   }
 
   /* ------------------------------------------------- talepler: liste + detay */
@@ -4376,19 +4562,14 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     }
     function yenile(yerinde) {
       liste = talepSuz();
-      sayimEl.textContent = liste.length + ' / ' + db.talepler.length + ' talep';
       if (yerinde) { tabloCiz(); seritCiz(); } else kabuk.ciz();
     }
-    var sayimEl = h('span.small.muted', { text: liste.length + ' / ' + db.talepler.length + ' talep' });
     tabloCiz();
     seritCiz();
 
     return h('div.stack', {}, [
       filtreCubugu(fTalep, JP.DURUMLAR, yenile,
-        h('div.row.tight', {}, [
-          sayimEl,
-          h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { talepKopyala(liste); } })
-        ])),
+        h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { talepKopyala(liste); } })),
       h('div.small.muted', { text: 'Aynı bayinin birden çok talebini seçip tek siparişte birleştirebilirsiniz.' }),
       serit,
       govde
@@ -4410,8 +4591,6 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
   function talepDetay(t) {
     var kalemler = JP.talepKalemDurum(t);
-    var islem = JP.talepIslemleri(t.no);
-    var sayim = tamamSayim(kalemler, 'talep', 'fatura');
     var donusturulebilir = kalemler.some(function (k) { return k.donusturulebilir > 0.001; });
     /* Aynı bayinin başka açık talepleri varsa tek siparişte birleştirme kısayolu. */
     var digerAcik = donusturulebilir ? JP.db.talepler.filter(function (x) {
@@ -4420,9 +4599,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     }) : [];
 
     var govde = h('div.stack');
-    if (talepGorunum === 'urunler') govde.appendChild(detayUrunler(kalemler));
-    else if (talepGorunum === 'islemler') govde.appendChild(detayIslemler(islem));
-    else govde.appendChild(detayGecmis(t));
+    if (talepGorunum === 'gecmis') govde.appendChild(detayGecmis(t));
+    else govde.appendChild(detayUrunler(kalemler));
 
     return h('div.stack', {}, [
       h('div.row', {}, [
@@ -4435,35 +4613,36 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         }) : null,
         h('button.btn.primary', { text: 'Siparişe dönüştür', disabled: !donusturulebilir, onclick: function () { donusumKip([t]); } })
       ]),
-      UI.panel(null, null, h('div.stack', {}, [
-        h('div.row', {}, [
-          h('h2.mono', { text: t.no }),
-          UI.rozet(JP.talepDurumu(t)),
-          h('button.btn.ghost.sm', { text: bayiAd(t.bayiKod), onclick: function () { bayiAc(t.bayiKod); } }),
-          h('span.small.muted', { text: JP.fmt.tarih(t.tarih) + ' · ' + JP.gunFark(t.tarih) + ' gün önce' }),
-          t.teslimTarihi ? h('span.tag', { text: 'İstenen teslim ' + JP.fmt.tarih(t.teslimTarihi) }) : null,
-          t.kaynak === 'firma'
-            ? h('span.badge.plain', { text: 'firma girişi (telefon)' })
-            : (t.kullaniciAd ? h('span.small.muted', { text: t.kullaniciAd }) : null)
+      UI.panel('Talep bilgisi', null, h('div.stack', {}, [
+        UI.bilgi([
+          ['Talep numarası', h('span.mono', { text: t.no, style: { fontWeight: '600' } })],
+          ['Talep tarihi', JP.fmt.tarih(t.tarih) + ' · ' + JP.gunFark(t.tarih) + ' gün önce'],
+          ['Talep durumu', UI.rozet(JP.talepDurumu(t))],
+          ['Bayi', h('button.btn.ghost.sm', { text: bayiAd(t.bayiKod), onclick: function () { bayiAc(t.bayiKod); } })],
+          ['Talep eden kullanıcı', t.kaynak === 'firma'
+            ? h('div.row.tight', {}, [h('span', { text: t.kullaniciAd || 'Jalpersan' }), h('span.badge.plain', { text: 'firma girişi (telefon)' })])
+            : (t.kullaniciAd || '—')],
+          t.teslimTarihi ? ['İstenen teslim tarihi', JP.fmt.tarih(t.teslimTarihi)] : null,
+          ['Ürün sayısı', String(kalemler.length)]
         ]),
-        t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null,
-        h('div.grid.k4', {}, [
-          UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
-          UI.kpi('Tamamlandı', String(sayim.tam), 'kalem'),
-          UI.kpi('Kısmen tamamlandı', String(sayim.kismi), 'kalem'),
-          UI.kpi('Bekleyen', String(sayim.yok), 'kalem', 'Miktarlar kalem satırlarında, kendi biriminden', true)
-        ])
+        t.not ? h('div.small.muted', { text: '“' + t.not + '”' }) : null
       ])),
       h('div.seg', {}, [
         ['urunler', 'Ürünler (' + kalemler.length + ')'],
-        ['islemler', 'İşlemler (' + (islem.siparisler.length + islem.faturalar.length) + ')'],
         ['gecmis', 'Geçmiş']
       ].map(function (o) {
-        return h('button', { 'aria-pressed': String(talepGorunum === o[0]), text: o[1],
+        return h('button', { 'aria-pressed': String(talepGorunum === o[0] || (o[0] === 'urunler' && talepGorunum !== 'gecmis')), text: o[1],
           onclick: function () { talepGorunum = o[0]; kabuk.ciz(); } });
       })),
       govde
     ]);
+  }
+
+  /* Bir talep kaleminin girdiği siparişler — kalem kimliği üzerinden. */
+  function kalemSiparisleri(kalemId) {
+    return JP.db.siparisler.filter(function (s) {
+      return s.kalemler.some(function (k) { return k.talepKalemId === kalemId; });
+    });
   }
 
   function detayUrunler(kalemler) {
@@ -4472,8 +4651,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
        İşleme alınmayı bekleyen miktar talep − işleme alınandır; ayrı sütun
        tutulmaz, dönüştürme kipinde "Kalan" olarak çıkar. */
     return UI.panel('Talep kalemleri',
-      h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden · Tamamlanan, işleme alınanın içindedir' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }],
+      h('span.small.muted', { text: 'Tamamlanan, işleme alınanın içindedir' }),
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }, 'Sipariş'],
         kalemler.map(function (k) {
           return h('tr', {}, [
             h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
@@ -4483,39 +4662,16 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
             h('td.small.muted.nowrap', { text: k.urun.gosterimBirimi }),
             h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } })
+            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
+            /* Bu kalem hangi siparişlere girdi: numara rozeti, tıklayınca sipariş açılır. */
+            h('td', {}, kalemSiparisleri(k.kalem.id).length
+              ? h('div.row.tight', {}, kalemSiparisleri(k.kalem.id).map(function (sp) {
+                  return h('button.tag', { text: sp.no, title: sp.durum + ' · ' + JP.fmt.tarih(sp.tarih),
+                    onclick: function () { secTalep = null; siparisAc(sp.no); } });
+                }))
+              : h('span.small.muted', { text: '—' }))
           ]);
         })), true);
-  }
-
-  function detayIslemler(islem) {
-    return h('div.stack', {}, [
-      UI.panel('Oluşturulan siparişler', null,
-        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }, ''],
-          islem.siparisler.map(function (s) {
-            return h('tr', {}, [
-              h('td.mono', { text: s.no }),
-              h('td.small.muted', { text: JP.fmt.tarih(s.tarih) }),
-              h('td', {}, UI.rozet(s.durum)),
-              h('td.mono.small', { text: s.logoFisNo || '—' }),
-              h('td.num.mono', { text: JP.fmt.miktar(s.miktar) }),
-              h('td.num.mono', { text: JP.fmt.miktar(s.faturalanan) }),
-              h('td.right', {}, h('button.btn.ghost.sm', { text: 'Siparişe git', onclick: function () { siparisAc(s.no); } }))
-            ]);
-          }), 'Bu talepten henüz sipariş oluşturulmadı.'), true),
-      UI.panel('Tamamlanan faturalar', h('span.small.muted', { text: "Fatura GİB'e gönderildiğinde tamamlanmış sayılır" }),
-        UI.tablo(['Fatura no', 'Tarih', 'Tip', 'Eşleşme', 'GİB', { t: 'Tamamlanan', num: true }],
-          islem.faturalar.map(function (f) {
-            return h('tr', {}, [
-              h('td.mono', { text: f.no }),
-              h('td.small.muted', { text: JP.fmt.tarih(f.ts) }),
-              h('td.small', { text: f.tur }),
-              h('td.small.muted', { text: JP.ESLESME_ADI[f.eslesme] || '—' }),
-              h('td', {}, f.gib === '—' ? h('span.small.muted', { text: '—' }) : UI.rozet(f.gib)),
-              h('td.num.mono', { text: JP.fmt.miktar(f.miktar) })
-            ]);
-          }), 'Bu talebe ait tamamlanmış fatura yok.'), true)
-    ]);
   }
 
   function detayGecmis(t) {
@@ -4732,18 +4888,13 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     }
     function yenile(yerinde) {
       liste = siparisSuz();
-      sayimEl.textContent = liste.length + ' / ' + db.siparisler.length + ' sipariş';
       if (yerinde) tabloCiz(); else kabuk.ciz();
     }
-    var sayimEl = h('span.small.muted', { text: liste.length + ' / ' + db.siparisler.length + ' sipariş' });
     tabloCiz();
 
     return h('div.stack', {}, [
       filtreCubugu(fSiparis, [JP.DURUM.isleme, JP.DURUM.tamam, JP.DURUM.iptal], yenile,
-        h('div.row.tight', {}, [
-          sayimEl,
-          h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { siparisKopyala(liste); } })
-        ])),
+        h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { siparisKopyala(liste); } })),
       h('div.row', {}, [
         h('button.btn.primary', { text: "Logo'dan sorgula", title: 'Açık siparişlerin fiş ve fatura durumunu Logo’dan okur', onclick: logoSorgula }),
         UI.senkronBilgi(db.senkron.siparis)
@@ -4764,10 +4915,16 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     UI.tabloKopyala('Siparişler', satir);
   }
 
+  /* Siparişin beslendiği talep numaraları — künyede rozet olarak çıkar. */
+  function siparisTalepleri(s) {
+    var g = {};
+    s.kalemler.forEach(function (k) { if (k.talepNo) g[k.talepNo] = true; });
+    return Object.keys(g);
+  }
+
   function siparisDetay(s) {
     var db = JP.db;
     var kl = JP.siparisKalemDurum(s);
-    var sayim = tamamSayim(kl, 'logoMiktar', 'sevk');
     var fis = db.logo.fisler.find(function (f) { return f.portalRef === s.logoRef; });
     var faturalar = fis ? db.logo.faturalar.filter(function (f) { return f.fisNo === fis.fisNo; }) : [];
     var degisen = kl.filter(function (k) { return k.degisti; }).length;
@@ -4784,28 +4941,24 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       s.hataMetni ? h('div.note.bad', { text: s.hataMetni }) : null,
       degisen ? h('div.note.warn', { text: degisen + ' kalemin miktarı Logo tarafında değiştirilmiş. Talep bakiyeleri buna göre düzeltildi.' }) : null,
 
-      UI.panel(null, null, h('div.stack', {}, [
-        h('div.row', {}, [
-          h('h2.mono', { text: s.no }),
-          UI.rozet(s.durum),
-          h('button.btn.ghost.sm', { text: bayiAd(s.bayiKod), onclick: function () { bayiAc(s.bayiKod); } }),
-          s.logoFisNo ? h('span.tag', { text: 'Logo fiş ' + s.logoFisNo }) : null,
-          h('span.tag', { text: 'ref ' + s.logoRef }),
-          h('span.small.muted', { text: JP.fmt.tarih(s.tarih) }),
-          s.teslimTarihi ? h('span.tag', { text: 'Talep edilen teslim ' + JP.fmt.tarih(s.teslimTarihi) }) : null
-        ]),
-        h('div.grid.k4', {}, [
-          UI.kpi('Kalem', String(sayim.toplam), 'ürün'),
-          UI.kpi('Tamamlandı', String(sayim.tam), 'kalem'),
-          UI.kpi('Kısmen tamamlandı', String(sayim.kismi), 'kalem'),
-          UI.kpi('Bekleyen', String(sayim.yok), 'kalem', null, true)
-        ])
+      UI.panel('Sipariş bilgisi', null, UI.bilgi([
+        ['Sipariş numarası', h('span.mono', { text: s.no, style: { fontWeight: '600' } })],
+        ['Sipariş tarihi', JP.fmt.tarih(s.tarih) + ' · ' + JP.gunFark(s.tarih) + ' gün önce'],
+        ['Sipariş durumu', UI.rozet(s.durum)],
+        ['Bayi', h('button.btn.ghost.sm', { text: bayiAd(s.bayiKod), onclick: function () { bayiAc(s.bayiKod); } })],
+        ['Logo fişi', s.logoFisNo ? h('span.mono', { text: s.logoFisNo }) : '—'],
+        ['Portal referansı', h('span.mono', { text: s.logoRef })],
+        s.teslimTarihi ? ['Talep edilen teslim tarihi', JP.fmt.tarih(s.teslimTarihi)] : null,
+        ['Ürün sayısı', String(kl.length)],
+        ['Talepler', h('div.row.tight', {}, siparisTalepleri(s).map(function (no) {
+          return h('button.tag', { text: no, onclick: function () { secSiparis = null; talepAc(no); } });
+        }))]
       ])),
 
       /* Sipariş satırında iki sayı yeter: Logo'daki güncel miktar ve bunun
          tamamlanan kısmı. Logo'da miktar değiştiyse satır sarıya döner ve
          siparişteki ilk miktar rozette yazar. */
-      UI.panel('Sipariş kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
+      UI.panel('Sipariş kalemleri', null,
         UI.tablo(['Ürün', 'Birim', 'Talep no', { t: 'Miktar', num: true }, { t: 'Tamamlanan', num: true }],
           kl.map(function (k) {
             return h('tr', {}, [
@@ -4849,14 +5002,14 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   var RAPORLAR = [
     { id: 'urun', ad: 'Ürün raporu',
       olcum: 'Ürün bazında kaç talep gelmiş, kaçı işleme alınmış, kaçı tamamlanmış. Tarih aralığı talep tarihine bakar.',
-      not: "Sayılar talep kalemi adedidir; miktarlar ürünün kendi birimindedir. Tamamlanan = faturası GİB'e gönderilmiş kalem.",
+      not: "Miktarlar ürünün kendi birimindedir; satırlar arası toplanmaz. Tamamlanma yüzdesi tamamlanan miktarın talep edilene oranıdır.",
       ipucu: 'Ürün adı, stok kodu veya kategori ara…' },
     { id: 'bayi', ad: 'Bayi raporu',
       olcum: 'Bayi bazında sipariş ve kalem sayısı ile siparişlerin tamamlanma oranı. Tarih aralığı sipariş tarihine bakar.',
       not: "Tamamlanma, bütün kalemlerinin faturası GİB'e gönderilmiş sipariş sayısıdır. İptal edilen siparişler sayılmaz.",
       ipucu: 'Bayi unvanı, cari kodu veya şehir ara…' },
     { id: 'performans', ad: 'Performans raporu',
-      olcum: 'Ürün bazında talep ve tamamlanma adetleri ile talepten tamamlanmaya kadar geçen en kısa, en uzun ve ortalama gün.',
+      olcum: 'Ürün bazında talepten tamamlanmaya kadar geçen en kısa, en uzun ve ortalama gün.',
       not: "Süre talep kalemi düzeyinde ölçülür: talebin açıldığı an ile faturanın GİB'e gönderildiği an arasındaki gün. Yalnızca tamamı tamamlanmış kalemler süreye girer.",
       ipucu: 'Ürün adı, stok kodu veya kategori ara…' }
   ];
@@ -4894,28 +5047,25 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       return raporAra('urun', r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
     });
     return {
-      basliklar: ['Ürün', 'Kategori', { t: 'Talep (kalem)', num: true }, { t: 'İşleme alınan (kalem)', num: true },
-        { t: 'Tamamlanan (kalem)', num: true }, { t: 'Tamamlanma', num: true },
-        'Birim', { t: 'Talep edilen', num: true }, { t: 'Tamamlanan', num: true }],
+      basliklar: ['Ürün', 'Kategori', 'Birim', { t: 'Talep edilen', num: true },
+        { t: 'İşleme alınan', num: true }, { t: 'Tamamlanan', num: true }, { t: 'Tamamlanma', num: true }],
       satirlar: satir.map(function (r) {
         return h('tr', {}, [
           raporUrunHucre(r.urun),
           h('td.small.muted', { text: r.urun.grup || '—' }),
-          h('td.num.mono', { text: String(r.kalem), style: { fontWeight: '600' } }),
-          h('td.num.mono', { text: String(r.islemeKalem) }),
-          h('td.num.mono', { text: String(r.tamamlanan) }),
-          yuzdeHucre(r.tamamlanmaYuzde, r.kalem),
           h('td.small.muted.nowrap', { text: r.urun.gosterimBirimi }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-          h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } })
+          h('td.num.mono', { text: JP.fmt.miktar(r.talep), style: { fontWeight: '600' } }),
+          h('td.num.mono', { text: JP.fmt.miktar(r.siparis) }),
+          h('td.num.mono', { text: JP.fmt.miktar(r.sevk), style: { color: r.sevk > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
+          yuzdeHucre(r.miktarYuzde, r.talep)
         ]);
       }),
       bos: 'Bu aralıkta talep görmüş ürün yok.',
-      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Talep kalemi', 'İşleme alınan kalem',
-        'Tamamlanan kalem', 'Tamamlanma %', 'Birim', 'Talep edilen', 'Tamamlanan']]
+      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Birim', 'Talep edilen', 'İşleme alınan',
+        'Tamamlanan', 'Tamamlanma %']]
         .concat(satir.map(function (r) {
-          return [r.urunKod, r.urun.ad, r.urun.grup, r.kalem, r.islemeKalem, r.tamamlanan,
-            r.tamamlanmaYuzde, r.urun.gosterimBirimi, r.talep, r.sevk];
+          return [r.urunKod, r.urun.ad, r.urun.grup, r.urun.gosterimBirimi,
+            r.talep, r.siparis, r.sevk, r.miktarYuzde];
         }))
     };
   }
@@ -4927,22 +5077,21 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     });
     return {
       basliklar: ['Bayi', { t: 'Sipariş', num: true }, { t: 'Kalem', num: true },
-        { t: 'Tamamlanan', num: true }, { t: 'Tamamlanma', num: true }, 'Son sipariş'],
+        { t: 'Tamamlanan', num: true }, 'Son sipariş'],
       satirlar: satir.map(function (r) {
         return h('tr', {}, [
           raporBayiHucre(r.bayi),
           h('td.num.mono', { text: String(r.siparis), style: { fontWeight: '600' } }),
           h('td.num.mono', { text: String(r.siparisKalem) }),
           h('td.num.mono', { text: String(r.tamamlanan) }),
-          yuzdeHucre(r.tamamlanmaYuzde, r.siparis),
           h('td.small.muted.nowrap', { text: r.sonTarih ? JP.fmt.tarih(r.sonTarih) : '—' })
         ]);
       }),
       bos: 'Aramaya uyan bayi yok.',
-      excel: [['Cari kodu', 'Bayi', 'Şehir', 'Ülke', 'Sipariş', 'Kalem', 'Tamamlanan', 'Tamamlanma %', 'Son sipariş']]
+      excel: [['Cari kodu', 'Bayi', 'Şehir', 'Ülke', 'Sipariş', 'Kalem', 'Tamamlanan', 'Son sipariş']]
         .concat(satir.map(function (r) {
           return [r.bayiKod, r.bayi.unvan, r.bayi.sehir, r.bayi.ulke, r.siparis, r.siparisKalem,
-            r.tamamlanan, r.tamamlanmaYuzde, r.sonTarih ? JP.fmt.tarih(r.sonTarih) : ''];
+            r.tamamlanan, r.sonTarih ? JP.fmt.tarih(r.sonTarih) : ''];
         }))
     };
   }
@@ -4953,26 +5102,22 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       return raporAra('performans', r.urun.ad + ' ' + r.urunKod + ' ' + r.urun.grup);
     });
     return {
-      basliklar: ['Ürün', 'Kategori', { t: 'Talep (kalem)', num: true }, { t: 'İşleme alınan (kalem)', num: true },
-        { t: 'Tamamlanan (kalem)', num: true }, { t: 'En kısa (gün)', num: true },
+      basliklar: ['Ürün', 'Kategori', 'Birim', { t: 'En kısa (gün)', num: true },
         { t: 'En uzun (gün)', num: true }, { t: 'Ortalama (gün)', num: true }],
       satirlar: satir.map(function (r) {
         return h('tr', {}, [
           raporUrunHucre(r.urun),
           h('td.small.muted', { text: r.urun.grup || '—' }),
-          h('td.num.mono', { text: String(r.kalem), style: { fontWeight: '600' } }),
-          h('td.num.mono', { text: String(r.islemeKalem) }),
-          h('td.num.mono', { text: String(r.kapanan) }),
+          h('td.small.muted.nowrap', { text: r.urun.gosterimBirimi }),
           gunHucre(r.enKisaTam),
           gunHucre(r.enUzunTam, r.enUzunTam !== null && r.enUzunTam > 7),
           gunHucre(r.ortTam)
         ]);
       }),
       bos: 'Bu aralıkta talep görmüş ürün yok.',
-      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Talep kalemi', 'İşleme alınan kalem', 'Tamamlanan kalem',
-        'En kısa gün', 'En uzun gün', 'Ortalama gün']]
+      excel: [['Ürün kodu', 'Ürün', 'Kategori', 'Birim', 'En kısa gün', 'En uzun gün', 'Ortalama gün']]
         .concat(satir.map(function (r) {
-          return [r.urunKod, r.urun.ad, r.urun.grup, r.kalem, r.islemeKalem, r.kapanan,
+          return [r.urunKod, r.urun.ad, r.urun.grup, r.urun.gosterimBirimi,
             r.enKisaTam === null ? '' : r.enKisaTam,
             r.enUzunTam === null ? '' : r.enUzunTam,
             r.ortTam === null ? '' : r.ortTam];
