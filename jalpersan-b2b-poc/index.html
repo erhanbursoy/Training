@@ -102,20 +102,20 @@
       <div class="panel-head"><h2>Beş dakikalık demo senaryosu</h2></div>
       <div class="panel-body">
         <div class="steps">
-          <div class="step"><div><b>Ürün ve bayi tanımları</b> <span class="where">firma → panel</span>
-            <p>“Ürünleri Logo’dan al” ve “Bayileri Logo’dan al”. Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili grupları açın.</p></div></div>
+          <div class="step"><div><b>Ürün ve bayi tanımları</b> <span class="where">firma → ürünler / bayiler</span>
+            <p>“Logo’dan güncelle” ile stok ve cari kartları çekin. Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili kategorileri açın.</p></div></div>
           <div class="step"><div><b>Talep oluşturma</b> <span class="where">bayi → ürün kataloğu</span>
-            <p>Bayiyi seçin, miktar girip talebi gönderin. Havuza <em>dTalep</em> giriş hareketi yazılır.</p></div></div>
-          <div class="step"><div><b>Siparişe dönüştürme</b> <span class="where">firma → gelen talepler</span>
-            <p>Kalem bazında miktarı düşürerek sipariş oluşturun. Kalan miktar havuzda açık kalır.</p></div></div>
-          <div class="step"><div><b>Logo’ya gönderim</b> <span class="where">firma → siparişler</span>
-            <p>“Logo’ya gönder”. Dilerseniz önce gönderim hatası simüle edip yeniden gönderin.</p></div></div>
+            <p>Katalogdan miktar girip sepete ekleyin, sepeti onaylayın. Numaralı bir talep oluşur.</p></div></div>
+          <div class="step"><div><b>Telefon talebi</b> <span class="where">firma → bayiler</span>
+            <p>“Talep oluştur” ile bayi adına aynı katalogdan talep girin. Talep “firma girişi” olarak işaretlenir.</p></div></div>
+          <div class="step"><div><b>Siparişe dönüştürme</b> <span class="where">firma → talepler → detay</span>
+            <p>Kalem bazında miktar girin. Sipariş oluşturulurken aynı işlemde Logo’da fiş açılır. “Gönderim hatasını simüle et” ile deneyin: fiş açılmazsa sipariş de oluşmaz.</p></div></div>
           <div class="step"><div><b>Logo tarafı</b> <span class="where">logo → sipariş fişleri</span>
             <p>Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci faturayı kesin, GİB’e gönderin.</p></div></div>
           <div class="step"><div><b>Durum sorgusu</b> <span class="where">firma → siparişler</span>
-            <p>“Sipariş ve fatura durumunu sorgula”. Miktar değişimi ve faturalar havuza hareket olarak işlenir, sipariş kapanır. Tekrar sorgulayın: mükerrer hareket yazılmaz.</p></div></div>
-          <div class="step"><div><b>Havuz kontrolü</b> <span class="where">firma → talep havuzu</span>
-            <p>Dört bakiye ve tüm hareket dökümü. “Elle hareket ekle” ile fatura dışı kapatma; “Serbest fatura” ile FIFO ve talep dışı eşleme.</p></div></div>
+            <p>“Logo’dan sorgula”. Miktar değişimi ve faturalar hareket olarak işlenir, sipariş kapanır. Tekrar sorgulayın: mükerrer hareket yazılmaz.</p></div></div>
+          <div class="step"><div><b>Ürün görselleri</b> <span class="where">firma → ürünler → düzenle</span>
+            <p>Ürün detayında görsel yükleyin, sıralayın. İlk sıradaki görsel bayi kataloğunda görünür.</p></div></div>
         </div>
       </div>
     </section>

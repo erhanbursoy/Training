@@ -80,10 +80,23 @@
     }
   });
 
-  /** Tek yazma noktası: değişikliği kaydeder, diğer sekmeleri uyandırır. */
+  /* Kök nesnenin kimliğini koruyarak içeriğini geri yükler: mem ve tohum
+     sırasında tutulan yerel referanslar geçerli kalsın. */
+  function icerikYukle(hedef, kaynak) {
+    Object.keys(hedef).forEach(function (k) { delete hedef[k]; });
+    Object.keys(kaynak).forEach(function (k) { hedef[k] = kaynak[k]; });
+  }
+
+  /** Tek yazma noktası: değişikliği kaydeder, diğer sekmeleri uyandırır.
+   *  İşlem atomiktir — fn hata atarsa hiçbir değişiklik kalmaz. Sipariş gibi
+   *  birkaç adımı olan işlemlerde yarım kayıt (talep düşmüş ama sipariş yok)
+   *  oluşmasın diye gereklidir. */
   JP.tx = function (fn) {
     var db = JP.db;
-    var sonuc = fn(db);
+    var yedek = JSON.stringify(db);
+    var sonuc;
+    try { sonuc = fn(db); }
+    catch (e) { icerikYukle(db, JSON.parse(yedek)); throw e; }
     db.meta.rev = (db.meta.rev || 0) + 1;
     db.meta.sonYazma = now();
     yaz(db);
@@ -556,6 +569,11 @@
   };
 
   /* ------------------------------------------------------------------ sepet */
+  /* Sepet kutusu bayi bazındadır. Firma bayi adına telefon talebi girerken
+     ayrı bir kutu kullanır ('firma:<bayiKod>') — bayinin kendi taslağına
+     karışmaz, iki taraf birbirinin sepetini onaylayamaz. */
+  JP.firmaSepetKodu = function (bayiKod) { return 'firma:' + bayiKod; };
+
   /* Bayi sepeti taslak bir listedir; havuza dokunmaz. Talep ancak sepet
      onaylandığında oluşur ve o anda dTalep hareketleri yazılır. */
   function sepetKutusu(db, bayiKod) {
@@ -564,18 +582,18 @@
     return db.sepet[bayiKod];
   }
 
-  JP.sepetOku = function (bayiKod) {
+  JP.sepetOku = function (bayiKod, kutuKod) {
     var db = JP.db;
-    return ((db.sepet || {})[bayiKod] || []).map(function (s) {
+    return ((db.sepet || {})[kutuKod || bayiKod] || []).map(function (s) {
       var u = db.urunler.find(function (x) { return x.kod === s.urunKod; });
       return { urunKod: s.urunKod, miktar: s.miktar, urun: u || null, gecersiz: !u || !u.siparieAcik || !u.logoAktif };
     });
   };
 
-  JP.sepetSayisi = function (bayiKod) { return ((JP.db.sepet || {})[bayiKod] || []).length; };
+  JP.sepetSayisi = function (bayiKod, kutuKod) { return ((JP.db.sepet || {})[kutuKod || bayiKod] || []).length; };
 
   /** Aynı ürün ikinci kez eklenirse miktar üstüne eklenir (e-ticaret davranışı). */
-  JP.sepetEkle = function (bayiKod, urunKod, miktar) {
+  JP.sepetEkle = function (bayiKod, urunKod, miktar, kutuKod) {
     return JP.tx(function (db) {
       miktar = r2(miktar);
       if (!(miktar > 0)) throw new Error('Miktar girin.');
@@ -585,16 +603,16 @@
       if (!JP.bayiUrunleri(bayiKod).some(function (u) { return u.kod === urunKod; })) {
         throw new Error('Bu ürün bayinin kataloğunda değil.');
       }
-      var kutu = sepetKutusu(db, bayiKod);
+      var kutu = sepetKutusu(db, kutuKod || bayiKod);
       var satir = kutu.find(function (x) { return x.urunKod === urunKod; });
       if (satir) satir.miktar = r2(satir.miktar + miktar); else kutu.push({ urunKod: urunKod, miktar: miktar });
       return satir ? satir.miktar : miktar;
     });
   };
 
-  JP.sepetMiktar = function (bayiKod, urunKod, miktar) {
+  JP.sepetMiktar = function (bayiKod, urunKod, miktar, kutuKod) {
     return JP.tx(function (db) {
-      var kutu = sepetKutusu(db, bayiKod);
+      var kutu = sepetKutusu(db, kutuKod || bayiKod);
       var i = kutu.findIndex(function (x) { return x.urunKod === urunKod; });
       if (i < 0) return;
       miktar = r2(miktar);
@@ -602,28 +620,29 @@
     });
   };
 
-  JP.sepetCikar = function (bayiKod, urunKod) {
+  JP.sepetCikar = function (bayiKod, urunKod, kutuKod) {
     return JP.tx(function (db) {
-      var kutu = sepetKutusu(db, bayiKod);
+      var kutu = sepetKutusu(db, kutuKod || bayiKod);
       var i = kutu.findIndex(function (x) { return x.urunKod === urunKod; });
       if (i >= 0) kutu.splice(i, 1);
     });
   };
 
-  JP.sepetTemizle = function (bayiKod) {
-    return JP.tx(function (db) { sepetKutusu(db, bayiKod).length = 0; });
+  JP.sepetTemizle = function (bayiKod, kutuKod) {
+    return JP.tx(function (db) { sepetKutusu(db, kutuKod || bayiKod).length = 0; });
   };
 
   /** Sepeti onaylar: talebi oluşturur ve sepeti boşaltır. */
-  JP.sepetOnayla = function (bayiKod, not, teslimTarihi, kullaniciId) {
-    var kutu = JP.sepetOku(bayiKod);
+  JP.sepetOnayla = function (bayiKod, not, teslimTarihi, kullaniciId, kutuKod) {
+    var kutu = JP.sepetOku(bayiKod, kutuKod);
     if (!kutu.length) throw new Error('Sepetiniz boş.');
     var gecersiz = kutu.filter(function (s) { return s.gecersiz; });
     if (gecersiz.length) {
       throw new Error(gecersiz.map(function (s) { return s.urunKod; }).join(', ') + ' artık siparişe kapalı. Sepetten çıkarın.');
     }
-    var talep = JP.talepOlustur(bayiKod, kutu.map(function (s) { return { urunKod: s.urunKod, miktar: s.miktar }; }), not, teslimTarihi, kullaniciId);
-    JP.sepetTemizle(bayiKod);
+    var talep = JP.talepOlustur(bayiKod, kutu.map(function (s) { return { urunKod: s.urunKod, miktar: s.miktar }; }),
+      not, teslimTarihi, kullaniciId, kutuKod ? 'firma' : null);
+    JP.sepetTemizle(bayiKod, kutuKod);
     return talep;
   };
 
@@ -688,7 +707,9 @@
   };
 
   /* --------------------------------------------------- 3.4 satın alma talebi */
-  JP.talepOlustur = function (bayiKod, satirlar, not, teslimTarihi, kullaniciId) {
+  /** kaynak: 'bayi' (bayi kullanıcısı kendi girdi) veya 'firma' (telefon talebi,
+   *  firma bayi adına girdi). Talep listesinde ve detayında ayırt edilir. */
+  JP.talepOlustur = function (bayiKod, satirlar, not, teslimTarihi, kullaniciId, kaynak) {
     return JP.tx(function (db) {
       var bayi = db.bayiler.find(function (b) { return b.kod === bayiKod; });
       if (!bayi) throw new Error('Bayi bulunamadı.');
@@ -697,10 +718,11 @@
       if (!temiz.length) throw new Error('En az bir ürüne miktar girin.');
 
       db.sayac.talep++;
-      var no = 'ST-' + yil() + '-' + pad(db.sayac.talep, 6);
+      var no = 'T-' + yil() + '-' + pad(db.sayac.talep, 6);
       var kul = (db.kullanicilar || []).find(function (x) { return x.id === kullaniciId; });
       var talep = {
         no: no, bayiKod: bayiKod, tarih: now(), not: not || '',
+        kaynak: kaynak === 'firma' ? 'firma' : 'bayi',
         kullanici: kullaniciId || null, kullaniciAd: kul ? kul.ad : null,
         teslimTarihi: teslimTarihi || null, iptal: false,
         kalemler: temiz.map(function (s) {
@@ -708,15 +730,17 @@
         })
       };
       db.talepler.unshift(talep);
+      var kim = talep.kaynak === 'firma' ? 'firma girişi (telefon)' : (kul ? kul.ad : bayiKod);
       talep.kalemler.forEach(function (k) {
         hareket(db, {
           bayiKod: bayiKod, urunKod: k.urunKod, tip: 'dTalep', miktar: k.miktar,
           kaynak: 'portal', talepNo: no, talepKalemId: k.id, belge: no,
-          kullanici: kul ? kul.ad : bayiKod, aciklama: 'Satın alma talebi açıldı'
+          kullanici: kim, aciklama: talep.kaynak === 'firma' ? 'Satın alma talebi açıldı (firma girişi)' : 'Satın alma talebi açıldı'
         });
       });
-      log(db, 'portal', 'Talep oluşturuldu', no + ' · ' + bayi.unvan + (kul ? ' · ' + kul.ad : '') + ' · ' + talep.kalemler.length + ' kalem');
-      bildir(db, 'muhasebe', 'Yeni satın alma talebi', no + ' — ' + bayi.unvan + ' (' + talep.kalemler.length + ' kalem)');
+      log(db, 'portal', 'Talep oluşturuldu', no + ' · ' + bayi.unvan + ' · ' + kim + ' · ' + talep.kalemler.length + ' kalem');
+      bildir(db, 'muhasebe', 'Yeni satın alma talebi',
+        no + ' — ' + bayi.unvan + ' (' + talep.kalemler.length + ' kalem)' + (talep.kaynak === 'firma' ? ' · firma girişi' : ''));
       return talep;
     });
   };
@@ -841,8 +865,38 @@
   };
 
   /* ------------------------------------------- 3.5 talep → sipariş dönüşümü */
-  /** teslimTarihi: bayinin talebinde istediği teslim tarihi; siparişte opsiyoneldir. */
-  JP.siparisOlustur = function (bayiKod, secim, kullanici, teslimTarihi) {
+  /* Logo'da sipariş fişini açar. Sipariş oluşturmanın ayrılmaz parçasıdır:
+     fiş açılamazsa çağıran işlem hata atar ve sipariş hiç oluşmaz. */
+  function logoFisAc(db, s, hataSimule) {
+    if (hataSimule) {
+      throw new Error('Logo REST servisine ulaşılamadı (HTTP 503). Sipariş oluşturulmadı; talep miktarı açıkta kaldı, yeniden deneyebilirsiniz.');
+    }
+    // Idempotency: aynı portal referansı için ikinci fiş açılmaz.
+    var mevcut = db.logo.fisler.find(function (f) { return f.portalRef === s.logoRef; });
+    if (!mevcut) {
+      db.sayac.logoFis++;
+      mevcut = {
+        fisNo: 'SIP-' + yil() + '-' + pad(db.sayac.logoFis, 6),
+        portalRef: s.logoRef, portalSiparisNo: s.no, cariKod: s.bayiKod,
+        tarih: now(), teslimTarihi: s.teslimTarihi || null, durum: 'Açık', iptal: false,
+        satirlar: s.kalemler.map(function (k, i) {
+          return { id: 'r' + (i + 1), portalKalemId: k.id, stokKod: k.urunKod, miktar: k.miktar, surum: 1 };
+        })
+      };
+      db.logo.fisler.unshift(mevcut);
+    }
+    s.logoFisNo = mevcut.fisNo;
+    s.durum = "Logo'ya İletildi";
+    s.hataMetni = null;
+    log(db, 'logo', 'Sipariş gönderimi', s.no + ' → Logo fiş ' + mevcut.fisNo + ' (ref ' + s.logoRef + ')');
+    return mevcut;
+  }
+
+  /** Sipariş oluşturmak ve Logo'ya iletmek tek işlemdir: Logo fişi açılamazsa
+   *  sipariş de rezerv hareketi de oluşmaz, talep miktarı açıkta kalır.
+   *  teslimTarihi: bayinin talebinde istediği teslim tarihi; opsiyoneldir.
+   *  hataSimule: demoda gönderim hatasını göstermek için. */
+  JP.siparisOlustur = function (bayiKod, secim, kullanici, teslimTarihi, hataSimule) {
     return JP.tx(function (db) {
       var temiz = secim.filter(function (s) { return s.miktar > 0; });
       if (!temiz.length) throw new Error('Siparişe dönüştürmek için en az bir kaleme miktar girin.');
@@ -857,7 +911,7 @@
       db.sayac.siparis++;
       var no = 'S-' + yil() + '-' + pad(db.sayac.siparis, 6);
       var siparis = {
-        no: no, bayiKod: bayiKod, tarih: now(), durum: 'Taslak',
+        no: no, bayiKod: bayiKod, tarih: now(), durum: "Logo'ya İletildi",
         teslimTarihi: teslimTarihi || null,
         logoFisNo: null, logoRef: 'PORTAL-' + no, hataMetni: null,
         kalemler: temiz.map(function (s) {
@@ -880,43 +934,11 @@
         });
       });
       var bayi = db.bayiler.find(function (b) { return b.kod === bayiKod; });
-      log(db, 'portal', 'Sipariş oluşturuldu', no + ' · ' + (bayi ? bayi.unvan : bayiKod) + ' · ' + siparis.kalemler.length + ' kalem');
+      var fis = logoFisAc(db, siparis, hataSimule);       // hata atarsa işlem tümüyle geri alınır
+      log(db, 'portal', 'Sipariş oluşturuldu', no + ' · ' + (bayi ? bayi.unvan : bayiKod) + ' · ' +
+        siparis.kalemler.length + ' kalem · Logo fiş ' + fis.fisNo);
+      bildir(db, 'muhasebe', 'Sipariş Logo\'ya iletildi', no + ' — ' + (bayi ? bayi.unvan : bayiKod) + ' · fiş ' + fis.fisNo);
       return siparis;
-    });
-  };
-
-  JP.siparisLogoyaGonder = function (siparisNo, hataSimule) {
-    return JP.tx(function (db) {
-      var s = db.siparisler.find(function (x) { return x.no === siparisNo; });
-      if (!s) throw new Error('Sipariş bulunamadı.');
-      if (s.durum !== 'Taslak' && s.durum !== 'Gönderim Hatası') throw new Error('Bu sipariş zaten Logo\'ya iletilmiş.');
-
-      if (hataSimule) {
-        s.durum = 'Gönderim Hatası';
-        s.hataMetni = 'Logo REST servisine ulaşılamadı (HTTP 503). Sipariş portalda korunuyor, yeniden gönderilebilir.';
-        log(db, 'logo', 'Sipariş gönderimi', siparisNo + ' · gönderim başarısız (HTTP 503)', true);
-        return s;
-      }
-
-      // Idempotency: aynı portal referansı için ikinci fiş açılmaz.
-      var mevcut = db.logo.fisler.find(function (f) { return f.portalRef === s.logoRef; });
-      if (!mevcut) {
-        db.sayac.logoFis++;
-        mevcut = {
-          fisNo: 'SIP-' + yil() + '-' + pad(db.sayac.logoFis, 6),
-          portalRef: s.logoRef, portalSiparisNo: s.no, cariKod: s.bayiKod,
-          tarih: now(), teslimTarihi: s.teslimTarihi || null, durum: 'Açık', iptal: false,
-          satirlar: s.kalemler.map(function (k, i) {
-            return { id: 'r' + (i + 1), portalKalemId: k.id, stokKod: k.urunKod, miktar: k.miktar, surum: 1 };
-          })
-        };
-        db.logo.fisler.unshift(mevcut);
-      }
-      s.logoFisNo = mevcut.fisNo;
-      s.durum = "Logo'ya İletildi";
-      s.hataMetni = null;
-      log(db, 'logo', 'Sipariş gönderimi', siparisNo + ' → Logo fiş ' + mevcut.fisNo + ' (ref ' + s.logoRef + ')');
-      return s;
     });
   };
 
@@ -1354,7 +1376,6 @@
       { talepNo: t1.no, kalemId: t1.kalemler[0].id, miktar: 200 },
       { talepNo: t1.no, kalemId: t1.kalemler[1].id, miktar: 150 }
     ], 'muhasebe', t1.teslimTarihi);
-    JP.siparisLogoyaGonder(db.siparisler[0].no);
 
     _ts = gecmis(18);
     var fis1 = db.logo.fisler[0];
@@ -1380,7 +1401,6 @@
     JP.siparisOlustur('BYI-0002', [
       { talepNo: t2.no, kalemId: t2.kalemler[0].id, miktar: 150 }
     ], 'muhasebe', t2.teslimTarihi);
-    JP.siparisLogoyaGonder(db.siparisler[0].no);
 
     _ts = null;
     db.meta.rev = 0;

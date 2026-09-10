@@ -18,13 +18,21 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
 
 ## Beş dakikalık demo
 
-1. **Firma → Panel** · "Ürünleri Logo'dan al" + "Bayileri Logo'dan al". Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili grupları açın.
-2. **Bayi → Ürün kataloğu** · Sol yan paneldeki ürün ağacından kırılım seçin, ürünleri sepete ekleyin. **Sepetim → Sepeti onayla** dediğinizde satın alma talebi oluşur ve havuza `dTalep` giriş hareketi yazılır.
-3. **Firma → Gelen talepler** · Kalem bazında miktarı düşürerek sipariş oluşturun; kalan havuzda açık kalır.
-4. **Firma → Siparişler** · "Logo'ya gönder". İsterseniz önce gönderim hatası simüle edip yeniden gönderin.
-5. **Logo → Sipariş fişleri** · Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci faturayı kesin, GİB'e gönderin.
-6. **Firma → Siparişler** · "Sipariş ve fatura durumunu sorgula". Miktar değişimi ve faturalar havuza hareket olarak işlenir, sipariş kapanır. Tekrar sorgulayın — mükerrer hareket yazılmaz.
-7. **Firma → Talep havuzu** · Dört bakiye ve tüm hareket dökümü. "Elle hareket ekle" ile fatura dışı kapatma; Logo'daki "Serbest fatura kes" ile FIFO ve talep dışı eşleme.
+1. **Firma → Ürünler / Bayiler** · "Logo'dan güncelle" ile stok ve cari kartları çekin.
+   Bir ürünü siparişe kapatın, bir bayiye yalnızca seçili kategorileri açın.
+2. **Bayi → Ürün kataloğu** · Sol yan paneldeki ürün ağacından kırılım seçin, ürünleri
+   sepete ekleyin. **Sepetim → Sepeti onayla** dediğinizde satın alma talebi oluşur.
+3. **Firma → Bayiler → Talep oluştur** · Telefonla gelen talebi bayi adına aynı katalogdan
+   girin; talep "firma girişi" olarak işaretlenir.
+4. **Firma → Talepler → detay → Siparişe dönüştür** · Kalem bazında miktar girin. Sipariş
+   oluşturulurken aynı işlemde Logo'da fiş açılır. "Logo gönderim hatasını simüle et" ile
+   deneyin: fiş açılmazsa sipariş de oluşmaz, talep miktarı açıkta kalır.
+5. **Logo → Sipariş fişleri** · Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci
+   faturayı kesin, GİB'e gönderin.
+6. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
+   işlenir, sipariş kapanır. Tekrar sorgulayın — mükerrer hareket yazılmaz.
+7. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
+   görsel bayi kataloğunda görünür.
 
 Panel üstündeki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
 böylece senaryoyu 1. adımdan canlı koşturabilirsiniz. **Örnek veriye dön** başlangıç örneğini geri yükler.
@@ -75,11 +83,12 @@ olduğu için miktar gösterir; birim ürün kodunun yanındadır.
 
 Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler**.
 
-- **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, gönderim hatası,
-  gecikmiş sipariş. Karta tıklayınca ilgili ekrana gider.
+- **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, Logo'da miktarı değişen
+  sipariş, gecikmiş sipariş. Karta tıklayınca ilgili ekrana gider.
 - **Talepler** ve **Siparişler** · tarih aralığı, arama ve durum filtresi olan liste;
   satıra tıklayınca detay. Talep listesinde **İstenen teslim** sütunu bayinin talebinde
-  belirttiği tarihi gösterir (belirtilmemişse “—”). Talep detayında Ürünler / İşlemler /
+  belirttiği tarihi gösterir (belirtilmemişse “—”); firma adına girilen telefon talepleri
+  numaranın yanında rozet taşır. Talep detayında Ürünler / İşlemler /
   Geçmiş görünümleri, siparişe dönüştürme detayın içinde. Sipariş ekranında
   **Logo'dan sorgula** düğmesi açık siparişlerin fiş ve fatura durumunu okur.
 - **Ürünler** · yerleşim bayi kataloğuyla aynıdır: solda ürün ağacı, üstte arama ve
@@ -89,9 +98,36 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   Detay ayrı ekrandır: solda salt okunur Logo alanları ve altında **Görseller**, sağda
   düzenlenebilir portal alanları (siparişe açıklık, bayiye gösterilen birim, katalog
   sırası, teknik özellik, açıklama). Altta o üründe sevk bekleyen bayiler listelenir.
-- **Bayiler** · arama kutusu ve **Logo'dan güncelle**. Detay ayrı ekran, üç sekme:
-  Bilgiler (Logo alanları salt okunur; siparişe açıklık, teslimat notu ve katalog
-  kısıtı düzenlenebilir), Talepler ve Siparişler geçmişi.
+- **Bayiler** · arama kutusu, **Logo'dan güncelle** ve satır başına **Talep oluştur**
+  (telefon talebi). Detay ayrı ekran, dört sekme: Bilgiler (Logo alanları salt okunur;
+  siparişe açıklık, teslimat notu ve katalog kısıtı düzenlenebilir), Kullanıcılar,
+  Talepler ve Siparişler geçmişi.
+
+### Sipariş oluşturmak = Logo'ya göndermek
+
+Sipariş ayrı bir "Taslak" adımında beklemez. **Siparişe dönüştür** dendiğinde tek bir
+işlemde sipariş kaydı yazılır, rezerv hareketi düşülür ve Logo'da sipariş fişi açılır.
+Logo fişi açılamazsa işlem tümüyle geri alınır: sipariş oluşmaz, hareket yazılmaz, sayaç
+ilerlemez ve talep miktarı açıkta kalır — muhasebe yeniden dener. Dönüştürme kipindeki
+"Logo gönderim hatasını simüle et" kutusu bunu demoda gösterir.
+
+Bu yüzden sipariş durumları **Logo'ya İletildi → Faturalandı → Tamamlandı / İptal**
+şeklindedir; "Taslak" ve "Gönderim Hatası" durumları kalmadı.
+
+Bunun çalışması için `JP.tx` atomiktir: işlem gövdesi hata atarsa değişikliklerin tamamı
+geri alınır. Aksi halde yarım kayıt (talep düşmüş ama sipariş yok) bellekte kalıyordu.
+
+### Bayi adına talep (telefon talebi)
+
+Bayi telefonla arayıp sipariş verdiğinde muhasebe talebi onun adına girer: **Bayiler**
+listesinde ya da bayi kartında **Talep oluştur**. Ekran bayi kataloğunun aynısıdır — ürün
+ağacı, arama, Liste/Kart, miktar sayacı ve sepete ekleme — ve yalnızca o bayinin kataloğuna
+açık ürünleri gösterir. Siparişe kapalı bayide düğme çıkmaz.
+
+Sepet ayrı bir kutuda durur (`firma:<bayiKod>`), bayinin kendi taslak sepetine karışmaz.
+Oluşan talep bayi adınadır ancak kaynağı **firma girişi** olarak kaydedilir; talep
+listesinde rozet, detayda etiket, hareket defterinde kullanıcı adı olarak görünür ve
+Excel çıktısında ayrı sütundur.
 
 ### Teslim tarihi
 
@@ -197,6 +233,15 @@ Renk ve tipografi jalpersan.com kurumsal kimliğinden alınmıştır:
 | Yazı tipi | Source Sans 3 (arayüz), IBM Plex Mono (kod ve miktar sütunları) |
 
 Font isteği çizimi engellemez; yavaş bağlantıda sayfa yedek yazı tipiyle açılır.
+
+## Belge numaraları
+
+| Belge | Kalıp | Örnek |
+| --- | --- | --- |
+| Satın alma talebi | `T-<yıl>-<6 hane>` | `T-2026-000004` |
+| Sipariş | `S-<yıl>-<6 hane>` | `S-2026-000002` |
+| Logo sipariş fişi | `SIP-<yıl>-<6 hane>` | `SIP-2026-000002` |
+| Portal referansı | `PORTAL-<sipariş no>` | `PORTAL-S-2026-000002` |
 
 ## Havuz mantığı
 
