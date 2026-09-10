@@ -143,7 +143,7 @@
       ]));
     }
     kap.appendChild(h('div.grid.k4', {}, [
-      kart('Bekleyen talep', acikTalep, 'talep', 'Siparişe dönmeyi bekliyor', 'talepler', acikTalep > 0),
+      kart('Açık talep', acikTalep, 'talep', 'Siparişe dönmeyi bekliyor', 'talepler', acikTalep > 0),
       kart('Açık sipariş', acikSiparis, 'sipariş', "Logo'da faturalanmayı bekliyor", 'siparisler'),
       kart("Logo'da değişen", degisen, 'sipariş', degisen ? 'Miktar Logo tarafında değişti' : 'Fark yok', 'siparisler', degisen > 0),
       kart('Gecikmiş sipariş', gecikmis, 'sipariş', "7 günden uzun süredir faturalanmadı", 'siparisler')
@@ -266,13 +266,13 @@
   }
 
   function talepKopyala(liste) {
-    var satir = [['Talep no', 'Tarih', 'Bayi', 'Kaynak', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Bekleyen']];
+    var satir = [['Talep no', 'Tarih', 'Bayi', 'Kaynak', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Kalan']];
     liste.forEach(function (t) {
       JP.talepKalemDurum(t).forEach(function (k) {
         satir.push([t.no, JP.fmt.tarih(t.tarih), bayiAd(t.bayiKod),
           t.kaynak === 'firma' ? 'Firma girişi' : 'Bayi',
           t.teslimTarihi ? JP.fmt.tarih(t.teslimTarihi) : '', JP.talepDurumu(t),
-          k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura, Math.max(0, k.talep - k.fatura)]);
+          k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura, k.donusturulebilir]);
       });
     });
     UI.tabloKopyala('Talepler', satir);
@@ -337,10 +337,12 @@
   }
 
   function detayUrunler(kalemler) {
-    return UI.panel('Talep kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, { t: 'Dönüştürülebilir', num: true }],
+    /* Sevk edilen, siparişe alınanın içindedir — ayrıca düşülmez. Kalan, henüz
+       siparişe alınmamış miktardır; dört sütun bu yüzden alt alta toplanmaz. */
+    return UI.panel('Talep kalemleri',
+      h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden · Sevk edilen, siparişe alınanın içindedir · Kalan henüz siparişe alınmadı' }),
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
         kalemler.map(function (k) {
-          var bek = Math.max(0, k.talep - k.fatura);
           return h('tr', {}, [
             h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
               UI.kartela(k.urun, '26px', '40px'),
@@ -350,7 +352,6 @@
             h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-            h('td.num.mono', { text: JP.fmt.miktar(bek) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.donusturulebilir),
               style: { color: k.donusturulebilir > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } })
           ]);
@@ -360,7 +361,7 @@
   function detayIslemler(islem) {
     return h('div.stack', {}, [
       UI.panel('Oluşturulan siparişler', null,
-        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Miktar', num: true }, { t: 'Sevk edilen', num: true }, ''],
+        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, ''],
           islem.siparisler.map(function (s) {
             return h('tr', {}, [
               h('td.mono', { text: s.no }),
@@ -509,7 +510,7 @@
           text: 'Seçilen talepler tek siparişte birleşir. Her kalem kendi talebine bağlı kalır; ' +
                 'sevkiyat gerçekleştiğinde ilgili talep kapanır.'
         }) : null,
-        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], govde),
+        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep edilen', num: true }, { t: 'Kalan', num: true }, 'Siparişe alınacak'], govde),
         ozet,
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Talep edilen teslim tarihi (opsiyonel)', teslim]),
@@ -622,7 +623,7 @@
   }
 
   function siparisKopyala(liste) {
-    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Sipariş', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
+    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Siparişe alınan', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
     liste.forEach(function (s) {
       JP.siparisKalemDurum(s).forEach(function (k) {
         satir.push([s.no, JP.fmt.tarih(s.tarih), bayiAd(s.bayiKod),
@@ -672,7 +673,7 @@
       ])),
 
       UI.panel('Sipariş kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-        UI.tablo(['Ürün', 'Birim', 'Talep', { t: 'Sipariş', num: true }, { t: "Logo'daki miktar", num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
+        UI.tablo(['Ürün', 'Birim', 'Talep no', { t: 'Siparişe alınan', num: true }, { t: "Logo'daki miktar", num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
           kl.map(function (k) {
             return h('tr', {}, [
               h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
@@ -937,12 +938,12 @@
       ]),
 
       UI.panel('Bu üründe sevk bekleyen talepler', h('span.small.muted', { text: bekleyenSatir.length + ' bayi' }),
-        UI.tablo(['Bayi', { t: 'Talep edilen', num: true }, { t: 'Siparişte', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, { t: 'Yaş', num: true }],
+        UI.tablo(['Bayi', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }, { t: 'Yaş', num: true }],
           bekleyenSatir.map(function (r) {
             return h('tr', {}, [
               h('td.small', {}, h('button.btn.ghost.sm', { text: bayiAd(r.bayiKod), onclick: function () { secUrun = null; bayiAc(r.bayiKod); } })),
               h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.rezerv) }),
+              h('td.num.mono', { text: JP.fmt.miktar(r.siparis) }),
               h('td.num.mono', { text: JP.fmt.miktar(r.fatura) }),
               h('td.num.mono', { text: JP.fmt.miktar(r.acik), style: { color: 'var(--warn)', fontWeight: '600' } }),
               h('td.num.small.muted', { text: r.yas + ' g' })
@@ -983,7 +984,7 @@
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(db.bayiler.length
-        ? UI.panel(null, null, UI.tablo(['Bayi', 'Şehir / Ülke', 'Logo', 'Siparişe', 'Katalog', { t: 'Kullanıcı', num: true }, { t: 'Bekleyen talep', num: true }, ''],
+        ? UI.panel(null, null, UI.tablo(['Bayi', 'Şehir / Ülke', 'Logo', 'Siparişe', 'Katalog', { t: 'Kullanıcı', num: true }, { t: 'Açık talep', num: true }, ''],
             liste.map(function (b) {
               var acikT = db.talepler.filter(function (t) { return t.bayiKod === b.kod && bekleyen(t); }).length;
               var kSay = JP.kullanicilar(b.kod).length;

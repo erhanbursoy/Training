@@ -296,8 +296,6 @@ input.qty, input[type=number].qty { width: 88px; flex: none; }
 .bar .b-fat { background: var(--ok); }
 .bar .b-rez { background: var(--info); }
 .bar .b-acik { background: var(--warn); }
-.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-2); }
-.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 
 /* ---------- kumaş dokusu (kartela) ---------- */
 .swatch {
@@ -1057,9 +1055,14 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       var g = grup[k], b = bakiye(g.hareketler);
       var enEski = g.hareketler.filter(function (h) { return h.tip === 'dTalep' && h.miktar > 0; })
         .map(function (h) { return h.ts; }).sort()[0];
+      /* rezerv anlık açık rezervdir; "siparişe alınan" kümülatiftir — sevkiyatla
+         kapanan rezerv düşülmez, aksi halde sevk edilen kalem 0 sipariş gösterir. */
+      var siparis = r2(g.hareketler.reduce(function (t, h) {
+        return (h.tip === 'dRezerv' && !h.rezervKapanis) ? t + h.miktar : t;
+      }, 0));
       return {
         bayiKod: g.bayiKod, urunKod: g.urunKod,
-        talep: b.talep, rezerv: b.rezerv, fatura: b.fatura, acik: b.acik,
+        talep: b.talep, rezerv: b.rezerv, siparis: siparis, fatura: b.fatura, acik: b.acik,
         yas: enEski ? gunFark(enEski) : 0, hareketSayisi: g.hareketler.length
       };
     }).filter(function (r) { return filtre.sadeceAcik ? r.acik > 0.001 : true; })
@@ -2389,16 +2392,6 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     return h('span.badge' + (RENK[metin] || tip ? '.' + (tip || RENK[metin]) : ''), { text: metin });
   };
 
-  /* ------------------------------------------------------------ bakiye bandı */
-  UI.bant = function (b) {
-    var t = Math.max(b.talep, b.rezerv + b.fatura, 0.0001);
-    return h('div.bar', { title: 'Sevk edilen ' + JP.fmt.miktar(b.fatura) + ' · Siparişte ' + JP.fmt.miktar(b.rezerv) + ' · Bekleyen ' + JP.fmt.miktar(b.acik) }, [
-      h('i.b-fat', { style: { width: (b.fatura / t * 100) + '%' } }),
-      h('i.b-rez', { style: { width: (b.rezerv / t * 100) + '%' } }),
-      h('i.b-acik', { style: { width: (Math.max(0, b.acik) / t * 100) + '%' } })
-    ]);
-  };
-
   /* ------------------------------------------------------------- kumaş kartı */
   /* Ürün görseli. Normal yol <img> etiketidir. Bazı ortamların içerik güvenlik
      kuralı (Content-Security-Policy) img-src içinde data: taşımaz ve gömülü
@@ -3312,9 +3305,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
   function detayUrunler(t, kalemler) {
     return UI.panel('Talep kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Sipariş oluşturulan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, ''],
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Sevk edilen', num: true }, ''],
         kalemler.map(function (k) {
-          var bekleyen = Math.max(0, k.talep - k.fatura);
           return h('tr', {}, [
             h('td', {}, h('div.row.tight', {}, [UI.kartela(k.urun, '26px', '40px'), h('div', {}, [
               h('div', { text: k.urun.ad }),
@@ -3322,9 +3314,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
             ])])),
             h('td.small.muted.nowrap', { text: k.urun.gosterimBirimi + ' (' + k.urun.birim + ')' }),
             h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-            h('td.num.mono', { text: JP.fmt.miktar(bekleyen), style: { color: bekleyen > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } }),
+            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)', fontWeight: k.fatura > 0 ? '600' : null } }),
             h('td.right', {}, k.acik > 0.001
               ? h('button.btn.ghost.sm', { text: 'Azalt / iptal', onclick: function () { azaltKip(t, k); } })
               : h('span.small.muted', { text: '—' }))
@@ -3555,7 +3545,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       ]));
     }
     kap.appendChild(h('div.grid.k4', {}, [
-      kart('Bekleyen talep', acikTalep, 'talep', 'Siparişe dönmeyi bekliyor', 'talepler', acikTalep > 0),
+      kart('Açık talep', acikTalep, 'talep', 'Siparişe dönmeyi bekliyor', 'talepler', acikTalep > 0),
       kart('Açık sipariş', acikSiparis, 'sipariş', "Logo'da faturalanmayı bekliyor", 'siparisler'),
       kart("Logo'da değişen", degisen, 'sipariş', degisen ? 'Miktar Logo tarafında değişti' : 'Fark yok', 'siparisler', degisen > 0),
       kart('Gecikmiş sipariş', gecikmis, 'sipariş', "7 günden uzun süredir faturalanmadı", 'siparisler')
@@ -3678,13 +3668,13 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   }
 
   function talepKopyala(liste) {
-    var satir = [['Talep no', 'Tarih', 'Bayi', 'Kaynak', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Bekleyen']];
+    var satir = [['Talep no', 'Tarih', 'Bayi', 'Kaynak', 'İstenen teslim', 'Durum', 'Ürün kodu', 'Ürün', 'Birim', 'Talep edilen', 'Siparişe alınan', 'Sevk edilen', 'Kalan']];
     liste.forEach(function (t) {
       JP.talepKalemDurum(t).forEach(function (k) {
         satir.push([t.no, JP.fmt.tarih(t.tarih), bayiAd(t.bayiKod),
           t.kaynak === 'firma' ? 'Firma girişi' : 'Bayi',
           t.teslimTarihi ? JP.fmt.tarih(t.teslimTarihi) : '', JP.talepDurumu(t),
-          k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura, Math.max(0, k.talep - k.fatura)]);
+          k.kalem.urunKod, k.urun.ad, k.urun.birim, k.talep, k.siparis, k.fatura, k.donusturulebilir]);
       });
     });
     UI.tabloKopyala('Talepler', satir);
@@ -3749,10 +3739,12 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   }
 
   function detayUrunler(kalemler) {
-    return UI.panel('Talep kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, { t: 'Dönüştürülebilir', num: true }],
+    /* Sevk edilen, siparişe alınanın içindedir — ayrıca düşülmez. Kalan, henüz
+       siparişe alınmamış miktardır; dört sütun bu yüzden alt alta toplanmaz. */
+    return UI.panel('Talep kalemleri',
+      h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden · Sevk edilen, siparişe alınanın içindedir · Kalan henüz siparişe alınmadı' }),
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
         kalemler.map(function (k) {
-          var bek = Math.max(0, k.talep - k.fatura);
           return h('tr', {}, [
             h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
               UI.kartela(k.urun, '26px', '40px'),
@@ -3762,7 +3754,6 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
             h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-            h('td.num.mono', { text: JP.fmt.miktar(bek) }),
             h('td.num.mono', { text: JP.fmt.miktar(k.donusturulebilir),
               style: { color: k.donusturulebilir > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } })
           ]);
@@ -3772,7 +3763,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   function detayIslemler(islem) {
     return h('div.stack', {}, [
       UI.panel('Oluşturulan siparişler', null,
-        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Miktar', num: true }, { t: 'Sevk edilen', num: true }, ''],
+        UI.tablo(['Sipariş no', 'Tarih', 'Durum', 'Logo fiş', { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, ''],
           islem.siparisler.map(function (s) {
             return h('tr', {}, [
               h('td.mono', { text: s.no }),
@@ -3921,7 +3912,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
           text: 'Seçilen talepler tek siparişte birleşir. Her kalem kendi talebine bağlı kalır; ' +
                 'sevkiyat gerçekleştiğinde ilgili talep kapanır.'
         }) : null,
-        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], govde),
+        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep edilen', num: true }, { t: 'Kalan', num: true }, 'Siparişe alınacak'], govde),
         ozet,
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Talep edilen teslim tarihi (opsiyonel)', teslim]),
@@ -4034,7 +4025,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   }
 
   function siparisKopyala(liste) {
-    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Sipariş', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
+    var satir = [['Sipariş no', 'Tarih', 'Bayi', 'Talep edilen teslim', 'Durum', 'Logo fiş', 'Talep no', 'Ürün kodu', 'Ürün', 'Birim', 'Siparişe alınan', "Logo'daki miktar", 'Sevk edilen', 'Kalan']];
     liste.forEach(function (s) {
       JP.siparisKalemDurum(s).forEach(function (k) {
         satir.push([s.no, JP.fmt.tarih(s.tarih), bayiAd(s.bayiKod),
@@ -4084,7 +4075,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       ])),
 
       UI.panel('Sipariş kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-        UI.tablo(['Ürün', 'Birim', 'Talep', { t: 'Sipariş', num: true }, { t: "Logo'daki miktar", num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
+        UI.tablo(['Ürün', 'Birim', 'Talep no', { t: 'Siparişe alınan', num: true }, { t: "Logo'daki miktar", num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }],
           kl.map(function (k) {
             return h('tr', {}, [
               h('td', {}, h('button.urun-link', { onclick: function () { urunAc(k.kalem.urunKod); } }, [
@@ -4349,12 +4340,12 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       ]),
 
       UI.panel('Bu üründe sevk bekleyen talepler', h('span.small.muted', { text: bekleyenSatir.length + ' bayi' }),
-        UI.tablo(['Bayi', { t: 'Talep edilen', num: true }, { t: 'Siparişte', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, { t: 'Yaş', num: true }],
+        UI.tablo(['Bayi', { t: 'Talep edilen', num: true }, { t: 'Siparişe alınan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Kalan', num: true }, { t: 'Yaş', num: true }],
           bekleyenSatir.map(function (r) {
             return h('tr', {}, [
               h('td.small', {}, h('button.btn.ghost.sm', { text: bayiAd(r.bayiKod), onclick: function () { secUrun = null; bayiAc(r.bayiKod); } })),
               h('td.num.mono', { text: JP.fmt.miktar(r.talep) }),
-              h('td.num.mono', { text: JP.fmt.miktar(r.rezerv) }),
+              h('td.num.mono', { text: JP.fmt.miktar(r.siparis) }),
               h('td.num.mono', { text: JP.fmt.miktar(r.fatura) }),
               h('td.num.mono', { text: JP.fmt.miktar(r.acik), style: { color: 'var(--warn)', fontWeight: '600' } }),
               h('td.num.small.muted', { text: r.yas + ' g' })
@@ -4395,7 +4386,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(db.bayiler.length
-        ? UI.panel(null, null, UI.tablo(['Bayi', 'Şehir / Ülke', 'Logo', 'Siparişe', 'Katalog', { t: 'Kullanıcı', num: true }, { t: 'Bekleyen talep', num: true }, ''],
+        ? UI.panel(null, null, UI.tablo(['Bayi', 'Şehir / Ülke', 'Logo', 'Siparişe', 'Katalog', { t: 'Kullanıcı', num: true }, { t: 'Açık talep', num: true }, ''],
             liste.map(function (b) {
               var acikT = db.talepler.filter(function (t) { return t.bayiKod === b.kod && bekleyen(t); }).length;
               var kSay = JP.kullanicilar(b.kod).length;

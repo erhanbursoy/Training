@@ -156,16 +156,6 @@
     return h('span.badge' + (RENK[metin] || tip ? '.' + (tip || RENK[metin]) : ''), { text: metin });
   };
 
-  /* ------------------------------------------------------------ bakiye bandı */
-  UI.bant = function (b) {
-    var t = Math.max(b.talep, b.rezerv + b.fatura, 0.0001);
-    return h('div.bar', { title: 'Sevk edilen ' + JP.fmt.miktar(b.fatura) + ' · Siparişte ' + JP.fmt.miktar(b.rezerv) + ' · Bekleyen ' + JP.fmt.miktar(b.acik) }, [
-      h('i.b-fat', { style: { width: (b.fatura / t * 100) + '%' } }),
-      h('i.b-rez', { style: { width: (b.rezerv / t * 100) + '%' } }),
-      h('i.b-acik', { style: { width: (Math.max(0, b.acik) / t * 100) + '%' } })
-    ]);
-  };
-
   /* ------------------------------------------------------------- kumaş kartı */
   /* Ürün görseli. Normal yol <img> etiketidir. Bazı ortamların içerik güvenlik
      kuralı (Content-Security-Policy) img-src içinde data: taşımaz ve gömülü

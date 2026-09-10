@@ -68,7 +68,8 @@ kapatır, sebebi ekranda yazar.
 Standart web uygulaması düzeni: üstte **Ürün kataloğu** ve **Taleplerim**;
 sağ üstte sepet, bildirim ve profil ikonları. Bayi hesabı değişimi profil menüsündedir.
 
-- **Taleplerim** · liste (tarih, talep no, durum, talep edilen, sevk edilen) ve talep detayı.
+- **Taleplerim** · liste (tarih, talep no, durum) ve talep detayı; kalem satırlarında
+  yalnızca talep edilen ve sevk edilen miktarlar yazar.
   Detayda üç görünüm var: **Ürünler**, **İşlemler** (talepten doğan siparişler ve faturalar)
   ve **Hareketler** (talep geçmişi).
 
@@ -165,6 +166,30 @@ Logo simülatöründe fiş başlığında görünür.
 
 Talep ve sipariş listeleri Excel'e kopyalanabilir; iki çıktı da teslim tarihi sütununu taşır.
 
+### Miktar sözlüğü
+
+İki tarafta iki sabit sütun takımı kullanılır; başka miktar adı yoktur.
+
+**Bayi tablolarında ikili:** Talep edilen · Sevk edilen.
+
+**Firma tablolarında dörtlü:** Talep edilen · Siparişe alınan · Sevk edilen · Kalan.
+
+| Sütun | Karşılığı |
+| --- | --- |
+| Talep edilen | Σ `dTalep` — bayinin istediği |
+| Siparişe alınan | Σ `dRezerv`, faturayla çözülen rezerv hariç (kümülatif) |
+| Sevk edilen | Σ `dFatura` — fatura kesildiğinde sevkiyat gerçekleşmiş sayılır |
+| Kalan | `acik` = talep − rezerv − fatura; henüz siparişe alınmamış miktar |
+
+**Sevk edilen, siparişe alınanın içindedir** — ayrıca düşülmez. Bu yüzden dört sütun alt
+alta toplanmaz: 320 talep / 200 siparişe alınan / 200 sevk edilen / 120 kalan satırı
+"320 istendi, 200'ü siparişe girdi ve sevk edildi, 120'si hâlâ siparişe alınmadı"
+demektir. Talep kalemleri panelinin başlığı bu okuma notunu taşır.
+
+Eski "Bekleyen" (talep − sevk) ve "Dönüştürülebilir" adları kaldırıldı: birincisi siparişe
+alınmış miktarı da içerdiği için "ele alınmamış" gibi okunuyordu, ikincisi teknik bir
+addı. İkisinin yerini **Kalan** aldı.
+
 ### Havuz görünmez, birimler karışmaz
 
 Havuz, rezerv, tahsis ve hareket tipleri (`dTalep` / `dRezerv` / `dFatura`) hiçbir
@@ -181,14 +206,16 @@ Havuz, rezerv, tahsis, eşleşme kademesi ve hareket tipleri (`dTalep` / `dRezer
 iç muhasebe kavramlarıdır ve bayi ekranlarında hiçbir yerde geçmez. Bayi talep oluşturur ve
 talebinin ne kadarının sevk edildiğini görür. Motor aynıdır; yalnızca sunum farklıdır.
 
+Bayi tablolarında yalnızca **iki miktar** vardır — bayinin işine yarayan ikili:
+
 | Bayi ne görür | Arkada ne var |
 | --- | --- |
 | Talep edilen | Σ `dTalep` |
-| Sipariş oluşturulan | Σ `dRezerv`, faturayla çözülen rezerv hariç (kümülatif) |
 | Sevk edilen | Σ `dFatura` — fatura kesildiğinde sevkiyat gerçekleşmiş sayılır |
-| Bekleyen | Talep edilen − sevk edilen |
 
-Bu dört sayı kalem düzeyindedir; farklı birimler karışmasın diye talep düzeyinde toplanmaz.
+Bu iki sayı kalem düzeyindedir; farklı birimler karışmasın diye talep düzeyinde toplanmaz.
+Siparişin ne kadarının açıldığı, rezerv ve eşleşme bayiyi ilgilendirmez; bayi talebini
+oluşturur ve ne kadarının sevk edildiğini görür.
 
 Talep geçmişinde hareket tipleri iş diline çevrilir: *Talep oluşturuldu*, *Talep azaltıldı*,
 *Siparişe alındı*, *Sipariş miktarı düşürüldü*, *Sevk edildi*. Faturayla birlikte yazılan

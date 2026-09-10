@@ -661,9 +661,8 @@
 
   function detayUrunler(t, kalemler) {
     return UI.panel('Talep kalemleri', h('span.small.muted', { text: 'Miktarlar ürünün sipariş biriminden' }),
-      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Sipariş oluşturulan', num: true }, { t: 'Sevk edilen', num: true }, { t: 'Bekleyen', num: true }, ''],
+      UI.tablo(['Ürün', 'Birim', { t: 'Talep edilen', num: true }, { t: 'Sevk edilen', num: true }, ''],
         kalemler.map(function (k) {
-          var bekleyen = Math.max(0, k.talep - k.fatura);
           return h('tr', {}, [
             h('td', {}, h('div.row.tight', {}, [UI.kartela(k.urun, '26px', '40px'), h('div', {}, [
               h('div', { text: k.urun.ad }),
@@ -671,9 +670,7 @@
             ])])),
             h('td.small.muted.nowrap', { text: k.urun.gosterimBirimi + ' (' + k.urun.birim + ')' }),
             h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.siparis) }),
-            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)' } }),
-            h('td.num.mono', { text: JP.fmt.miktar(bekleyen), style: { color: bekleyen > 0 ? 'var(--warn)' : 'var(--text-3)', fontWeight: '600' } }),
+            h('td.num.mono', { text: JP.fmt.miktar(k.fatura), style: { color: k.fatura > 0 ? 'var(--ok)' : 'var(--text-3)', fontWeight: k.fatura > 0 ? '600' : null } }),
             h('td.right', {}, k.acik > 0.001
               ? h('button.btn.ghost.sm', { text: 'Azalt / iptal', onclick: function () { azaltKip(t, k); } })
               : h('span.small.muted', { text: '—' }))

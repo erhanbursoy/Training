@@ -253,9 +253,14 @@
       var g = grup[k], b = bakiye(g.hareketler);
       var enEski = g.hareketler.filter(function (h) { return h.tip === 'dTalep' && h.miktar > 0; })
         .map(function (h) { return h.ts; }).sort()[0];
+      /* rezerv anlık açık rezervdir; "siparişe alınan" kümülatiftir — sevkiyatla
+         kapanan rezerv düşülmez, aksi halde sevk edilen kalem 0 sipariş gösterir. */
+      var siparis = r2(g.hareketler.reduce(function (t, h) {
+        return (h.tip === 'dRezerv' && !h.rezervKapanis) ? t + h.miktar : t;
+      }, 0));
       return {
         bayiKod: g.bayiKod, urunKod: g.urunKod,
-        talep: b.talep, rezerv: b.rezerv, fatura: b.fatura, acik: b.acik,
+        talep: b.talep, rezerv: b.rezerv, siparis: siparis, fatura: b.fatura, acik: b.acik,
         yas: enEski ? gunFark(enEski) : 0, hareketSayisi: g.hareketler.length
       };
     }).filter(function (r) { return filtre.sadeceAcik ? r.acik > 0.001 : true; })
