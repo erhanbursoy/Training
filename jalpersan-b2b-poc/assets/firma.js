@@ -873,10 +873,8 @@
         }) : null,
         araGirdi,
         sayimEl,
-        secEl
-      ]),
-      h('div.row', {}, [
-        h('button.btn.primary', { text: "Logo'dan güncelle", title: 'Stok kartlarını Logo’dan yeniden okur', onclick: logoUrunCek }),
+        secEl,
+        h('button.btn.primary.sm', { text: "Logo'dan güncelle", title: 'Stok kartlarını Logo’dan yeniden okur', onclick: logoUrunCek }),
         UI.senkronBilgi(db.senkron.urun)
       ]),
       izgara
