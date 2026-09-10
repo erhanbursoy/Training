@@ -901,10 +901,21 @@
       var temiz = secim.filter(function (s) { return s.miktar > 0; });
       if (!temiz.length) throw new Error('Siparişe dönüştürmek için en az bir kaleme miktar girin.');
 
+      /* Bir sipariş tek cariye açılır — Logo fişi tek cari kartı taşır. Farklı
+         bayilerin talepleri aynı siparişe konursa rezerv bir bayiye, fiş başka
+         bayiye yazılır. Birden çok talebi birleştirmek serbesttir, karıştırmak değil. */
       temiz.forEach(function (s) {
+        var t = db.talepler.find(function (x) { return x.no === s.talepNo; });
+        if (!t) throw new Error('Talep bulunamadı: ' + s.talepNo);
+        if (t.bayiKod !== bayiKod) {
+          throw new Error(s.talepNo + ' başka bir bayiye ait; bir sipariş yalnızca tek bayinin taleplerinden oluşur.');
+        }
+        if (!t.kalemler.some(function (k) { return k.id === s.kalemId; })) {
+          throw new Error('Talep kalemi bulunamadı: ' + s.talepNo);
+        }
         var b = bakiye(db.havuz.filter(function (h) { return h.talepKalemId === s.kalemId; }));
         if (s.miktar > b.acik + 0.001) {
-          throw new Error('Talep kaleminde yalnızca ' + JP.fmt.miktar(b.acik) + ' birim açıkta; ' + JP.fmt.miktar(s.miktar) + ' sipariş edilemez.');
+          throw new Error(s.talepNo + ' kaleminde yalnızca ' + JP.fmt.miktar(b.acik) + ' birim açıkta; ' + JP.fmt.miktar(s.miktar) + ' sipariş edilemez.');
         }
       });
 

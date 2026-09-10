@@ -646,6 +646,13 @@ button.tag:hover { border-color: var(--accent); color: var(--accent-2); }
 .filtre .filtre-alan:has(input.filtre-ara) { flex: 1 1 260px; }
 .filtre .filtre-son { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-bottom: 2px; }
 
+/* seçim şeridi: birden çok talebi tek siparişte birleştirme */
+.secim-serit {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; border-radius: var(--radius);
+  background: var(--accent-soft); border: 1px solid var(--accent);
+}
+
 /* satır içi ürün bağlantısı */
 button.urun-link {
   display: flex; align-items: center; gap: 8px; text-align: left;
@@ -1690,10 +1697,21 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       var temiz = secim.filter(function (s) { return s.miktar > 0; });
       if (!temiz.length) throw new Error('Siparişe dönüştürmek için en az bir kaleme miktar girin.');
 
+      /* Bir sipariş tek cariye açılır — Logo fişi tek cari kartı taşır. Farklı
+         bayilerin talepleri aynı siparişe konursa rezerv bir bayiye, fiş başka
+         bayiye yazılır. Birden çok talebi birleştirmek serbesttir, karıştırmak değil. */
       temiz.forEach(function (s) {
+        var t = db.talepler.find(function (x) { return x.no === s.talepNo; });
+        if (!t) throw new Error('Talep bulunamadı: ' + s.talepNo);
+        if (t.bayiKod !== bayiKod) {
+          throw new Error(s.talepNo + ' başka bir bayiye ait; bir sipariş yalnızca tek bayinin taleplerinden oluşur.');
+        }
+        if (!t.kalemler.some(function (k) { return k.id === s.kalemId; })) {
+          throw new Error('Talep kalemi bulunamadı: ' + s.talepNo);
+        }
         var b = bakiye(db.havuz.filter(function (h) { return h.talepKalemId === s.kalemId; }));
         if (s.miktar > b.acik + 0.001) {
-          throw new Error('Talep kaleminde yalnızca ' + JP.fmt.miktar(b.acik) + ' birim açıkta; ' + JP.fmt.miktar(s.miktar) + ' sipariş edilemez.');
+          throw new Error(s.talepNo + ' kaleminde yalnızca ' + JP.fmt.miktar(b.acik) + ' birim açıkta; ' + JP.fmt.miktar(s.miktar) + ' sipariş edilemez.');
         }
       });
 
@@ -3395,6 +3413,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
   var kabuk = null;
 
   var secTalep = null, talepGorunum = 'urunler';
+  var talepSecim = {};        // birleştirme için seçilen talepler: { no: bayiKod }
   var secSiparis = null;
   var secUrun = null;
   var secBayi = null, bayiGorunum = 'bilgiler';
@@ -3564,13 +3583,56 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
 
     var liste = talepSuz();
     var govde = h('div');
+    var serit = h('div');
+
+    function secilenNolar() { return Object.keys(talepSecim); }
+    function secilenBayi() { var n = secilenNolar(); return n.length ? talepSecim[n[0]] : null; }
+
+    /* Bir sipariş tek bayiye açılır; ilk seçim bayiyi sabitler, diğer bayilerin
+       kutuları kapanır ve sebebi kutunun başlığında yazar. */
+    function seritCiz() {
+      var n = secilenNolar();
+      serit.textContent = '';
+      if (!n.length) return;
+      var kalem = n.reduce(function (t, no) {
+        var tp = JP.db.talepler.find(function (x) { return x.no === no; });
+        return t + (tp ? JP.talepKalemDurum(tp).filter(function (k) { return k.donusturulebilir > 0.001; }).length : 0);
+      }, 0);
+      serit.appendChild(h('div.secim-serit', {}, [
+        h('span.badge.acc', { text: n.length + ' talep seçildi' }),
+        h('span.small.muted', { text: bayiAd(secilenBayi()) + ' · ' + kalem + ' dönüştürülebilir kalem' }),
+        h('div.spacer'),
+        h('button.btn.ghost.sm', { text: 'Seçimi temizle', onclick: function () { talepSecim = {}; yenile(true); } }),
+        h('button.btn.primary', { text: n.length > 1 ? n.length + ' talebi tek siparişe dönüştür' : 'Siparişe dönüştür',
+          onclick: function () {
+            var tl = n.map(function (no) { return JP.db.talepler.find(function (x) { return x.no === no; }); }).filter(Boolean);
+            tl.sort(function (a, b) { return a.tarih < b.tarih ? -1 : 1; });
+            donusumKip(tl);
+          } })
+      ]));
+    }
+
     function tabloCiz() {
       govde.textContent = '';
       govde.appendChild(UI.panel(null, null, UI.tablo(
-        ['Tarih', 'Talep no', 'Bayi', 'İstenen teslim', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
+        ['', 'Tarih', 'Talep no', 'Bayi', 'İstenen teslim', 'Durum', { t: 'Kalem', num: true }, 'Sevkiyat', ''],
         liste.map(function (t) {
           var s = sevkSayim(JP.talepKalemDurum(t), 'talep', 'fatura');
+          var donebilir = JP.talepKalemDurum(t).some(function (k) { return k.donusturulebilir > 0.001; });
+          var bayiUyum = !secilenBayi() || secilenBayi() === t.bayiKod;
+          var kutu = h('input', {
+            type: 'checkbox', checked: !!talepSecim[t.no], disabled: !donebilir || !bayiUyum,
+            'aria-label': t.no + ' seç',
+            title: !donebilir ? 'Bu talepte dönüştürülecek miktar kalmadı'
+              : (!bayiUyum ? 'Seçim ' + bayiAd(secilenBayi()) + ' talepleriyle sınırlı; bir sipariş tek bayiye açılır' : 'Siparişte birleştirmek için seç'),
+            onclick: function (e) { e.stopPropagation(); },
+            onchange: function (e) {
+              if (e.target.checked) talepSecim[t.no] = t.bayiKod; else delete talepSecim[t.no];
+              yenile(true);
+            }
+          });
           return h('tr', { style: { cursor: 'pointer' }, onclick: function () { talepAc(t.no); } }, [
+            h('td', { style: { width: '34px' } }, kutu),
             h('td.small.nowrap', { text: JP.fmt.tarih(t.tarih) }),
             h('td.mono', {}, [
               h('span', { text: t.no, style: { fontWeight: '600' } }),
@@ -3589,10 +3651,11 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     function yenile(yerinde) {
       liste = talepSuz();
       sayimEl.textContent = liste.length + ' / ' + db.talepler.length + ' talep';
-      if (yerinde) tabloCiz(); else kabuk.ciz();
+      if (yerinde) { tabloCiz(); seritCiz(); } else kabuk.ciz();
     }
     var sayimEl = h('span.small.muted', { text: liste.length + ' / ' + db.talepler.length + ' talep' });
     tabloCiz();
+    seritCiz();
 
     return h('div.stack', {}, [
       filtreCubugu(fTalep, ['Açık', 'Kısmen Karşılandı', 'Karşılandı', 'Tamamlandı'], yenile,
@@ -3600,6 +3663,8 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
           sayimEl,
           h('button.btn.ghost.sm', { text: "Excel'e kopyala", onclick: function () { talepKopyala(liste); } })
         ])),
+      h('div.small.muted', { text: 'Aynı bayinin birden çok talebini seçip tek siparişte birleştirebilirsiniz.' }),
+      serit,
       govde
     ]);
   }
@@ -3622,6 +3687,11 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var islem = JP.talepIslemleri(t.no);
     var sayim = sevkSayim(kalemler, 'talep', 'fatura');
     var donusturulebilir = kalemler.some(function (k) { return k.donusturulebilir > 0.001; });
+    /* Aynı bayinin başka açık talepleri varsa tek siparişte birleştirme kısayolu. */
+    var digerAcik = donusturulebilir ? JP.db.talepler.filter(function (x) {
+      return x.bayiKod === t.bayiKod && x.no !== t.no &&
+        JP.talepKalemDurum(x).some(function (k) { return k.donusturulebilir > 0.001; });
+    }) : [];
 
     var govde = h('div.stack');
     if (talepGorunum === 'urunler') govde.appendChild(detayUrunler(kalemler));
@@ -3632,7 +3702,12 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       h('div.row', {}, [
         h('button.btn.ghost.sm', { text: '← Talep listesi', onclick: function () { secTalep = null; kabuk.ciz(); } }),
         h('div.spacer'),
-        h('button.btn.primary', { text: 'Siparişe dönüştür', disabled: !donusturulebilir, onclick: function () { donusumKip(t); } })
+        digerAcik.length ? h('button.btn.sm', {
+          text: 'Bu bayinin ' + (digerAcik.length + 1) + ' talebini birleştir',
+          title: 'Aynı bayinin dönüştürülebilir tüm taleplerini tek siparişte topla',
+          onclick: function () { donusumKip([t].concat(digerAcik).sort(function (a, b) { return a.tarih < b.tarih ? -1 : 1; })); }
+        }) : null,
+        h('button.btn.primary', { text: 'Siparişe dönüştür', disabled: !donusturulebilir, onclick: function () { donusumKip([t]); } })
       ]),
       UI.panel(null, null, h('div.stack', {}, [
         h('div.row', {}, [
@@ -3738,50 +3813,116 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       }), 'Kayıt yok.');
   }
 
-  /* ------------------------------------------------ talep → sipariş dönüşümü */
-  function donusumKip(t) {
-    var kalemler = JP.talepKalemDurum(t).filter(function (k) { return k.donusturulebilir > 0.001; });
+  /* ------------------------------------------------ talep → sipariş dönüşümü
+   * Bir sipariş birden çok talepten oluşabilir: bayi haftalar içinde altı talep
+   * girmişse hepsi tek siparişte birleştirilir. Her sipariş kalemi kendi talep
+   * kalemine bağlı kalır (hareket defteri bağlantısı korunur), kip ise aynı
+   * ürünü isteyen kalemleri bir arada gösterir. Karıştırma sınırı tek: bir
+   * sipariş yalnızca tek bayinin taleplerinden oluşur (Logo fişi tek cari). */
+  function donusumKip(talepler) {
+    if (!Array.isArray(talepler)) talepler = [talepler];
+    var bayiKod = talepler[0].bayiKod;
+
+    // her talebin dönüştürülebilir kalemleri, ürün bazında gruplanmış
+    var satirlar = [];
+    talepler.forEach(function (t) {
+      JP.talepKalemDurum(t).forEach(function (k) {
+        if (k.donusturulebilir > 0.001) satirlar.push({ talep: t, k: k });
+      });
+    });
+    if (!satirlar.length) { UI.toast('Dönüştürülecek kalem yok', null, 'bad'); return; }
+
+    var gruplar = [];
+    satirlar.forEach(function (r) {
+      var g = gruplar.find(function (x) { return x.kod === r.k.kalem.urunKod; });
+      if (!g) { g = { kod: r.k.kalem.urunKod, urun: r.k.urun, satir: [] }; gruplar.push(g); }
+      g.satir.push(r);
+    });
+
     var secim = {};
-    kalemler.forEach(function (k) { secim[k.kalem.id] = { dahil: true, miktar: k.donusturulebilir }; });
+    satirlar.forEach(function (r) { secim[r.k.kalem.id] = { dahil: true, miktar: r.k.donusturulebilir, talepNo: r.talep.no }; });
+
     var ozet = h('div.small.muted');
     function ozetGuncelle() {
-      var n = 0;
-      kalemler.forEach(function (k) { var s = secim[k.kalem.id]; if (s.dahil && s.miktar > 0) n++; });
-      ozet.textContent = n + ' kalem siparişe dönüşecek. Girilmeyen miktar talepte açık kalır.';
-    }
-    var satirlar = kalemler.map(function (k) {
-      var mik = h('input.qty', {
-        type: 'number', min: '0', max: String(k.donusturulebilir), step: '10', value: String(k.donusturulebilir),
-        oninput: function (e) { secim[k.kalem.id].miktar = parseFloat(e.target.value) || 0; ozetGuncelle(); }
+      var n = 0, tNo = {};
+      satirlar.forEach(function (r) {
+        var sc = secim[r.k.kalem.id];
+        if (sc.dahil && sc.miktar > 0) { n++; tNo[r.talep.no] = true; }
       });
-      var kutu = h('input', { type: 'checkbox', checked: true,
-        onchange: function (e) { secim[k.kalem.id].dahil = e.target.checked; mik.disabled = !e.target.checked; ozetGuncelle(); } });
-      return h('tr', {}, [
-        h('td', {}, h('label.chk', {}, [kutu, h('span.small', { text: k.urun.ad })])),
-        h('td.mono.small', { text: k.kalem.urunKod }),
-        h('td.small.muted', { text: k.urun.gosterimBirimi }),
-        h('td.num.mono', { text: JP.fmt.miktar(k.talep) }),
-        h('td.num.mono', { text: JP.fmt.miktar(k.donusturulebilir) }),
-        h('td', {}, mik)
-      ]);
+      ozet.textContent = n + ' kalem, ' + Object.keys(tNo).length + ' talepten siparişe dönüşecek. ' +
+        'Girilmeyen miktar talepte açık kalır.';
+    }
+
+    var govde = [];
+    gruplar.forEach(function (g) {
+      var toplamEl = h('span.num.mono');
+      function grupToplam() {
+        var t = 0;
+        g.satir.forEach(function (r) { var sc = secim[r.k.kalem.id]; if (sc.dahil) t += sc.miktar || 0; });
+        toplamEl.textContent = JP.fmt.miktar(Math.round(t * 100) / 100) + ' ' + (g.urun.gosterimBirimi || '');
+      }
+      var kutular = [];
+      var alt = g.satir.map(function (r) {
+        var mik = h('input.qty', {
+          type: 'number', min: '0', max: String(r.k.donusturulebilir), step: '10',
+          value: String(r.k.donusturulebilir),
+          oninput: function (e) { secim[r.k.kalem.id].miktar = parseFloat(e.target.value) || 0; grupToplam(); ozetGuncelle(); }
+        });
+        var kutu = h('input', { type: 'checkbox', checked: true,
+          onchange: function (e) {
+            secim[r.k.kalem.id].dahil = e.target.checked;
+            mik.disabled = !e.target.checked;
+            grupToplam(); ozetGuncelle();
+          } });
+        kutular.push(kutu);
+        return h('tr.sub', {}, [
+          h('td', {}, h('label.chk', {}, [kutu, h('span.mono.small', { text: r.talep.no })])),
+          h('td.small.muted', { text: JP.fmt.tarih(r.talep.tarih) + ' · ' + JP.gunFark(r.talep.tarih) + ' gün önce' }),
+          h('td.num.mono.small', { text: JP.fmt.miktar(r.k.talep) }),
+          h('td.num.mono.small', { text: JP.fmt.miktar(r.k.donusturulebilir) }),
+          h('td', {}, mik)
+        ]);
+      });
+      grupToplam();
+      govde.push(h('tr', {}, [
+        h('td', {}, h('div.row.tight', {}, [
+          UI.kartela(g.urun, '26px', '38px'),
+          h('div', {}, [h('div.small', { text: g.urun.ad, style: { fontWeight: '600' } }),
+            h('div.pc.mono', { text: g.kod })])
+        ])),
+        h('td.small.muted', { text: g.satir.length + ' talep kalemi' }),
+        h('td'),
+        h('td.small.muted', { text: 'Sipariş toplamı' }),
+        h('td.num', {}, toplamEl)
+      ]));
+      alt.forEach(function (x) { govde.push(x); });
     });
     ozetGuncelle();
 
-    /* Talep edilen teslim tarihi opsiyoneldir; bayinin talebinde bir tarih varsa
-       öneri olarak gelir, muhasebe değiştirebilir ya da boş bırakabilir. */
-    var teslim = h('input', { type: 'date', value: t.teslimTarihi || '' });
+    /* Teslim tarihi önerisi: taleplerdeki en yakın tarih (en acil olan). */
+    var tarihler = talepler.map(function (t) { return t.teslimTarihi; }).filter(Boolean).sort();
+    var teslim = h('input', { type: 'date', value: tarihler[0] || '' });
     var hataKutu = h('input', { type: 'checkbox' });
 
-    UI.modal({ etiket: t.no + ' · ' + bayiAd(t.bayiKod), genis: true,
+    UI.modal({
+      baslik: talepler.length > 1 ? talepler.length + ' talebi tek siparişe dönüştür' : null,
+      etiket: (talepler.length > 1 ? talepler.length + ' talep' : talepler[0].no) + ' · ' + bayiAd(bayiKod),
+      genis: true,
       icerik: h('div.stack', {}, [
-        UI.tablo(['Kalem', 'Kod', 'Birim', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], satirlar),
+        talepler.length > 1 ? h('div.note', {
+          text: 'Seçilen talepler tek siparişte birleşir. Her kalem kendi talebine bağlı kalır; ' +
+                'sevkiyat gerçekleştiğinde ilgili talep kapanır.'
+        }) : null,
+        UI.tablo(['Ürün / talep', 'Tarih', { t: 'Talep', num: true }, { t: 'Dönüştürülebilir', num: true }, 'Sipariş miktarı'], govde),
         ozet,
         h('div.grid.k2', {}, [
           h('label.f', {}, ['Talep edilen teslim tarihi (opsiyonel)', teslim]),
           h('div.small.muted', { style: { alignSelf: 'end', paddingBottom: '8px' },
-            text: t.teslimTarihi
-              ? 'Bayinin talebindeki tarih önerildi; değiştirebilir veya boş bırakabilirsiniz.'
-              : 'Bayi talebinde tarih belirtmemiş. Boş bırakılabilir.' })
+            text: tarihler.length > 1
+              ? 'Taleplerdeki en yakın tarih önerildi (' + tarihler.length + ' talepte tarih var).'
+              : (tarihler.length === 1
+                ? 'Bayinin talebindeki tarih önerildi; değiştirebilir veya boş bırakabilirsiniz.'
+                : 'Taleplerde tarih belirtilmemiş. Boş bırakılabilir.') })
         ]),
         h('label.chk', {}, [hataKutu, h('span.small', { text: 'Logo gönderim hatasını simüle et (demo)' })]),
         h('div.note', { text: 'Sipariş oluşturulurken aynı işlemde Logo’da sipariş fişi açılır. Fiş açılamazsa sipariş de oluşmaz; talep miktarı açıkta kalır ve yeniden denenebilir.' })
@@ -3792,11 +3933,14 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
           h('button.btn.primary', { text: "Sipariş oluştur ve Logo'ya gönder",
             onclick: function () {
               UI.dene(function () {
-                var s = JP.siparisOlustur(t.bayiKod, kalemler.filter(function (k) { return secim[k.kalem.id].dahil; })
-                  .map(function (k) { return { talepNo: t.no, kalemId: k.kalem.id, miktar: secim[k.kalem.id].miktar }; }),
+                var s = JP.siparisOlustur(bayiKod, satirlar
+                  .filter(function (r) { return secim[r.k.kalem.id].dahil; })
+                  .map(function (r) { return { talepNo: r.talep.no, kalemId: r.k.kalem.id, miktar: secim[r.k.kalem.id].miktar }; }),
                   'muhasebe', teslim.value || null, hataKutu.checked);
-                kapat(); UI.toast('Sipariş oluşturuldu', s.no + ' · Logo fiş ' + s.logoFisNo, 'ok');
-                secTalep = null; siparisAc(s.no);
+                kapat();
+                UI.toast('Sipariş oluşturuldu',
+                  s.no + ' · ' + s.kalemler.length + ' kalem · Logo fiş ' + s.logoFisNo, 'ok');
+                secTalep = null; talepSecim = {}; siparisAc(s.no);
               });
             } })
         ];

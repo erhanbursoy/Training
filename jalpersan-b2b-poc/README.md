@@ -24,9 +24,10 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
    sepete ekleyin. **Sepetim → Sepeti onayla** dediğinizde satın alma talebi oluşur.
 3. **Firma → Bayiler → Talep oluştur** · Telefonla gelen talebi bayi adına aynı katalogdan
    girin; talep "firma girişi" olarak işaretlenir.
-4. **Firma → Talepler → detay → Siparişe dönüştür** · Kalem bazında miktar girin. Sipariş
-   oluşturulurken aynı işlemde Logo'da fiş açılır. "Logo gönderim hatasını simüle et" ile
-   deneyin: fiş açılmazsa sipariş de oluşmaz, talep miktarı açıkta kalır.
+4. **Firma → Talepler** · Aynı bayinin birkaç talebini satır başındaki kutularla seçip
+   **tek siparişe dönüştürün**; kip kalemleri ürün bazında gruplar. Sipariş oluşturulurken
+   aynı işlemde Logo'da fiş açılır. "Logo gönderim hatasını simüle et" ile deneyin: fiş
+   açılmazsa sipariş de oluşmaz, talep miktarı açıkta kalır.
 5. **Logo → Sipariş fişleri** · Fişi görün; miktarı değiştirin, kısmi fatura kesin, ikinci
    faturayı kesin, GİB'e gönderin.
 6. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
@@ -89,7 +90,8 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   satıra tıklayınca detay. Talep listesinde **İstenen teslim** sütunu bayinin talebinde
   belirttiği tarihi gösterir (belirtilmemişse “—”); firma adına girilen telefon talepleri
   numaranın yanında rozet taşır. Talep detayında Ürünler / İşlemler /
-  Geçmiş görünümleri, siparişe dönüştürme detayın içinde. Sipariş ekranında
+  Geçmiş görünümleri. Talep listesinde satır başındaki kutularla birden çok talep seçilip
+  tek siparişte birleştirilebilir; dönüştürme detayın içinden de yapılır. Sipariş ekranında
   **Logo'dan sorgula** düğmesi açık siparişlerin fiş ve fatura durumunu okur.
 - **Ürünler** · yerleşim bayi kataloğuyla aynıdır: solda ürün ağacı, üstte arama ve
   Liste/Kart geçişi, satırlarda kırılım ürünün üzerinde, görselin üzerine gelince büyür.
@@ -102,6 +104,28 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   (telefon talebi). Detay ayrı ekran, dört sekme: Bilgiler (Logo alanları salt okunur;
   siparişe açıklık, teslimat notu ve katalog kısıtı düzenlenebilir), Kullanıcılar,
   Talepler ve Siparişler geçmişi.
+
+### Birden çok talebi tek siparişte birleştirme
+
+Bayi haftalar içinde altı ayrı talep girmişse hepsi tek siparişte toplanabilir.
+**Talepler** listesinde satır başındaki kutularla talepler seçilir; seçim şeridi kaç talep
+ve kaç dönüştürülebilir kalem olduğunu yazar ve **n talebi tek siparişe dönüştür** der.
+Talep detayında da aynı bayinin diğer açık talepleriyle birleştirme kısayolu vardır.
+
+Dönüştürme kipi kalemleri **ürün bazında gruplar**: her ürün için sipariş toplamı üstte,
+o ürünü isteyen talep kalemleri (talep no, tarih, dönüştürülebilir miktar, girilen miktar)
+altında listelenir. Böylece "üç talepte toplam 300 metre HB-01 istenmiş" tek bakışta
+görünür. Kalemler tek tek çıkarılabilir, miktarları düşürülebilir; girilmeyen miktar
+kendi talebinde açık kalır.
+
+Sipariş kalemi her zaman **kendi talep kalemine bağlı** kalır. Bu yüzden altı talebin
+altısı da sevkiyat gerçekleştiğinde ayrı ayrı kapanır ve hareket defteri bağlantısı
+bozulmaz. Logo tarafında tek fiş açılır, kalem sayısı kadar satır taşır.
+
+Tek sınır: **bir sipariş yalnızca tek bayinin taleplerinden oluşur** — Logo fişi tek cari
+kartı taşır, karışık sipariş rezervi bir bayiye, fişi başka bayiye yazardı. İlk seçim
+bayiyi sabitler, diğer bayilerin kutuları kapanır ve sebebi kutunun başlığında yazar;
+motor da bu kuralı ayrıca doğrular.
 
 ### Sipariş oluşturmak = Logo'ya göndermek
 
