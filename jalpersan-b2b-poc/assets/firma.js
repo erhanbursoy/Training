@@ -40,12 +40,9 @@
       railBaslik: 'Yönetim',
       ustSag: function () {
         var kul = aktifKullanici();
-        return h('div.row.tight', {}, [
-          h('button.btn.sm', { text: 'Demoyu baştan başlat', title: 'Portal tarafını boşaltır; Logo kartları kalır.', onclick: demoSifirla }),
-          h('button.btn.sm', { text: 'Örnek veriye dön', onclick: function () { UI.onay('Örnek veriye dön', 'Tüm PoC verisi silinip başlangıç örneğine dönülür.', function () { JP.sifirla(false); UI.toast('Örnek veri yüklendi', null, 'ok'); }, true); } }),
-          h('span.ikon-ayrac'),
-          kul ? profilDugmesi(kul) : null
-        ]);
+        /* Veri sıfırlama demo aracıdır ve giriş sayfasında durur; panelde
+           yalnızca oturum menüsü var. */
+        return h('div.row.tight', {}, [kul ? profilDugmesi(kul) : null]);
       },
       bolumler: [
         { id: 'panel', ad: 'Panel', ciz: panel },
@@ -157,12 +154,6 @@
         sagEk || null
       ])
     ]));
-  }
-
-  function demoSifirla() {
-    UI.onay('Demoyu baştan başlat',
-      'Portal tarafı (ürün, bayi, talep, sipariş, geçmiş) boşaltılır. Logo simülatöründeki stok ve cari kartlar kalır, böylece senaryoya 1. adımdan başlayabilirsiniz.',
-      function () { JP.sifirla(true); UI.toast('Demo sıfırlandı', 'Sıradaki adım: Ürünler ekranından “Logo’dan güncelle”.', 'ok'); }, true);
   }
 
   /* ------------------------------------------------------------------ panel */

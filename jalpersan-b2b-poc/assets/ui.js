@@ -32,6 +32,34 @@
   }
   UI.h = h;
 
+  /* ----------------------------------------------------------------- marka */
+  /* Kelime markası DOM'a gömülü SVG olarak çizilir; <img> ya da data: URI
+     kullanılmaz çünkü artifact CSP'si ikisini de engelliyor. Kalıp bir kez
+     ayrıştırılıp her çağrıda klonlanır. */
+  var markaKalip = null;
+  UI.marka = function (o) {
+    o = o || {};
+    if (!markaKalip && JP.MARKA_ICERIK) {
+      markaKalip = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      markaKalip.setAttribute('viewBox', JP.MARKA_KUTU);
+      markaKalip.setAttribute('preserveAspectRatio', 'xMinYMid meet');
+      markaKalip.innerHTML = JP.MARKA_ICERIK;
+    }
+    if (!markaKalip) return h('b.marka-yazi', { text: 'Jalpersan' });
+    var el = markaKalip.cloneNode(true);
+    el.setAttribute('class', 'jp-marka' + (o.sinif ? ' ' + o.sinif : ''));
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', o.etiket || 'Jalpersan');
+    el.setAttribute('focusable', 'false');
+    if (o.boy) el.style.height = o.boy;
+    return el;
+  };
+
+  /** Üst çubuk ve giriş ekranı başlığı: marka + alt başlık. */
+  UI.markaBaslik = function (altBaslik, o) {
+    return h('div.brand', {}, [UI.marka(o), altBaslik ? h('span', { text: altBaslik }) : null]);
+  };
+
   /* ------------------------------------------------------------------ ikon */
   var IKON = {
     sepet: '<path d="M1.6 2.2h1.9l1.7 7.6h6.6l1.4-5.3H4.3"/><circle cx="6.4" cy="12.6" r="1.15"/><circle cx="11.2" cy="12.6" r="1.15"/>',
@@ -366,11 +394,9 @@
     kok.textContent = '';
     kok.appendChild(h('div.giris', {}, h('div.giris-kutu', {}, [
       h('div.giris-bas', {}, [
-        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: 'B2B portalı' })]),
+        UI.markaBaslik('B2B portalı'),
         h('span.poc-flag', { text: 'Prototip' })
       ]),
-      h('h1', { text: 'Portal girişi' }),
-      h('p.small.muted', { text: 'Firma ve bayi hesapları aynı ekrandan girer; hesabınızın tipi hangi ekrana gideceğinizi belirler. Kayıt formu yoktur, hesaplar Jalpersan tarafından tanımlanır.' }),
       h('label.f', {}, ['E-posta adresi', eposta]),
       dogrulama.el,
       hata,
@@ -378,16 +404,12 @@
       kilitBilgi,
       (firma || bayi) ? h('div.stack', {}, [firma, bayi])
         : h('div.note.warn', { text: 'Henüz kullanıcı tanımlanmamış. Firma panelindeki “Bayi kullanıcıları” ya da “Firma kullanıcıları” ekranından hesap açın.' }),
-      /* Prototip çıkış kapısı: tarayıcıdaki veri bozulur ya da eski bir
-         sürümden kalırsa hiçbir ekrana girilemez hâle gelmesin. */
+      /* Giriş ekranından ana sayfaya dönüş: demo araçları (rol kartları, veri
+         sıfırlama) oradadır, portal ekranlarında değil. */
       h('div.giris-alt', {}, [
         h('span.small.muted', { text: 'Prototip' }),
-        h('button.btn.ghost.sm', { text: 'Örnek veriye dön',
-          title: 'Tarayıcıdaki veriyi silip başlangıç örneğini yükler',
-          onclick: function () {
-            UI.onay('Örnek veriye dön', 'Tarayıcıdaki tüm PoC verisi silinip başlangıç örneğine dönülür.',
-              function () { JP.sifirla(false); location.reload(); }, true);
-          } })
+        h('button.btn.ghost.sm', { text: 'Giriş sayfasına dön →',
+          title: 'Rol kartları ve demo verisi seçenekleri', onclick: function () { JP.anaSayfa(); } })
       ])
     ])));
     dugmeTazele();
@@ -460,10 +482,7 @@
       h('span.poc-flag', { text: 'Prototip' })
     ]);
     return {
-      el: h('div.stack', { style: { gap: '6px' } }, [
-        el,
-        h('div.small.muted', { text: 'Prototipte yer tutucudur. Gerçek kurulumda Google reCAPTCHA bileşeni gelir ve gelen jeton sunucuda doğrulanır.' })
-      ]),
+      el: el,
       tamam: function () { return kutu.checked; },
       jeton: function () { return kutu.checked ? 'prototip' : null; },
       sifirla: function () { kutu.checked = false; }
@@ -488,7 +507,7 @@
     kok.textContent = '';
     kok.appendChild(h('div.giris', {}, h('div.giris-kutu', {}, [
       h('div.giris-bas', {}, [
-        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: 'B2B portalı' })]),
+        UI.markaBaslik('B2B portalı'),
         h('span.poc-flag', { text: 'Prototip' })
       ]),
       h('h1', { text: 'Bu ekrana erişiminiz yok' }),
@@ -531,9 +550,12 @@
     function basCiz() {
       basEl.textContent = '';
       ekle(basEl, [
-        h('div.brand', {}, [h('b', { text: 'Jalpersan' }), h('span', { text: o.altBaslik })]),
-        o.ustMenu ? null : h('span.role-chip', {}, [h('span.dot'), o.rolAdi]),
-        JP.rolSecici ? JP.rolSecici() : null,
+        UI.markaBaslik(o.altBaslik),
+        /* Rol çipi ve rol seçici demo araçlarıdır; portal ekranlarında gerçek
+           bir ürün gibi görünsün diye yalnızca Logo simülatöründe çıkar.
+           Portal ekranlarından çıkış hesap menüsündedir. */
+        o.demoBar ? h('span.role-chip', {}, [h('span.dot'), o.rolAdi]) : null,
+        (o.demoBar && JP.rolSecici) ? JP.rolSecici() : null,
         o.ustMenu ? h('nav.ust-gez', { 'aria-label': 'Bölümler' }, gorunur.map(function (b) { return dugme(b, true); })) : null,
         h('div.spacer'),
         o.ustSag ? o.ustSag({ git: git, ciz: ciz }) : null,

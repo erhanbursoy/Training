@@ -8,7 +8,7 @@
   JP.logoEkran = function () {
     UI.kabuk({
       rol: 'logo', rolAdi: 'Logo simülatörü', altBaslik: 'Tiger 3 · simülasyon',
-      railBaslik: 'Logo', karanlik: true,
+      railBaslik: 'Logo', karanlik: true, demoBar: true,
       ustSag: function () { return h('span.small.muted', { text: 'LG_025_* tabloları · REST servisi' }); },
       bolumler: [
         { id: 'fisler', ad: 'Sipariş fişleri',

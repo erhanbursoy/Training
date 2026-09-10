@@ -629,6 +629,13 @@
   /** Kullanıcının ait olduğu portal: 'bayi' ya da 'firma'. */
   JP.oturumHedefi = function (k) { return JP.kullaniciTipi(k) === 'firma' ? 'firma' : 'bayi'; };
 
+  /** Giriş kartlarının olduğu ana sayfa. Tek dosya sürümünde 'giris' rolüne
+   *  geçer, ayrı sayfalarda index.html'e gider. */
+  JP.anaSayfa = function () {
+    if (JP.rolAyarla) { JP.rolAyarla('giris'); return; }
+    location.href = 'index.html';
+  };
+
   /** Giriş sonrası doğru ekrana götürür. Tek dosya sürümünde rol değiştirir,
    *  ayrı sayfalarda ilgili sayfaya gider. */
   JP.girisYonlendir = function (k) {

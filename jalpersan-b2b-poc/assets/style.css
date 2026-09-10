@@ -29,6 +29,10 @@
   --bad:        #8E1029;  --bad-soft: #FAE4E9;
   --info:       #2F3543;  --info-soft:#E9EBEF;
 
+  /* Kelime markasının iki tonu (logo-b.svg özgün renkleri) */
+  --marka-1:    #26282C;
+  --marka-2:    #4C5057;
+
   --shadow:     0 1px 2px rgba(39,41,45,.05), 0 10px 26px -16px rgba(39,41,45,.35);
   --radius:     10px;
   --radius-sm:  5px;
@@ -49,6 +53,7 @@
   --warn:#E0A32E; --warn-soft:#2C2211;
   --bad:#E9806B;  --bad-soft:#331914;
   --info:#6FB1D4; --info-soft:#122630;
+  --marka-1:#EAF1F5; --marka-2:#A9B8C1;
   --shadow: 0 1px 2px rgba(0,0,0,.5), 0 14px 30px -18px #000;
 }
 
@@ -96,12 +101,18 @@ a { color: var(--accent); }
   background: var(--surface); border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 30;
 }
-.brand { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
-.brand b {
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.brand b, .marka-yazi {
   font-family: var(--font-display); font-weight: 700; font-size: 15px;
   letter-spacing: .06em; text-transform: uppercase;
 }
 .brand span { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+
+/* Kelime markası: satır içi SVG, yüksekliğe göre ölçeklenir */
+.jp-marka { display: block; flex: 0 0 auto; height: 19px; width: auto; }
+.jp-marka .m1 { fill: var(--marka-1); }
+.jp-marka .m2 { fill: var(--marka-2); }
+.giris-bas .jp-marka { height: 24px; }
 
 .role-chip {
   display: inline-flex; align-items: center; gap: 7px;
@@ -151,6 +162,7 @@ a { color: var(--accent); }
   /* Üst çubuk sabit yükseklikte kalırsa düğmeler dışarı taşıyor; sarmasına izin ver. */
   .topbar { height: auto; min-height: 56px; flex-wrap: wrap; row-gap: 8px; padding: 8px 14px; }
   .brand span { display: none; }
+  .jp-marka { height: 17px; }
   /* align-items: flex-start sütun yerleşiminde içeriği genişletip sayfayı yatay kaydırıyordu. */
   .shell { flex-direction: column; align-items: stretch; }
   .rail {

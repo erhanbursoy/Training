@@ -7,7 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const oku = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
 const css = oku('assets/style.css');
-const js = ['katalog', 'gorseller', 'core', 'ui', 'bayi', 'firma', 'logo'].map((f) => oku(`assets/${f}.js`)).join('\n');
+const js = ['katalog', 'gorseller', 'marka', 'core', 'ui', 'bayi', 'firma', 'logo'].map((f) => oku(`assets/${f}.js`)).join('\n');
 
 const index = oku('index.html');
 const indexCss = index.match(/<style>([\s\S]*?)<\/style>/)[1];
@@ -85,6 +85,9 @@ const ONYUKLEME = `
       var git = a.querySelector('.go');
       if (git) git.textContent = git.textContent.replace('penceresini aç', 'ekranına geç').replace('Bayi pencereyi', 'Bayi');
     });
+
+    var marka = kok.querySelector('#marka');
+    if (marka) marka.appendChild(JP.UI.marka());
 
     var d = JP.db;
     kok.querySelector('#durum').textContent =

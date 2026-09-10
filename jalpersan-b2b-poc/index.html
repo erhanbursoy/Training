@@ -10,6 +10,8 @@
 <style>
   .wrap { max-width: 1080px; margin: 0 auto; padding: 34px 22px 72px; }
   .mast { display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+  .mast .marka-yer { margin-bottom: 14px; }
+  .mast .jp-marka { height: 30px; }
   .mast h1 { font-size: 30px; letter-spacing: -.022em; line-height: 1.12; }
   .mast .sub { color: var(--text-2); max-width: 56ch; margin-top: 8px; }
   .mast .meta { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
@@ -58,6 +60,7 @@
 
   <header class="mast">
     <div>
+      <div class="marka-yer" id="marka"></div>
       <div class="eyebrow">Jalpersan Tekstil · B2B bayi satın alma talep portalı</div>
       <h1>Üç ekranı ayrı ayrı çalıştıran prototip</h1>
       <p class="sub">Bayi portalı, firma paneli ve Logo ERP simülatörü üç ayrı pencerede açılır ve
@@ -160,11 +163,13 @@
 
 <script src="assets/katalog.js"></script>
 <script src="assets/gorseller.js"></script>
+<script src="assets/marka.js"></script>
 <script src="assets/core.js"></script>
 <script src="assets/ui.js"></script>
 <script>
 (function () {
   var d = JP.db;
+  document.getElementById('marka').appendChild(JP.UI.marka());
   document.getElementById('durum').textContent =
     d.urunler.length + ' ürün · ' + d.bayiler.length + ' bayi · ' + d.talepler.length +
     ' talep · ' + d.siparisler.length + ' sipariş · ' + d.havuz.length + ' havuz hareketi';
