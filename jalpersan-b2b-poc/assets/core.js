@@ -1362,6 +1362,168 @@
     }).filter(function (r) { return !filtre.grup || r.grup === filtre.grup; });
   };
 
+  /* ------------------------------------------------------------------ raporlar
+   * Dört rapor da aynı iskeleti kullanır: tarih aralığı süzer, satırları ürün
+   * ya da bayi bazında toplar, sıralı bir dizi döner. Miktarlar ürünün kendi
+   * biriminden olduğu için satırlar arası toplanmaz; özetler satır sayar.
+   */
+  function araligaGirer(ts, bas, bit) {
+    if (bas && ts < bas) return false;
+    if (bit && ts > bit) return false;
+    return true;
+  }
+  function urunBilgi(kod) {
+    return JP.db.urunler.find(function (x) { return x.kod === kod; })
+      || { kod: kod, ad: kod, birim: '', gosterimBirimi: '', doku: 'diger', renk: '#B9AE99', grup: '' };
+  }
+  function ort(dizi) {
+    if (!dizi.length) return null;
+    return Math.round(dizi.reduce(function (t, v) { return t + v; }, 0) / dizi.length * 10) / 10;
+  }
+
+  /** 1 — Ürün bazında en çok sipariş edilenler. Aralık sipariş tarihine bakar. */
+  JP.raporEnCokSiparis = function (f) {
+    f = f || {};
+    var g = {};
+    JP.db.siparisler.forEach(function (s) {
+      if (s.durum === 'İptal') return;
+      if (!araligaGirer(s.tarih, f.bas, f.bit)) return;
+      JP.siparisKalemDurum(s).forEach(function (k) {
+        var r = g[k.kalem.urunKod] || (g[k.kalem.urunKod] = {
+          urunKod: k.kalem.urunKod, siparisKalem: 0, siparis: 0, sevk: 0,
+          bayiler: {}, siparisler: {}, sonTarih: null
+        });
+        r.siparisKalem++;
+        r.siparis = r2(r.siparis + k.logoMiktar);
+        r.sevk = r2(r.sevk + k.sevk);
+        r.bayiler[s.bayiKod] = true;
+        r.siparisler[s.no] = true;
+        if (!r.sonTarih || s.tarih > r.sonTarih) r.sonTarih = s.tarih;
+      });
+    });
+    return Object.keys(g).map(function (kod) {
+      var r = g[kod];
+      r.urun = urunBilgi(kod);
+      r.bayiSayisi = Object.keys(r.bayiler).length;
+      r.siparisSayisi = Object.keys(r.siparisler).length;
+      r.sevkOran = r.siparis > 0 ? Math.round(r.sevk / r.siparis * 100) : 0;
+      return r;
+    }).sort(function (a, b) { return b.siparis - a.siparis || b.siparisKalem - a.siparisKalem; });
+  };
+
+  /** 2 — Talep edilmiş, karşılanmayı bekleyen ürünler. Aralık talep tarihine bakar. */
+  JP.raporBekleyen = function (f) {
+    f = f || {};
+    var g = {};
+    JP.db.talepler.forEach(function (t) {
+      if (!araligaGirer(t.tarih, f.bas, f.bit)) return;
+      JP.talepKalemDurum(t).forEach(function (k) {
+        if (k.donusturulebilir <= 0.001 && k.talep - k.fatura <= 0.001) return;
+        var r = g[k.kalem.urunKod] || (g[k.kalem.urunKod] = {
+          urunKod: k.kalem.urunKod, talep: 0, siparis: 0, sevk: 0, kalan: 0,
+          bayiler: {}, talepler: {}, enEskiTs: null
+        });
+        r.talep = r2(r.talep + k.talep);
+        r.siparis = r2(r.siparis + k.siparis);
+        r.sevk = r2(r.sevk + k.fatura);
+        r.kalan = r2(r.kalan + k.donusturulebilir);
+        r.bayiler[t.bayiKod] = true;
+        r.talepler[t.no] = true;
+        if (!r.enEskiTs || t.tarih < r.enEskiTs) r.enEskiTs = t.tarih;
+      });
+    });
+    return Object.keys(g).map(function (kod) {
+      var r = g[kod];
+      r.urun = urunBilgi(kod);
+      r.bayiSayisi = Object.keys(r.bayiler).length;
+      r.talepSayisi = Object.keys(r.talepler).length;
+      r.yas = r.enEskiTs ? gunFark(r.enEskiTs) : 0;
+      return r;
+    }).filter(function (r) { return r.kalan > 0.001; })
+      .sort(function (a, b) { return b.yas - a.yas || b.kalan - a.kalan; });
+  };
+
+  /** 3 — Bayi bazında sipariş sayıları. Aralık sipariş tarihine bakar. */
+  JP.raporBayiSiparis = function (f) {
+    f = f || {};
+    var g = {};
+    function kutu(kod) {
+      return g[kod] || (g[kod] = {
+        bayiKod: kod, siparis: 0, siparisKalem: 0, talep: 0, tamamlanan: 0,
+        urunler: {}, sonTarih: null
+      });
+    }
+    JP.db.bayiler.forEach(function (b) { kutu(b.kod); });
+    JP.db.siparisler.forEach(function (s) {
+      if (s.durum === 'İptal') return;
+      if (!araligaGirer(s.tarih, f.bas, f.bit)) return;
+      var r = kutu(s.bayiKod);
+      r.siparis++;
+      r.siparisKalem += s.kalemler.length;
+      if (s.durum === 'Tamamlandı') r.tamamlanan++;
+      s.kalemler.forEach(function (k) { r.urunler[k.urunKod] = true; });
+      if (!r.sonTarih || s.tarih > r.sonTarih) r.sonTarih = s.tarih;
+    });
+    JP.db.talepler.forEach(function (t) {
+      if (!araligaGirer(t.tarih, f.bas, f.bit)) return;
+      kutu(t.bayiKod).talep++;
+    });
+    return Object.keys(g).map(function (kod) {
+      var r = g[kod];
+      var b = JP.db.bayiler.find(function (x) { return x.kod === kod; });
+      r.bayi = b || { kod: kod, unvan: kod, sehir: '', ulke: '' };
+      r.urunSayisi = Object.keys(r.urunler).length;
+      r.donusumOran = r.talep > 0 ? Math.round(r.siparis / r.talep * 100) : 0;
+      return r;
+    }).sort(function (a, b) { return b.siparis - a.siparis || b.talep - a.talep; });
+  };
+
+  /** 4 — Ürün bazında talepten karşılanmaya kadar geçen süre.
+   *  Ölçüm talep kalemi düzeyindedir: talebin açıldığı an ile ilk sevkiyat ve
+   *  tam sevkiyat arasındaki gün sayısı. Aralık talep tarihine bakar. */
+  JP.raporSure = function (f) {
+    f = f || {};
+    var g = {};
+    JP.db.talepler.forEach(function (t) {
+      if (!araligaGirer(t.tarih, f.bas, f.bit)) return;
+      var durum = JP.talepKalemDurum(t);
+      t.kalemler.forEach(function (k) {
+        var kd = durum.find(function (x) { return x.kalem.id === k.id; });
+        if (!kd) return;
+        var r = g[k.urunKod] || (g[k.urunKod] = {
+          urunKod: k.urunKod, kapanan: 0, acik: 0, ilk: [], tam: [], acikYas: []
+        });
+        var hs = JP.db.havuz.filter(function (h) { return h.talepKalemId === k.id; });
+        var acilis = hs.filter(function (h) { return h.tip === 'dTalep' && h.miktar > 0; })
+          .map(function (h) { return h.ts; }).sort()[0] || t.tarih;
+        var sevkler = hs.filter(function (h) { return h.tip === 'dFatura' && h.miktar > 0; })
+          .map(function (h) { return h.ts; }).sort();
+        var gun = function (a, b) { return Math.max(0, Math.round((new Date(b) - new Date(a)) / 86400000 * 10) / 10); };
+        if (sevkler.length) r.ilk.push(gun(acilis, sevkler[0]));
+        if (kd.fatura + 0.001 >= kd.talep && kd.talep > 0) {
+          r.kapanan++;
+          r.tam.push(gun(acilis, sevkler[sevkler.length - 1]));
+        } else {
+          r.acik++;
+          r.acikYas.push(gunFark(acilis));
+        }
+      });
+    });
+    return Object.keys(g).map(function (kod) {
+      var r = g[kod];
+      r.urun = urunBilgi(kod);
+      r.ortIlk = ort(r.ilk);
+      r.ortTam = ort(r.tam);
+      r.enUzunTam = r.tam.length ? Math.max.apply(null, r.tam) : null;
+      r.enUzunAcik = r.acikYas.length ? Math.max.apply(null, r.acikYas) : null;
+      r.kalem = r.kapanan + r.acik;
+      return r;
+    }).sort(function (a, b) {
+      var av = a.ortTam === null ? -1 : a.ortTam, bv = b.ortTam === null ? -1 : b.ortTam;
+      return bv - av || b.kalem - a.kalem;
+    });
+  };
+
   JP.raporEslesme = function () {
     var say = { baglantili: 0, fifo: 0, elle: 0 }, miktar = { baglantili: 0, fifo: 0, elle: 0 };
     JP.db.havuz.forEach(function (h) {

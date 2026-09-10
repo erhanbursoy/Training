@@ -32,7 +32,9 @@ Teknik doküman v0.6, bölüm 7'deki prototip kapsamını uygular.
    faturayı kesin, GİB'e gönderin.
 6. **Firma → Siparişler → Logo'dan sorgula** · Miktar değişimi ve faturalar hareket olarak
    işlenir, sipariş kapanır. Tekrar sorgulayın — mükerrer hareket yazılmaz.
-7. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
+7. **Firma → Raporlar** · Dört raporu tarih aralığıyla süzün: en çok sipariş edilenler,
+   karşılanmayı bekleyenler, bayi bazında sipariş sayıları, talepten karşılanmaya süre.
+8. **Firma → Ürünler → Düzenle** · Ürün detayında görsel yükleyin ve sıralayın; ilk sıradaki
    görsel bayi kataloğunda görünür.
 
 Panel üstündeki **Demoyu baştan başlat** portal tarafını boşaltır (Logo kartları kalır),
@@ -111,7 +113,8 @@ olduğu için miktar gösterir; birim ürün kodunun yanındadır.
 
 ## Firma paneli
 
-Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler**.
+Yedi bölüm: **Panel**, **Talepler**, **Siparişler**, **Raporlar**, **Ürünler**, **Bayiler**,
+**Kullanıcılar**.
 
 - **Panel** · yalnızca dört kart: bekleyen talep, açık sipariş, Logo'da miktarı değişen
   sipariş, gecikmiş sipariş. Karta tıklayınca ilgili ekrana gider.
@@ -133,6 +136,28 @@ Beş bölüm: **Panel**, **Talepler**, **Siparişler**, **Ürünler**, **Bayiler
   (telefon talebi). Detay ayrı ekran, dört sekme: Bilgiler (Logo alanları salt okunur;
   siparişe açıklık, teslimat notu ve katalog kısıtı düzenlenebilir), Kullanıcılar,
   Talepler ve Siparişler geçmişi.
+
+### Raporlar
+
+Dört rapor tek iskeleti paylaşır: üstte rapor seçici, altında ortak tarih aralığı ve arama
+çubuğu, raporun ne ölçtüğünü söyleyen bir satır, dört ölçüm kartı ve tek tablo. Her raporun
+kendi Excel çıktısı vardır.
+
+| Rapor | Satır | Ölçüler | Tarih aralığı |
+| --- | --- | --- | --- |
+| En çok sipariş edilenler | ürün | siparişe alınan, sevk edilen, sevk oranı, kalem, bayi, son sipariş | sipariş tarihi |
+| Karşılanmayı bekleyenler | ürün | talep edilen, siparişe alınan, sevk edilen, kalan, talep, bayi, en eski | talep tarihi |
+| Bayi bazında sipariş sayıları | bayi | talep, sipariş, dönüşüm oranı, sipariş kalemi, ürün çeşidi, tamamlanan | belge tarihi |
+| Talepten karşılanmaya süre | ürün | kalem, tam sevk, ort. ilk sevk, ort. tam sevk, en uzun, bekleyen | talep tarihi |
+
+Süre raporu **talep kalemi düzeyinde** ölçer: kalemin `dTalep` hareketinin zamanı ile
+sevkiyat (`dFatura`) hareketlerinin zamanı arasındaki gün farkı. *İlk sevk* ilk faturaya,
+*tam sevk* kalemin tamamının kapandığı faturaya kadar geçen süredir. Tamamlanmamış kalemler
+ayrı sayılır ve en eskisinin yaşı yazar; kapanmamış kalem ortalamayı bozmaz.
+
+İptal edilmiş siparişler sipariş raporlarına girmez. Miktarlar ürünün kendi biriminden
+olduğu için satırlar arası toplanmaz — ölçüm kartları ürün, bayi, kalem, belge ya da gün
+sayar.
 
 ### Birden çok talebi tek siparişte birleştirme
 
