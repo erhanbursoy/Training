@@ -32,6 +32,10 @@
   --bad:        #8E1029;  --bad-soft: #FAE4E9;
   --info:       #2F3543;  --info-soft:#E9EBEF;
 
+  /* Grafik serisi sarısı: --warn (#B27400) çizgide kahverengiye kaçıyor,
+     bu ton beyaz zeminde sarı okunur ama yeterince koyu. */
+  --grafik-sari: #E0A32E;
+
   /* Kelime markasının iki tonu (logo-b.svg özgün renkleri) */
   --marka-1:    #26282C;
   --marka-2:    #4C5057;
@@ -57,6 +61,7 @@
   --bad:#E9806B;  --bad-soft:#331914;
   --info:#6FB1D4; --info-soft:#122630;
   --marka-1:#EAF1F5; --marka-2:#A9B8C1;
+  --grafik-sari:#E8B54A;
   --shadow: 0 1px 2px rgba(0,0,0,.5), 0 14px 30px -18px #000;
 }
 
@@ -190,6 +195,14 @@ a { color: var(--accent); }
 .grafik-gosterge { font-size: 12px; color: var(--text-2); gap: 14px; }
 .gosterge { display: inline-flex; align-items: center; gap: 6px; }
 .gosterge i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+/* Çizgi serisi göstergesi: kısa çizgi ve ortasında nokta */
+.gosterge i.g-cizgi {
+  width: 18px; height: 3px; border-radius: 2px; position: relative;
+}
+.gosterge i.g-cizgi b {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 7px; height: 7px; border-radius: 50%; box-shadow: 0 0 0 1.6px var(--surface);
+}
 
 .main { flex: 1 1 auto; min-width: 0; padding: 20px 22px 64px; }
 .main > header { margin-bottom: 16px; }
@@ -3531,7 +3544,7 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     function ciz() {
       var dar = false;
       try { dar = window.matchMedia('(max-width: 700px)').matches; } catch (e) {}
-      var G = dar ? 560 : 1000, Y = dar ? 300 : 210;
+      var G = dar ? 560 : 1000, Y = dar ? 320 : 236;
       var solPay = dar ? 64 : 52, altPay = dar ? 34 : 26, ustPay = dar ? 12 : 8;
       var etiketAdim = dar ? 7 : 5;
       var alanG = G - solPay - 8, alanY = Y - altPay - ustPay;
@@ -3555,34 +3568,36 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
       }
       /* Her seri bir çizgi. Hareketsiz günler sıfır olarak çizilseydi çizgi
          her değerden sonra tabana inip testere gibi görünürdü; onun yerine
-         değeri olan noktalar birbirine bağlanır, boş günler atlanır. */
+         değeri olan noktalar birbirine bağlanır, boş günler atlanır.
+         Seriler aynı değere sık sık denk geldiği için her çizgi kendi zemin
+         rengi hâlesiyle çizilir: üsttteki çizgi alttakini keser, ikisi tek
+         çizgiye karışmaz. Bu yüzden çizgi ve işaretler seri seri, sırayla
+         eklenir. */
+      var kalinlik = dar ? 2.8 : 2.2;
       seriler.forEach(function (s) {
         var noktalar = [];
         s.veri.forEach(function (v, i) {
           if (!v) return;
           noktalar.push(x(i).toFixed(2) + ',' + y(v).toFixed(2));
         });
-        /* Sayım grafiğinde seriler aynı değere sık sık denk gelir; desen
-           verilmişse üst üste binen çizgiler birbirinin altından görünür. */
-        var cizgi = {
-          points: noktalar.join(' '),
-          fill: 'none', stroke: s.renk, 'stroke-width': dar ? 2.6 : 2,
+        if (!noktalar.length) return;
+        var ortak = {
+          points: noktalar.join(' '), fill: 'none',
           'stroke-linejoin': 'round', 'stroke-linecap': 'round'
         };
-        if (s.desen) cizgi['stroke-dasharray'] = s.desen;
-        cocuklar.push(el('polyline', cizgi));
-      });
-      // değeri olan noktalara ipuçlu işaret
-      seriler.forEach(function (s) {
+        cocuklar.push(el('polyline', Object.assign({}, ortak, {
+          stroke: 'var(--surface)', 'stroke-width': kalinlik + 3
+        })));
+        cocuklar.push(el('polyline', Object.assign({}, ortak, {
+          stroke: s.renk, 'stroke-width': kalinlik
+        })));
         s.veri.forEach(function (v, i) {
           if (!v) return;
           var ipucu = el('title');
           ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.olcu ? ' ' + o.olcu : '');
-          /* Sayım küçükken seriler aynı değere biner; işaret serinin renginde
-             dolu çizilir, ince açık kenar üst üste binenleri ayırır. */
           cocuklar.push(el('circle', {
-            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.4 : 3.8,
-            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.6
+            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.6 : 4,
+            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.8
           }, [ipucu]));
         });
       });
@@ -3609,11 +3624,9 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
     var svg = ciz();
     var kutu = h('div.grafik-kutu', {}, [
       h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
-        /* Gösterge çizgi parçası: deseni de gösterir. */
+        /* Gösterge, çizginin kendisini örnekler: renkli çizgi ve üstünde nokta. */
         return h('span.gosterge', {}, [
-          h('i', { style: s.desen
-            ? { background: 'transparent', borderTop: '3px ' + (s.desen.indexOf('2 ') === 0 ? 'dotted' : 'dashed') + ' ' + s.renk, height: '0', borderRadius: '0' }
-            : { background: s.renk } }),
+          h('i.g-cizgi', { style: { background: s.renk } }, h('b', { style: { background: s.renk } })),
           h('span', { text: s.ad })
         ]);
       }).concat([h('div.spacer'), o.olcu ? h('span.small.muted', { text: o.olcu }) : null])),
@@ -4573,9 +4586,10 @@ JP.GORSEL = {"anima":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA4
         etiketler: etiketler,
         bos: 'Son 30 günde talep yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
         seriler: [
-          { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
-          { ad: 'İşleme alınan', renk: 'var(--info)', desen: '7 4', veri: o.gunler.map(function (g) { return g.isleme; }) },
-          { ad: 'Tamamlanan', renk: 'var(--ok)', desen: '2 4', veri: o.gunler.map(function (g) { return g.tamam; }) }
+          /* Üç aşama üç renk: açılan kırmızı, işlemde sarı, tamamlanan yeşil. */
+          { ad: 'Talep edilen', renk: 'var(--accent)', veri: o.gunler.map(function (g) { return g.talep; }) },
+          { ad: 'İşleme alınan', renk: 'var(--grafik-sari)', veri: o.gunler.map(function (g) { return g.isleme; }) },
+          { ad: 'Tamamlanan', renk: 'var(--ok)', veri: o.gunler.map(function (g) { return g.tamam; }) }
         ]
       }));
   }

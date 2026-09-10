@@ -676,7 +676,7 @@
     function ciz() {
       var dar = false;
       try { dar = window.matchMedia('(max-width: 700px)').matches; } catch (e) {}
-      var G = dar ? 560 : 1000, Y = dar ? 300 : 210;
+      var G = dar ? 560 : 1000, Y = dar ? 320 : 236;
       var solPay = dar ? 64 : 52, altPay = dar ? 34 : 26, ustPay = dar ? 12 : 8;
       var etiketAdim = dar ? 7 : 5;
       var alanG = G - solPay - 8, alanY = Y - altPay - ustPay;
@@ -700,34 +700,36 @@
       }
       /* Her seri bir çizgi. Hareketsiz günler sıfır olarak çizilseydi çizgi
          her değerden sonra tabana inip testere gibi görünürdü; onun yerine
-         değeri olan noktalar birbirine bağlanır, boş günler atlanır. */
+         değeri olan noktalar birbirine bağlanır, boş günler atlanır.
+         Seriler aynı değere sık sık denk geldiği için her çizgi kendi zemin
+         rengi hâlesiyle çizilir: üsttteki çizgi alttakini keser, ikisi tek
+         çizgiye karışmaz. Bu yüzden çizgi ve işaretler seri seri, sırayla
+         eklenir. */
+      var kalinlik = dar ? 2.8 : 2.2;
       seriler.forEach(function (s) {
         var noktalar = [];
         s.veri.forEach(function (v, i) {
           if (!v) return;
           noktalar.push(x(i).toFixed(2) + ',' + y(v).toFixed(2));
         });
-        /* Sayım grafiğinde seriler aynı değere sık sık denk gelir; desen
-           verilmişse üst üste binen çizgiler birbirinin altından görünür. */
-        var cizgi = {
-          points: noktalar.join(' '),
-          fill: 'none', stroke: s.renk, 'stroke-width': dar ? 2.6 : 2,
+        if (!noktalar.length) return;
+        var ortak = {
+          points: noktalar.join(' '), fill: 'none',
           'stroke-linejoin': 'round', 'stroke-linecap': 'round'
         };
-        if (s.desen) cizgi['stroke-dasharray'] = s.desen;
-        cocuklar.push(el('polyline', cizgi));
-      });
-      // değeri olan noktalara ipuçlu işaret
-      seriler.forEach(function (s) {
+        cocuklar.push(el('polyline', Object.assign({}, ortak, {
+          stroke: 'var(--surface)', 'stroke-width': kalinlik + 3
+        })));
+        cocuklar.push(el('polyline', Object.assign({}, ortak, {
+          stroke: s.renk, 'stroke-width': kalinlik
+        })));
         s.veri.forEach(function (v, i) {
           if (!v) return;
           var ipucu = el('title');
           ipucu.textContent = etiketler[i] + ' · ' + s.ad + ': ' + JP.fmt.miktar(v) + (o.olcu ? ' ' + o.olcu : '');
-          /* Sayım küçükken seriler aynı değere biner; işaret serinin renginde
-             dolu çizilir, ince açık kenar üst üste binenleri ayırır. */
           cocuklar.push(el('circle', {
-            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.4 : 3.8,
-            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.6
+            cx: x(i).toFixed(2), cy: y(v).toFixed(2), r: dar ? 4.6 : 4,
+            fill: s.renk, stroke: 'var(--surface)', 'stroke-width': 1.8
           }, [ipucu]));
         });
       });
@@ -754,11 +756,9 @@
     var svg = ciz();
     var kutu = h('div.grafik-kutu', {}, [
       h('div.row.tight.grafik-gosterge', {}, seriler.map(function (s) {
-        /* Gösterge çizgi parçası: deseni de gösterir. */
+        /* Gösterge, çizginin kendisini örnekler: renkli çizgi ve üstünde nokta. */
         return h('span.gosterge', {}, [
-          h('i', { style: s.desen
-            ? { background: 'transparent', borderTop: '3px ' + (s.desen.indexOf('2 ') === 0 ? 'dotted' : 'dashed') + ' ' + s.renk, height: '0', borderRadius: '0' }
-            : { background: s.renk } }),
+          h('i.g-cizgi', { style: { background: s.renk } }, h('b', { style: { background: s.renk } })),
           h('span', { text: s.ad })
         ]);
       }).concat([h('div.spacer'), o.olcu ? h('span.small.muted', { text: o.olcu }) : null])),

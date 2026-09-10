@@ -294,9 +294,13 @@ doğrudan karşılaştırılabilir ve birim seçicisine gerek kalmaz. Bir talep 
 bir kez girer: açılış talebin tarihine, işleme alınma o talepten ilk siparişin açıldığı güne,
 kapanış son tamamlanma (GİB) hareketinin gününe yazılır. İptal edilen talep sayılmaz.
 
-Çizgi yalnızca değeri olan günlerden geçer; hareketsiz gün sıfır sayılıp çizgiyi tabana
-indirmez, komşu noktalar doğrudan birleştirilir. Sayılar küçükken seriler aynı değere
-bindiği için ikisi kesikli desenle çizilir ve işaretler serinin renginde dolu gösterilir.
+Üç aşama üç renkle ayrışır: **açılan kırmızı** (`--accent`), **işlemde sarı**
+(`--grafik-sari`), **tamamlanan yeşil** (`--ok`). Çizgi yalnızca değeri olan günlerden
+geçer; hareketsiz gün sıfır sayılıp çizgiyi tabana indirmez, komşu noktalar doğrudan
+birleştirilir. Sayılar küçükken seriler aynı değere bindiği için her çizgi kendi zemin
+rengi hâlesiyle çizilir — üstteki çizgi alttakini keser, ikisi tek çizgiye karışmaz.
+Değeri olan her nokta serinin renginde dolu işaretlenir ve üzerine gelince gün, seri ve
+sayı ipuçta yazar.
 Grafik satır içi SVG'dir, kütüphane yüklenmez — artifact ortamının içerik güvenlik kuralı
 dış betiğe izin vermez. Telefon genişliğinde grafik daha kare bir kutuya geçer ve ekran
 eşiği aşıldığında yeniden çizilir.

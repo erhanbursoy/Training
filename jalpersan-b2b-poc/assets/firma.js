@@ -237,9 +237,10 @@
         etiketler: etiketler,
         bos: 'Son 30 günde talep yok. Bayi tarafından talep girin ya da örnek veriye dönün.',
         seriler: [
-          { ad: 'Talep edilen', renk: 'var(--text-3)', veri: o.gunler.map(function (g) { return g.talep; }) },
-          { ad: 'İşleme alınan', renk: 'var(--info)', desen: '7 4', veri: o.gunler.map(function (g) { return g.isleme; }) },
-          { ad: 'Tamamlanan', renk: 'var(--ok)', desen: '2 4', veri: o.gunler.map(function (g) { return g.tamam; }) }
+          /* Üç aşama üç renk: açılan kırmızı, işlemde sarı, tamamlanan yeşil. */
+          { ad: 'Talep edilen', renk: 'var(--accent)', veri: o.gunler.map(function (g) { return g.talep; }) },
+          { ad: 'İşleme alınan', renk: 'var(--grafik-sari)', veri: o.gunler.map(function (g) { return g.isleme; }) },
+          { ad: 'Tamamlanan', renk: 'var(--ok)', veri: o.gunler.map(function (g) { return g.tamam; }) }
         ]
       }));
   }
