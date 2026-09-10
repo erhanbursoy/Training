@@ -83,9 +83,55 @@
     }
   }
 
+  /* Kayıtlı veriyi yeni sürüme taşır. Prototip tarayıcıda durduğu için eski
+   * sürümden kalmış bir veritabanı yeni alanları bilmez; en önemlisi firma
+   * kullanıcısı hiç yoktur ve panele girilemez. Bu yüzden göç, en az bir etkin
+   * firma yöneticisi olmasını garanti eder. */
+  var VARSAYILAN_YONETICI = {
+    ad: 'Jalpersan Yöneticisi', eposta: 'yonetici@jalpersan.example', rol: 'yonetici'
+  };
+
+  function gecisUygula(db) {
+    var degisti = false;
+    db.kullanicilar = db.kullanicilar || [];
+
+    // 1) tip alanı olmayan eski kayıtlar
+    db.kullanicilar.forEach(function (k) {
+      if (!k.tip) { k.tip = k.bayiKod ? 'bayi' : 'firma'; degisti = true; }
+    });
+
+    // 2) etkin firma yöneticisi yoksa: varsa pasif olanı ayağa kaldır,
+    //    yoksa bir firma kullanıcısını yönetici yap, o da yoksa yenisini aç.
+    var etkinYonetici = db.kullanicilar.some(function (k) {
+      return k.tip === 'firma' && k.rol === 'yonetici' && k.durum !== 'Pasif';
+    });
+    if (!etkinYonetici) {
+      var aday = db.kullanicilar.find(function (k) { return k.tip === 'firma' && k.rol === 'yonetici'; })
+        || db.kullanicilar.find(function (k) { return k.tip === 'firma'; });
+      if (aday) {
+        aday.rol = 'yonetici';
+        aday.durum = aday.durum === 'Pasif' ? 'Aktif' : aday.durum;
+      } else {
+        var eposta = VARSAYILAN_YONETICI.eposta;
+        if (db.kullanicilar.some(function (k) { return k.eposta === eposta; })) eposta = 'yonetici+1@jalpersan.example';
+        db.kullanicilar.push({
+          id: uid('u'), tip: 'firma', bayiKod: null,
+          ad: VARSAYILAN_YONETICI.ad, eposta: eposta, dil: 'tr', rol: 'yonetici',
+          durum: 'Aktif', olusturuldu: now(), davetTs: now(), sonGiris: null
+        });
+      }
+      degisti = true;
+    }
+    return degisti;
+  }
+
   Object.defineProperty(JP, 'db', {
     get: function () {
-      if (!mem) { mem = oku(); if (!mem) { mem = tohum(); yaz(mem); } }
+      if (!mem) {
+        mem = oku();
+        if (!mem) { mem = tohum(); yaz(mem); }
+        else if (gecisUygula(mem)) yaz(mem);
+      }
       return mem;
     }
   });
@@ -119,7 +165,12 @@
   JP.abone = function (fn) { dinleyiciler.push(fn); };
   JP.aboneSifirla = function () { dinleyiciler.length = 0; };   // rol değişiminde ölü kabuk yeniden çizilmesin
 
-  function disaridanDegisti() { mem = oku() || mem; gCache = null; yayinla(); }
+  function disaridanDegisti() {
+    var yeni = oku();
+    if (yeni) { gecisUygula(yeni); mem = yeni; }
+    gCache = null;
+    yayinla();
+  }
   if (kanal) kanal.onmessage = disaridanDegisti;
   window.addEventListener('storage', function (e) { if (e.key === JP.KEY) disaridanDegisti(); });
 
@@ -1642,7 +1693,17 @@
   function tohum(bos) {
     var db = bosDb();
     mem = db;
-    if (bos) return db;                      // "Demoyu baştan başlat": portal tarafı boş
+    if (bos) {
+      /* "Demoyu baştan başlat" portal tarafını boşaltır ama panele girilebilmesi
+         için bir firma yöneticisi kalmalı; aksi halde hiçbir hesap olmadığı için
+         iki portala da girilemiyordu. */
+      db.kullanicilar.push({
+        id: uid('u'), tip: 'firma', bayiKod: null,
+        ad: VARSAYILAN_YONETICI.ad, eposta: VARSAYILAN_YONETICI.eposta, dil: 'tr',
+        rol: 'yonetici', durum: 'Aktif', olusturuldu: now(), davetTs: now(), sonGiris: null
+      });
+      return db;
+    }
 
     // --- ana veriyi Logo'dan çekilmiş varsay
     db.logo.stok.forEach(function (s) {

@@ -377,7 +377,18 @@
       girisDugmesi,
       kilitBilgi,
       (firma || bayi) ? h('div.stack', {}, [firma, bayi])
-        : h('div.note.warn', { text: 'Henüz kullanıcı tanımlanmamış. Firma panelindeki “Bayi kullanıcıları” ya da “Firma kullanıcıları” ekranından hesap açın.' })
+        : h('div.note.warn', { text: 'Henüz kullanıcı tanımlanmamış. Firma panelindeki “Bayi kullanıcıları” ya da “Firma kullanıcıları” ekranından hesap açın.' }),
+      /* Prototip çıkış kapısı: tarayıcıdaki veri bozulur ya da eski bir
+         sürümden kalırsa hiçbir ekrana girilemez hâle gelmesin. */
+      h('div.giris-alt', {}, [
+        h('span.small.muted', { text: 'Prototip' }),
+        h('button.btn.ghost.sm', { text: 'Örnek veriye dön',
+          title: 'Tarayıcıdaki veriyi silip başlangıç örneğini yükler',
+          onclick: function () {
+            UI.onay('Örnek veriye dön', 'Tarayıcıdaki tüm PoC verisi silinip başlangıç örneğine dönülür.',
+              function () { JP.sifirla(false); location.reload(); }, true);
+          } })
+      ])
     ])));
     dugmeTazele();
   };

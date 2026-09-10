@@ -58,6 +58,14 @@ kapıdan giren bir hesap sessizce atılmaz: ne olduğunu söyleyen bir ekran ç�
 portalına dönme ya da çıkış yapma seçeneği verir. Logo ERP simülatörü portal dışıdır,
 giriş istemez.
 
+**Sistemde her zaman bir yönetici bulunur.** Prototip veriyi tarayıcıda tuttuğu için eski
+bir sürümden kalan veritabanı firma kullanıcısını bilmez ve panele girilemez hâle gelirdi.
+Bu yüzden veri okunurken göç uygulanır: `tip` alanı olmayan eski kayıtlar tamamlanır ve
+etkin bir firma yöneticisi yoksa biri ayağa kaldırılır (pasif yönetici aktife çekilir,
+yoksa bir firma kullanıcısı yöneticiye alınır, o da yoksa varsayılan yönetici hesabı
+açılır). **Demoyu baştan başlat** portal tarafını boşaltırken de bu hesabı bırakır.
+Giriş ekranının altındaki **Örnek veriye dön** ise veri bozulursa çıkış kapısıdır.
+
 **Kullanıcı yönetimi Yönetici rolündedir.** Muhasebe rolü diğer bütün ekranları görür ama
 iki kullanıcı bölümü ona hiç görünmez. Sağ üstteki hesap menüsü rolü ve yetkiyi yazar.
 
